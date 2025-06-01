@@ -19,12 +19,12 @@ dependencies:
   synquill:
     git:
       url: https://github.com/andreystavitsky/synquill.git
-      ref: 0a74d18fda3976b97af2cfe65d4782dad7dac663
+      ref: main
       path: synquill
 
 dev_dependencies:
   build_runner: ^2.4.15
-  build_test: any # For testing builders
+  build_test: ^2.2.3
   flutter_lints: ^5.0.0
   lints: ^5.0.0
   mockito: any
