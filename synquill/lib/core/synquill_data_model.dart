@@ -68,6 +68,7 @@ abstract class SynquillDataModel<T extends SynquillDataModel<T>> {
   /// @override
   /// final String id;
   /// ```
+  @mustBeOverridden
   String get id =>
       throw UnimplementedError(
         'id must be implemented in concrete model classes as '
@@ -129,6 +130,7 @@ abstract class SynquillDataModel<T extends SynquillDataModel<T>> {
   ///   'value': value,
   /// };
   /// ```
+  @mustBeOverridden
   Map<String, dynamic> toJson() {
     throw UnimplementedError(
       'toJson() must be implemented in concrete model classes or generated '
@@ -158,6 +160,7 @@ abstract class SynquillDataModel<T extends SynquillDataModel<T>> {
   ///   );
   /// }
   /// ```
+  @mustBeOverridden
   T fromJson(Map<String, dynamic> json) {
     throw UnimplementedError(
       'fromJson() must be implemented in concrete model classes or generated '
@@ -172,6 +175,7 @@ abstract class SynquillDataModel<T extends SynquillDataModel<T>> {
   /// This method should be overridden in concrete model classes to provide
   /// the specific logic for deserializing from the database format.
   ///
+  @mustBeOverridden
   T fromDb() {
     throw UnimplementedError(
       'fromDb() must be implemented in concrete model classes',
