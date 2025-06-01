@@ -130,7 +130,6 @@ abstract class SynquillDataModel<T extends SynquillDataModel<T>> {
   ///   'value': value,
   /// };
   /// ```
-  @mustBeOverridden
   Map<String, dynamic> toJson() {
     throw UnimplementedError(
       'toJson() must be implemented in concrete model classes or generated '
@@ -152,7 +151,7 @@ abstract class SynquillDataModel<T extends SynquillDataModel<T>> {
   /// Example implementation:
   /// ```dart
   /// @override
-  /// MyModel fromJson(Map<String, dynamic> json) {
+  /// factory MyModel.fromJson(Map<String, dynamic> json) {
   ///   return MyModel(
   ///     id: json['id'] as String,
   ///     name: json['name'] as String,
@@ -160,7 +159,6 @@ abstract class SynquillDataModel<T extends SynquillDataModel<T>> {
   ///   );
   /// }
   /// ```
-  @mustBeOverridden
   T fromJson(Map<String, dynamic> json) {
     throw UnimplementedError(
       'fromJson() must be implemented in concrete model classes or generated '
@@ -175,7 +173,12 @@ abstract class SynquillDataModel<T extends SynquillDataModel<T>> {
   /// This method should be overridden in concrete model classes to provide
   /// the specific logic for deserializing from the database format.
   ///
-  @mustBeOverridden
+  /// Example implementation:
+  /// ```dart
+  /// @override
+  /// MyModel.dromDB({required this.id, ...});
+  /// ```
+  ///
   T fromDb() {
     throw UnimplementedError(
       'fromDb() must be implemented in concrete model classes',
