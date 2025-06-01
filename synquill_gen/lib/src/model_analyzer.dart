@@ -80,12 +80,86 @@ class ModelAnalyzer {
     return uniqueModels.values.toList();
   }
 
+  /// Collect all fields from a class including inherited fields
+  static List<FieldElement> _collectAllFields(ClassElement element) {
+    final allFields = <String, FieldElement>{};
+
+    // Traverse up the inheritance hierarchy
+    _traverseInheritance(element, allFields);
+
+    return allFields.values.toList();
+  }
+
+  /// Recursively traverse the inheritance hierarchy to collect fields
+  static void _traverseInheritance(
+    ClassElement element,
+    Map<String, FieldElement> allFields,
+  ) {
+    // Add fields from the current class
+    for (final field in element.fields) {
+      // Only add if we haven't seen this field name before
+      // (child overrides parent)
+      if (!allFields.containsKey(field.name)) {
+        allFields[field.name] = field;
+      }
+    }
+
+    // Traverse superclass if it exists and is not Object
+    final superclass = element.supertype;
+    if (superclass != null && !superclass.isDartCoreObject) {
+      final superElement = superclass.element;
+      if (superElement is ClassElement) {
+        _traverseInheritance(superElement, allFields);
+      }
+    }
+
+    // Also traverse mixins
+    for (final mixin in element.mixins) {
+      final mixinElement = mixin.element;
+      if (mixinElement is ClassElement) {
+        _traverseInheritance(mixinElement, allFields);
+      } else {
+        // Handle MixinElement separately
+        _traverseMixinFields(mixinElement, allFields);
+      }
+    }
+  }
+
+  /// Handle fields from mixins (which are InterfaceElements)
+  static void _traverseMixinFields(
+    InterfaceElement element,
+    Map<String, FieldElement> allFields,
+  ) {
+    // Add fields from the mixin
+    for (final field in element.fields) {
+      // Only add if we haven't seen this field name before
+      if (!allFields.containsKey(field.name)) {
+        allFields[field.name] = field;
+      }
+    }
+
+    // Traverse mixin's superclass constraints if it has any
+    if (element is MixinElement) {
+      for (final constraint in element.superclassConstraints) {
+        if (!constraint.isDartCoreObject) {
+          final constraintElement = constraint.element;
+          if (constraintElement is ClassElement) {
+            _traverseInheritance(constraintElement, allFields);
+          }
+        }
+      }
+    }
+  }
+
   /// Extract fields from a class element
   static List<FieldInfo> extractFields(ClassElement element) {
     final fields = <FieldInfo>[];
 
+    // Collect all fields including inherited ones
+    final allFields = _collectAllFields(element);
+
     // Analyze all public, non-static fields
-    for (final field in element.fields) {
+    for (final field in allFields) {
       if (!field.isStatic &&
           field.isPublic &&
           field.name != 'hashCode' &&
