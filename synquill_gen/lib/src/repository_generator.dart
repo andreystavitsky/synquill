@@ -23,8 +23,8 @@ class $adapterClassName extends BasicApiAdapter<$className> {
     // Try to call fromJson if it exists, otherwise throw
     try {
       return $className.fromJson(json);
-    } catch (e) {
-      throw UnimplementedError('fromJson not implemented for $className: \$e');
+    } on NoSuchMethodError {
+      throw UnimplementedError('fromJson not implemented for $className');
     }
   }
 
@@ -33,8 +33,8 @@ class $adapterClassName extends BasicApiAdapter<$className> {
     // Try to call toJson if it exists, otherwise throw
     try {
       return model.toJson();
-    } catch (e) {
-      throw UnimplementedError('toJson not implemented for $className: \$e');
+    } on NoSuchMethodError {
+      throw UnimplementedError('toJson not implemented for $className');
     }
   }
 }
@@ -74,8 +74,8 @@ class $adapterClassName extends BasicApiAdapter<$className>
     // Try to call fromJson if it exists, otherwise throw
     try {
       return $className.fromJson(json);
-    } catch (e) {
-      throw UnimplementedError('fromJson not implemented for $className: \$e');
+    } on NoSuchMethodError {
+      throw UnimplementedError('fromJson not implemented for $className');
     }
   }
 
@@ -84,8 +84,8 @@ class $adapterClassName extends BasicApiAdapter<$className>
     // Try to call toJson if it exists, otherwise throw
     try {
       return model.toJson();
-    } catch (e) {
-      throw UnimplementedError('toJson not implemented for $className: \$e');
+    } on NoSuchMethodError {
+      throw UnimplementedError('toJson not implemented for $className');
     }
   }
 }
