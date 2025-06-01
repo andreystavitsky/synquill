@@ -1,0 +1,12 @@
+include: package:flutter_lints/flutter.yaml
+
+analyzer:
+  exclude:
+    - "**/*.g.dart"
+    - "**/*.freezed.dart"
+    - "**/*.drift.dart"
+
+linter:
+  rules:
+    # Additional rules specific to the example
+    avoid_print: false  # Allow print in example app for demonstration

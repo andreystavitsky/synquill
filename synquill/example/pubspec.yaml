@@ -1,0 +1,48 @@
+name: synquill_example
+description: Example Flutter app demonstrating synquill package
+version: 1.0.0+1
+publish_to: 'none'
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+  flutter: ">=3.10.0"
+
+dependencies:
+  drift_db_viewer: ^2.1.0
+  drift_flutter: ^0.2.4
+  
+  flutter:
+    sdk: flutter
+
+  internet_connection_checker_plus: ^2.7.2
+  
+  path_provider: any
+  
+  synquill:
+    path: ../
+  
+  # Required for generated database logging
+  logging: ^1.2.0
+  
+  # Required for JSON serialization
+  json_annotation: ^4.9.0
+
+  workmanager: ^0.6.0
+  
+  # State management with BLoC
+  flutter_bloc: ^9.1.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  
+  # Code generation tools - required for synquill
+  build_runner: ^2.4.15
+
+  synquill_gen:
+    path: ../../synquill_gen
+  
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true

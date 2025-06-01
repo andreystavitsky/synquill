@@ -1,0 +1,43 @@
+# synquill_gen/build.yaml
+targets:
+  $default:
+    builders:
+      synquill_gen|proxyExternal:
+        generate_for:
+          - lib/**.dart 
+      synquill_gen|aggregateBuilder:
+        generate_for:
+          - $lib$
+
+builders:
+  proxyExternal:
+    import: "package:synquill_gen/synquill_gen.dart"
+    builder_factories: ["proxyBuilder"]
+    build_extensions: {".dart": []} 
+    auto_apply: dependents
+    build_to: cache
+    applies_builders:
+      - drift_dev|preparing_builder
+      - drift_dev|drift_dev
+      - json_serializable|json_serializable
+
+  aggregateBuilder:
+    import: "package:synquill_gen/synquill_gen.dart"
+    builder_factories: ["aggregateBuilder"]
+    build_extensions: {
+      "$lib$": [
+        "synquill.generated.dart",
+        "generated/tables.g.dart",
+        "generated/dao.g.dart", 
+        "generated/database.g.dart",
+        "generated/repositories.g.dart",
+        "generated/api_adapters.g.dart",
+        "generated/model_extensions.g.dart",
+        "synquill.generated.g.dart"
+      ]
+    }
+    auto_apply: dependents
+    build_to: source
+    required_inputs:
+      - lib/**.g.dart
+
