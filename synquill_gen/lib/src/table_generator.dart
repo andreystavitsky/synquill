@@ -60,6 +60,9 @@ class TableGenerator {
       // Skip OneToMany fields - they don't create database columns
       if (field.isOneToMany) continue;
 
+      // Skip internal fields that start with $ - these are runtime-only fields
+      if (field.name.startsWith('\$')) continue;
+
       existingFields.add(field.name);
       final columnDefinition = _getDriftColumnDefinition(field);
       buffer.writeln('  /// ${field.name} column for ${model.className}');

@@ -154,18 +154,11 @@ abstract class SynquillDataModel<T extends SynquillDataModel<T>> {
   ///   );
   /// }
   /// ```
-  factory SynquillDataModel.fromJson(Map<String, dynamic> json) {
+  T fromJson(Map<String, dynamic> json) {
     throw UnimplementedError(
       'fromJson() must be implemented in concrete model classes or generated '
       'using @JsonSerializable or @freezed annotations.',
     );
-  }
-
-  /// Default constructor for [SynquillDataModel].
-  ///
-  /// This constructor is intended to be called by subclasses.
-  SynquillDataModel() {
-    throw UnimplementedError('Must be implemented by subclasses');
   }
 
   /// Converts a database record to an instance of the model.
@@ -181,8 +174,9 @@ abstract class SynquillDataModel<T extends SynquillDataModel<T>> {
   /// MyModel.fromDB({required this.id, ...});
   /// ```
   ///
-  factory SynquillDataModel.fromDb() =>
-      throw UnimplementedError('Must be implemented by subclasses');
+  T fromDb() {
+    throw UnimplementedError('Must be implemented by subclasses');
+  }
 
   /// The last time this model instance was synced with the server.
   ///

@@ -164,6 +164,12 @@ class ModelAnalyzer {
           field.isPublic &&
           field.name != 'hashCode' &&
           field.name != 'runtimeType') {
+        
+        // Skip internal fields that start with $ (like $repository getter)
+        if (field.name.startsWith('\$')) {
+          continue;
+        }
+        
         // Check for relation annotations
         final oneToManyAnnotation = _oneToManyChecker.firstAnnotationOf(field);
         final manyToOneAnnotation = _manyToOneChecker.firstAnnotationOf(field);
