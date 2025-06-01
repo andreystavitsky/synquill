@@ -186,36 +186,54 @@ class SyncQueueItems extends Table {
   /// Get Drift column definition for a field
   static String _getDriftColumnDefinition(FieldInfo field) {
     final typeStr = field.dartType.getDisplayString(withNullability: false);
+    final isNullable =
+        field.dartType.nullabilitySuffix != NullabilitySuffix.none;
 
     // Handle ManyToOne relations - they create foreign key columns
     if (field.isManyToOne) {
       if (field.name == 'id') {
+        final baseColumn = 'text().named(\'${field.name}\')';
         return 'TextColumn get ${field.name} => '
-            'text().named(\'${field.name}\')();';
+            '$baseColumn${isNullable ? '.nullable()' : ''}();';
       } else {
         // For foreign key fields, create references if possible
-        return 'TextColumn get ${field.name} => text()();';
+        const baseColumn = 'text()';
+        return 'TextColumn get ${field.name} => '
+            '$baseColumn${isNullable ? '.nullable()' : ''}();';
       }
     }
 
     switch (typeStr) {
       case 'String':
         if (field.name == 'id') {
+          final baseColumn = 'text().named(\'${field.name}\')';
           return 'TextColumn get ${field.name} => '
-              'text().named(\'${field.name}\')();';
+              '$baseColumn${isNullable ? '.nullable()' : ''}();';
         }
-        return 'TextColumn get ${field.name} => text()();';
+        const baseColumn = 'text()';
+        return 'TextColumn get ${field.name} => '
+            '$baseColumn${isNullable ? '.nullable()' : ''}();';
       case 'int':
-        return 'IntColumn get ${field.name} => integer()();';
+        const baseColumn = 'integer()';
+        return 'IntColumn get ${field.name} => '
+            '$baseColumn${isNullable ? '.nullable()' : ''}();';
       case 'double':
-        return 'RealColumn get ${field.name} => real()();';
+        const baseColumn = 'real()';
+        return 'RealColumn get ${field.name} => '
+            '$baseColumn${isNullable ? '.nullable()' : ''}();';
       case 'bool':
-        return 'BoolColumn get ${field.name} => boolean()();';
+        const baseColumn = 'boolean()';
+        return 'BoolColumn get ${field.name} => '
+            '$baseColumn${isNullable ? '.nullable()' : ''}();';
       case 'DateTime':
-        return 'DateTimeColumn get ${field.name} => dateTime()();';
+        const baseColumn = 'dateTime()';
+        return 'DateTimeColumn get ${field.name} => '
+            '$baseColumn${isNullable ? '.nullable()' : ''}();';
       default:
         // For custom types, store as text with JSON serialization
-        return 'TextColumn get ${field.name} => text()();';
+        const baseColumn = 'text()';
+        return 'TextColumn get ${field.name} => '
+            '$baseColumn${isNullable ? '.nullable()' : ''}();';
     }
   }
 }

@@ -12,11 +12,29 @@ class DaoGenerator {
     buffer.writeln('/// Typed field selectors for ${model.className} model');
     buffer.writeln('class $fieldsClassName {');
 
-    // Generate field selectors for each field (skip OneToMany relations)
+    // Track which sync metadata fields we've already added
+    final addedSyncFields = <String>{};
+
+    // Generate field selectors for each field (skip OneToMany relations
+    // and internal fields)
     for (final field in model.fields) {
       if (field.isOneToMany) continue;
 
       final fieldName = field.name;
+
+      // Skip internal fields that start with $
+      if (fieldName.startsWith('\$')) continue;
+
+      // Track sync metadata fields to avoid duplication
+      if ([
+        'createdAt',
+        'updatedAt',
+        'lastSyncedAt',
+        'syncStatus',
+      ].contains(fieldName)) {
+        addedSyncFields.add(fieldName);
+      }
+
       final dartTypeName = field.dartType.getDisplayString(
         withNullability: false,
       );
@@ -31,29 +49,37 @@ class DaoGenerator {
       buffer.writeln();
     }
 
-    // Add sync metadata fields
-    buffer.writeln('  /// Field selector for createdAt');
-    buffer.writeln('  static const FieldSelector<DateTime> createdAt = ');
-    buffer.writeln('      FieldSelector<DateTime>(\'createdAt\', DateTime);');
-    buffer.writeln();
+    // Add sync metadata fields if not already present
+    if (!addedSyncFields.contains('createdAt')) {
+      buffer.writeln('  /// Field selector for createdAt');
+      buffer.writeln('  static const FieldSelector<DateTime> createdAt = ');
+      buffer.writeln('      FieldSelector<DateTime>(\'createdAt\', DateTime);');
+      buffer.writeln();
+    }
 
-    buffer.writeln('  /// Field selector for updatedAt');
-    buffer.writeln('  static const FieldSelector<DateTime> updatedAt = ');
-    buffer.writeln('      FieldSelector<DateTime>(\'updatedAt\', DateTime);');
-    buffer.writeln();
+    if (!addedSyncFields.contains('updatedAt')) {
+      buffer.writeln('  /// Field selector for updatedAt');
+      buffer.writeln('  static const FieldSelector<DateTime> updatedAt = ');
+      buffer.writeln('      FieldSelector<DateTime>(\'updatedAt\', DateTime);');
+      buffer.writeln();
+    }
 
-    buffer.writeln('  /// Field selector for lastSyncedAt');
-    buffer.writeln('  static const FieldSelector<DateTime?> lastSyncedAt = ');
-    buffer.writeln(
-      '      FieldSelector<DateTime?>(\'lastSyncedAt\', DateTime);',
-    );
-    buffer.writeln();
+    if (!addedSyncFields.contains('lastSyncedAt')) {
+      buffer.writeln('  /// Field selector for lastSyncedAt');
+      buffer.writeln('  static const FieldSelector<DateTime?> lastSyncedAt = ');
+      buffer.writeln(
+        '      FieldSelector<DateTime?>(\'lastSyncedAt\', DateTime);',
+      );
+      buffer.writeln();
+    }
 
-    buffer.writeln('  /// Field selector for syncStatus');
-    buffer.writeln('  static const FieldSelector<SyncStatus> syncStatus = ');
-    buffer.writeln(
-      '      FieldSelector<SyncStatus>(\'syncStatus\', SyncStatus);',
-    );
+    if (!addedSyncFields.contains('syncStatus')) {
+      buffer.writeln('  /// Field selector for syncStatus');
+      buffer.writeln('  static const FieldSelector<SyncStatus> syncStatus = ');
+      buffer.writeln(
+        '      FieldSelector<SyncStatus>(\'syncStatus\', SyncStatus);',
+      );
+    }
 
     buffer.writeln('}');
     buffer.writeln();
@@ -215,20 +241,39 @@ class DaoGenerator {
 
     buffer.write('$companionClass(');
 
-    // Add model fields (skip OneToMany fields as they don't have
-    // database columns)
+    // Collect existing field names to avoid duplicates
+    final existingFieldNames = <String>{};
+
+    // Add model fields (skip OneToMany fields and internal fields)
     bool hasFields = false;
     for (final field in model.fields) {
       if (field.isOneToMany) continue; // Skip OneToMany fields
 
+      // Skip internal fields that start with $
+      if (field.name.startsWith('\$')) continue;
+
+      existingFieldNames.add(field.name);
+
       if (hasFields) buffer.write(',\n        ');
-      buffer.write('${field.name}: Value(model.${field.name})');
+
+      // Handle nullable fields properly
+      if (field.dartType.nullabilitySuffix != NullabilitySuffix.none) {
+        // Field is nullable, use appropriate handling
+        buffer.write('${field.name}: Value(model.${field.name})');
+      } else {
+        // Field is non-nullable, use Value directly
+        buffer.write('${field.name}: Value(model.${field.name})');
+      }
       hasFields = true;
     }
 
-    // Add sync metadata fields - always set updatedAt to now
-    if (hasFields) buffer.write(', ');
-    buffer.write('updatedAt: Value(DateTime.now())');
+    // Add sync metadata fields only if they don't already exist as model fields
+    // Always set updatedAt to now for updates, unless it already exists
+    if (!existingFieldNames.contains('updatedAt')) {
+      if (hasFields) buffer.write(', ');
+      buffer.write('updatedAt: Value(DateTime.now())');
+      hasFields = true;
+    }
 
     buffer.write(')');
     return buffer.toString();
@@ -257,22 +302,37 @@ class DaoGenerator {
     );
     buffer.writeln('    switch (fieldName) {');
 
+    // Collect existing field names to avoid duplicates
+    final existingFieldNames = <String>{};
+
     // Add model fields
     for (final field in model.fields) {
       if (field.isOneToMany) continue;
+      // Skip internal fields that start with $
+      if (field.name.startsWith('\$')) continue;
+
+      existingFieldNames.add(field.name);
       buffer.writeln('      case \'${field.name}\':');
       buffer.writeln('        return $tableVariableName.${field.name};');
     }
 
-    // Add sync metadata fields
-    buffer.writeln('      case \'createdAt\':');
-    buffer.writeln('        return $tableVariableName.createdAt;');
-    buffer.writeln('      case \'updatedAt\':');
-    buffer.writeln('        return $tableVariableName.updatedAt;');
-    buffer.writeln('      case \'lastSyncedAt\':');
-    buffer.writeln('        return $tableVariableName.lastSyncedAt;');
-    buffer.writeln('      case \'syncStatus\':');
-    buffer.writeln('        return $tableVariableName.syncStatus;');
+    // Add sync metadata fields only if they don't already exist as model fields
+    if (!existingFieldNames.contains('createdAt')) {
+      buffer.writeln('      case \'createdAt\':');
+      buffer.writeln('        return $tableVariableName.createdAt;');
+    }
+    if (!existingFieldNames.contains('updatedAt')) {
+      buffer.writeln('      case \'updatedAt\':');
+      buffer.writeln('        return $tableVariableName.updatedAt;');
+    }
+    if (!existingFieldNames.contains('lastSyncedAt')) {
+      buffer.writeln('      case \'lastSyncedAt\':');
+      buffer.writeln('        return $tableVariableName.lastSyncedAt;');
+    }
+    if (!existingFieldNames.contains('syncStatus')) {
+      buffer.writeln('      case \'syncStatus\':');
+      buffer.writeln('        return $tableVariableName.syncStatus;');
+    }
 
     buffer.writeln('      default:');
     buffer.writeln('        return null;');
@@ -288,6 +348,9 @@ class DaoGenerator {
 
     for (final field in model.fields) {
       if (field.isOneToMany) continue;
+      // Skip internal fields that start with $
+      if (field.name.startsWith('\$')) continue;
+
       final dartTypeName = field.dartType.getDisplayString(
         withNullability: false,
       );
@@ -295,13 +358,30 @@ class DaoGenerator {
       buffer.writeln('        return \'$dartTypeName\';');
     }
 
-    // Add sync metadata field types
-    buffer.writeln('      case \'createdAt\':');
-    buffer.writeln('      case \'updatedAt\':');
-    buffer.writeln('      case \'lastSyncedAt\':');
-    buffer.writeln('        return \'DateTime\';');
-    buffer.writeln('      case \'syncStatus\':');
-    buffer.writeln('        return \'SyncStatus\';');
+    // Add sync metadata field types only if they don't already exist
+    // as model fields
+    final hasDateTimeFields =
+        !existingFieldNames.contains('createdAt') ||
+        !existingFieldNames.contains('updatedAt') ||
+        !existingFieldNames.contains('lastSyncedAt');
+
+    if (hasDateTimeFields) {
+      if (!existingFieldNames.contains('createdAt')) {
+        buffer.writeln('      case \'createdAt\':');
+      }
+      if (!existingFieldNames.contains('updatedAt')) {
+        buffer.writeln('      case \'updatedAt\':');
+      }
+      if (!existingFieldNames.contains('lastSyncedAt')) {
+        buffer.writeln('      case \'lastSyncedAt\':');
+      }
+      // Only write the return statement once for all DateTime fields
+      buffer.writeln('        return \'DateTime\';');
+    }
+    if (!existingFieldNames.contains('syncStatus')) {
+      buffer.writeln('      case \'syncStatus\':');
+      buffer.writeln('        return \'SyncStatus\';');
+    }
 
     buffer.writeln('      default:');
     buffer.writeln('        return null;');
