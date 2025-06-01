@@ -68,12 +68,7 @@ abstract class SynquillDataModel<T extends SynquillDataModel<T>> {
   /// @override
   /// final String id;
   /// ```
-  @mustBeOverridden
-  String get id =>
-      throw UnimplementedError(
-        'id must be implemented in concrete model classes as '
-        '"@override final String id;"',
-      );
+  String get id;
 
   // JSON serialization methods will be provided by generated mixin
 
@@ -159,11 +154,18 @@ abstract class SynquillDataModel<T extends SynquillDataModel<T>> {
   ///   );
   /// }
   /// ```
-  T fromJson(Map<String, dynamic> json) {
+  factory SynquillDataModel.fromJson(Map<String, dynamic> json) {
     throw UnimplementedError(
       'fromJson() must be implemented in concrete model classes or generated '
       'using @JsonSerializable or @freezed annotations.',
     );
+  }
+
+  /// Default constructor for [SynquillDataModel].
+  ///
+  /// This constructor is intended to be called by subclasses.
+  SynquillDataModel() {
+    throw UnimplementedError('Must be implemented by subclasses');
   }
 
   /// Converts a database record to an instance of the model.
@@ -176,14 +178,11 @@ abstract class SynquillDataModel<T extends SynquillDataModel<T>> {
   /// Example implementation:
   /// ```dart
   /// @override
-  /// MyModel.dromDB({required this.id, ...});
+  /// MyModel.fromDB({required this.id, ...});
   /// ```
   ///
-  T fromDb() {
-    throw UnimplementedError(
-      'fromDb() must be implemented in concrete model classes',
-    );
-  }
+  factory SynquillDataModel.fromDb() =>
+      throw UnimplementedError('Must be implemented by subclasses');
 
   /// The last time this model instance was synced with the server.
   ///
