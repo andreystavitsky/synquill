@@ -142,7 +142,8 @@ $apiAdapterGetter
       Map<String, dynamic>? extra
     }) async {
     try {
-      final result = await apiAdapter.findOne(id, queryParams: queryParams);
+      final result = await apiAdapter.findOne(id, queryParams: queryParams,
+        extra: extra);
       _log.fine('fetchFromRemote() for $className successful: '
         'found item with id \$id');
       return result;
@@ -172,7 +173,9 @@ $apiAdapterGetter
       Map<String, dynamic>? extra
     }) async {
     try {
-      final result = await apiAdapter.findAll(queryParams: queryParams);
+      final result = await apiAdapter.findAll(
+        queryParams: queryParams, extra: extra
+      );
       _log.fine('fetchAllFromRemote() for $className successful: '
         'found \${result.length} items');
       return result;
