@@ -256,19 +256,35 @@ class DaoGenerator {
 
       if (hasFields) buffer.write(',\n        ');
 
-      // Handle nullable fields properly
-      if (field.dartType.nullabilitySuffix != NullabilitySuffix.none) {
-        // Field is nullable, use appropriate handling
-        buffer.write('${field.name}: Value(model.${field.name})');
+      // Special handling for timestamp fields
+      if (field.name == 'updatedAt') {
+        buffer.write('${field.name}: Value(model.${field.name} ?? '
+            'DateTime.now())');
+      } else if (field.name == 'createdAt') {
+        buffer.write('${field.name}: Value(model.${field.name} ?? '
+            'DateTime.now())');
       } else {
-        // Field is non-nullable, use Value directly
-        buffer.write('${field.name}: Value(model.${field.name})');
+        // Handle nullable fields properly
+        if (field.dartType.nullabilitySuffix != NullabilitySuffix.none) {
+          // Field is nullable, use appropriate handling
+          buffer.write('${field.name}: Value(model.${field.name})');
+        } else {
+          // Field is non-nullable, use Value directly
+          buffer.write('${field.name}: Value(model.${field.name})');
+        }
       }
       hasFields = true;
     }
 
-    // Add sync metadata fields only if they don't already exist as model fields
-    // Always set updatedAt to now for updates, unless it already exists
+    // Add timestamp fields only if they don't exist in model
+    // Set createdAt only for new records (if field doesn't exist)
+    if (!existingFieldNames.contains('createdAt')) {
+      if (hasFields) buffer.write(', ');
+      buffer.write('createdAt: Value(DateTime.now())');
+      hasFields = true;
+    }
+    
+    // Set updatedAt only if it doesn't exist in model
     if (!existingFieldNames.contains('updatedAt')) {
       if (hasFields) buffer.write(', ');
       buffer.write('updatedAt: Value(DateTime.now())');
