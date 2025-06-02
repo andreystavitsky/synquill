@@ -131,7 +131,7 @@ abstract class ApiAdapterBase<TModel extends SynquillDataModel<TModel>> {
     String id, {
     Map<String, String>? headers,
     QueryParams? queryParams,
-    Map<String, dynamic> extra,
+    Map<String, dynamic>? extra,
   });
 
   /// Fetches all items from the remote API.
@@ -143,7 +143,7 @@ abstract class ApiAdapterBase<TModel extends SynquillDataModel<TModel>> {
   Future<List<TModel>> findAll({
     Map<String, String>? headers,
     QueryParams? queryParams,
-    Map<String, dynamic> extra,
+    Map<String, dynamic>? extra,
   });
 
   /// Creates a new item on the remote API.
