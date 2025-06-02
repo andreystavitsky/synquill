@@ -48,14 +48,7 @@ class SynquillRepositoryProvider {
   // Mapping from model type string names to Type objects for runtime lookup
   static final Map<String, Type> _typeNameMapping = {};
 
-  static final _log = () {
-    try {
-      return SynquillStorage.logger;
-    } catch (_) {
-      // Fallback to a local logger if SyncedStorage is not initialized
-      return Logger('SyncedRepositoryProvider');
-    }
-  }();
+  static final _log = Logger('SyncedRepositoryProvider');
 
   /// Registers a factory function for creating instances of a repository for a
   /// specific model type [M].

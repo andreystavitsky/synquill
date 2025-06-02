@@ -279,65 +279,23 @@ class SynquillStorage {
     }
 
     // Create the instance and store config
-    _instance = SynquillStorage._();
-    _config = config ?? const SynquillStorageConfig();
-    _database = database;
-    _logger = logger ?? _defaultLogger;
-
-    _logger!.info('Database instance set');
+    _createInstance(database, config ?? const SynquillStorageConfig(), logger);
 
     // Set up database provider for repository system
-    DatabaseProvider.setInstance(_database!);
-
-    // Call the initialization function if provided
-    if (initializeFn != null) {
-      initializeFn(_database!);
-      _logger!.info('Repository system initialized');
-    }
+    _initializeDatabase(initializeFn);
 
     // Initialize request queue system
-    _queueManager = RequestQueueManager();
-    _logger!.info('Request queue manager initialized');
-
-    // Initialize dependency resolver
-    _dependencyResolver = DependencyResolver();
-    _logger!.info('Dependency resolver initialized');
-
-    // Initialize retry executor
-    _retryExecutor = RetryExecutor(_database!, _queueManager!);
-    _retryExecutor!.start();
-    _logger!.info('Retry executor started');
+    _initializeCoreSystems();
 
     // Initialize background sync manager
-    _backgroundSyncManager = BackgroundSyncManager.instance;
-    await BackgroundSyncManager.initialize();
-    _logger!.info('Background sync manager initialized');
+    await _initializeBackgroundSync();
 
-    // Store connectivity checker function
-    _connectivityChecker = connectivityChecker;
-
-    // Initialize connectivity monitoring if enabled
-    if (enableInternetMonitoring && connectivityStream != null) {
-      _connectivitySubscription = connectivityStream.listen(
-        (isConnected) {
-          final previousStatus = _lastConnectivityStatus;
-          _lastConnectivityStatus = isConnected;
-
-          // Handle connectivity changes
-          _handleConnectivityChange(previousStatus, isConnected);
-        },
-        onError: (error) {
-          _logger!.warning('Connectivity stream error: $error');
-        },
-      );
-      _logger!.info('Connectivity monitoring enabled with stream');
-    } else if (enableInternetMonitoring && connectivityChecker != null) {
-      _logger!.info(
-        'Connectivity monitoring enabled with checker function only',
-      );
-    } else {
-      _logger!.info('Connectivity monitoring disabled');
-    }
+    // Setup connectivity monitoring
+    _initializeConnectivity(
+      connectivityStream,
+      connectivityChecker,
+      enableInternetMonitoring,
+    );
 
     enableForegroundMode();
 
@@ -410,9 +368,10 @@ class SynquillStorage {
   /// Retrieves a repository instance for the given model type.
   ///
   /// This method provides a convenient way to get repository instances
-  /// using the global [SynquillRepositoryProvider].
+  /// using the global [SynquillRepositoryProvider]. The method returns the
+  /// concrete repository type (e.g., UserRepository) rather than the base type.
   ///
-  /// Type parameter [M] must extend [SynquillDataModel] and represents the
+  /// Type parameter [T] must extend [SynquillDataModel] and represents the
   /// model type for which to retrieve the repository.
   ///
   /// Throws [StateError] if [SynquillStorage] has not been initialized.
@@ -420,14 +379,11 @@ class SynquillStorage {
   ///
   /// Example:
   /// ```dart
-  /// // Get repository for a specific model type
+  /// // Get repository for a specific model type - returns UserRepository
   /// final userRepo = SynquillStorage.instance.getRepository<User>();
   /// final user = await userRepo.findOne('user_id');
   /// ```
-  R getRepository<
-    R extends SynquillRepositoryBase<M>,
-    M extends SynquillDataModel<M>
-  >() {
+  dynamic getRepository<T extends SynquillDataModel<T>>() {
     if (_instance == null) {
       throw StateError(
         'SynquillStorage has not been initialized. '
@@ -435,7 +391,7 @@ class SynquillStorage {
       );
     }
 
-    return SynquillRepositoryProvider.get<M>() as R;
+    return SynquillRepositoryProvider.get<T>();
   }
 
   /// Retrieves a repository instance by model type string name.
@@ -602,5 +558,77 @@ class SynquillStorage {
       );
     }
     _backgroundSyncManager!.enableForegroundMode(forceSync: forceSync);
+  }
+
+  /// Helper: create instance and set core properties.
+  static void _createInstance(
+    GeneratedDatabase database,
+    SynquillStorageConfig config,
+    Logger? logger,
+  ) {
+    _instance = SynquillStorage._();
+    _config = config;
+    _database = database;
+    _logger = logger ?? _defaultLogger;
+    _logger!.info('Database instance set');
+  }
+
+  /// Helper: initialize database and repository system.
+  static void _initializeDatabase(
+    void Function(GeneratedDatabase)? initializeFn,
+  ) {
+    DatabaseProvider.setInstance(_database!);
+    if (initializeFn != null) {
+      initializeFn(_database!);
+      _logger!.info('Repository system initialized');
+    }
+  }
+
+  /// Helper: initialize request queue, dependency resolver, and retry executor.
+  static void _initializeCoreSystems() {
+    _queueManager = RequestQueueManager();
+    _logger!.info('Request queue manager initialized');
+
+    _dependencyResolver = DependencyResolver();
+    _logger!.info('Dependency resolver initialized');
+
+    _retryExecutor = RetryExecutor(_database!, _queueManager!);
+    _retryExecutor!.start();
+    _logger!.info('Retry executor started');
+  }
+
+  /// Helper: initialize background sync manager.
+  static Future<void> _initializeBackgroundSync() async {
+    _backgroundSyncManager = BackgroundSyncManager.instance;
+    await BackgroundSyncManager.initialize();
+    _logger!.info('Background sync manager initialized');
+  }
+
+  /// Helper: setup connectivity monitoring based on provided parameters.
+  static void _initializeConnectivity(
+    Stream<bool>? connectivityStream,
+    Future<bool> Function()? connectivityChecker,
+    bool enableInternetMonitoring,
+  ) {
+    _connectivityChecker = connectivityChecker;
+    if (enableInternetMonitoring && connectivityStream != null) {
+      _connectivitySubscription = connectivityStream.listen(
+        (isConnected) {
+          final previousStatus = _lastConnectivityStatus;
+          _lastConnectivityStatus = isConnected;
+          _handleConnectivityChange(previousStatus, isConnected);
+        },
+        onError: (error) {
+          _logger!.warning('Connectivity stream error: $error');
+        },
+      );
+      _logger!.info('Connectivity monitoring enabled with stream');
+    } else if (enableInternetMonitoring && connectivityChecker != null) {
+      _logger!.info(
+        'Connectivity monitoring enabled with checker function only',
+      );
+    } else {
+      _logger!.info('Connectivity monitoring disabled');
+    }
   }
 }

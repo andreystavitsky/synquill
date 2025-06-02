@@ -211,16 +211,17 @@ class AggregateBuilder implements Builder {
       buffer.writeln();
     }
 
-    // Generate static repository access
-    buffer.writeln(RepositoryGenerator.generateStaticRepositoryAccess(models));
-    buffer.writeln();
-
     // Generate repository registration
     buffer.writeln(RepositoryGenerator.generateRepositoryRegistrations(models));
 
     // Generate model info registry for cascade delete
     buffer.writeln(
       ModelInfoRegistryGenerator.generateModelInfoRegistry(models),
+    );
+
+    // Generate SynquillStorage extension for convenient repository access
+    buffer.writeln(
+      RepositoryGenerator.generateSynquillStorageExtension(models),
     );
 
     //buffer.writeln(RepositoryGenerator.generateRepositoryHelpersMixin());

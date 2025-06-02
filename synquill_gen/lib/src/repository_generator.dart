@@ -188,88 +188,6 @@ $apiAdapterGetter
 ''';
   }
 
-  /// Generates static repository access class
-  static String generateStaticRepositoryAccess(List<ModelInfo> models) {
-    final buffer = StringBuffer();
-
-    buffer.writeln('/// Static repository access for all models');
-    buffer.writeln('class SynquillDataRepository {');
-    buffer.writeln('  static late GeneratedDatabase _database;');
-    buffer.writeln('  static final Map<Type, dynamic> _repositoryCache = {};');
-    buffer.writeln();
-    buffer.writeln(
-      '  /// Initialize the repository system with a database instance',
-    );
-    buffer.writeln('  static void initialize(GeneratedDatabase database) {');
-    buffer.writeln('    _database = database;');
-    buffer.writeln('    _repositoryCache.clear();');
-    buffer.writeln('  }');
-    buffer.writeln();
-
-    // Generate getter for each model
-    for (final model in models) {
-      final className = model.className;
-      final repositoryName = '${className}Repository';
-      final propertyName = '${className.toLowerCase()}s';
-
-      buffer.writeln('  /// Access repository for $className models');
-      buffer.writeln('  static $repositoryName get $propertyName {');
-      buffer.writeln('    return _repositoryCache.putIfAbsent(');
-      buffer.writeln('      $className,');
-      buffer.writeln('      () => $repositoryName(_database),');
-      buffer.writeln('    ) as $repositoryName;');
-      buffer.writeln('  }');
-      buffer.writeln();
-    }
-
-    // Generate repository lookup method
-    buffer.writeln('  /// Lookup repository by model type string name.');
-    buffer.writeln('  /// ');
-    buffer.writeln(
-      '  /// This method provides a way to get repository '
-      'instances when only the ',
-    );
-    buffer.writeln(
-      '  /// string model type name is known (e.g., from sync'
-      ' queue operations).',
-    );
-    buffer.writeln('  /// ');
-    buffer.writeln(
-      '  /// Returns the appropriate repository instance '
-      'for the given model type,',
-    );
-    buffer.writeln(
-      '  /// or null if no repository exists for the specified type.',
-    );
-    buffer.writeln('  /// ');
-    buffer.writeln(
-      '  /// [modelTypeName] The string name of the model'
-      ' type (e.g., \'User\', \'Todo\')',
-    );
-    buffer.writeln(
-      '  static SynquillRepositoryBase<SynquillDataModel<dynamic>>?'
-      ' getRepositoryByTypeName(String modelTypeName) {',
-    );
-    buffer.writeln('    switch (modelTypeName) {');
-
-    for (final model in models) {
-      final className = model.className;
-      final propertyName = '${className.toLowerCase()}s';
-
-      buffer.writeln('      case \'$className\':');
-      buffer.writeln('        return $propertyName;');
-    }
-
-    buffer.writeln('      default:');
-    buffer.writeln('        return null;');
-    buffer.writeln('    }');
-    buffer.writeln('  }');
-
-    buffer.writeln('}');
-
-    return buffer.toString();
-  }
-
   /// Generates repository registration calls for SynquillRepositoryProvider
   static String generateRepositoryRegistrations(List<ModelInfo> models) {
     final buffer = StringBuffer();
@@ -341,9 +259,39 @@ $apiAdapterGetter
     buffer.writeln('  // Register model cascade delete relations');
     buffer.writeln('  registerModelCascadeDeleteRelations();');
     buffer.writeln('  ');
-    buffer.writeln('  // Initialize static repository access');
-    buffer.writeln('  SynquillDataRepository.initialize(database);');
     buffer.writeln('}');
+
+    return buffer.toString();
+  }
+
+  /// Generates convenient repository access extension for SynquillStorage
+  static String generateSynquillStorageExtension(List<ModelInfo> models) {
+    final buffer = StringBuffer();
+
+    buffer.writeln(
+      '/// Extension providing convenient repository access on SynquillStorage',
+    );
+    buffer.writeln(
+      'extension SynquillStorageRepositories on SynquillStorage {',
+    );
+
+    // Generate getter for each model
+    for (final model in models) {
+      final className = model.className;
+      final repositoryName = '${className}Repository';
+      final propertyName = '${className.toLowerCase()}s';
+
+      buffer.writeln('  /// Access repository for $className models');
+      buffer.writeln('  $repositoryName get $propertyName {');
+      buffer.writeln(
+        '    return getRepository<$className>() as $repositoryName;',
+      );
+      buffer.writeln('  }');
+      buffer.writeln();
+    }
+
+    buffer.writeln('}');
+    buffer.writeln();
 
     return buffer.toString();
   }

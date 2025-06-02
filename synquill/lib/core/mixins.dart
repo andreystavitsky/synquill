@@ -2,27 +2,72 @@ part of synquill;
 
 /// Base mixin for common DAO operations to reduce code duplication
 mixin BaseDaoMixin<T> {
-  /// Get model by ID as typed model object
+  /// Retrieves a model by its unique identifier as a typed model object.
+  ///
+  /// [id] The unique identifier of the model to fetch.
+  /// [queryParams] Optional query parameters for filtering or
+  /// customizing the fetch.
+  /// Returns the model if found, or null otherwise.
   Future<T?> getByIdTyped(String id, {QueryParams? queryParams});
 
-  /// Get all models as typed model objects
+  /// Retrieves all models as typed model objects.
+  ///
+  /// [queryParams] Optional query parameters for filtering, sorting,
+  /// or pagination.
+  /// Returns a list of all models matching the query.
   Future<List<T>> getAllTyped({QueryParams? queryParams});
 
-  /// Watch model by ID as typed stream
+  /// Watches a model by its unique identifier as a typed stream.
+  ///
+  /// [id] The unique identifier of the model to watch.
+  /// [queryParams] Optional query parameters for filtering or
+  /// customizing the stream.
+  /// Returns a stream that emits the model when it changes.
   Stream<T?> watchByIdTyped(String id, {QueryParams? queryParams});
 
-  /// Watch all models as typed stream
+  /// Watches all models as a typed stream.
+  ///
+  /// [queryParams] Optional query parameters for filtering, sorting,
+  /// or pagination.
+  /// Returns a stream that emits the list of models when any change occurs.
   Stream<List<T>> watchAllTyped({QueryParams? queryParams});
 }
 
 /// Mixin that provides common repository operations to reduce code duplication
-mixin RepositoryHelpersMixin<T extends SynquillDataModel<T>>
-    on SynquillRepositoryBase<T> {
-  /// The DAO instance for this repository - must be implemented
-  /// by concrete classes
+mixin RepositoryHelpersMixin<T extends SynquillDataModel<T>> {
+  /// The DAO instance for this repository.
+  ///
+  /// Provides access to database operations for the model type [T].
+  /// Must be implemented by concrete repository classes to enable
+  /// local storage and query operations.
   DatabaseAccessor get dao;
 
-  @override
+  /// The logger instance for this repository.
+  ///
+  /// Used for logging repository operations, errors, and debug
+  /// information. Should be used for all actions and error reporting
+  /// related to repository logic.
+  Logger get log;
+
+  /// The generated database instance for this repository.
+  ///
+  /// Provides access to the underlying Drift database for advanced
+  /// queries and sync queue management.
+  GeneratedDatabase get db;
+
+  /// The API adapter for this repository.
+  ///
+  /// Handles communication with the remote REST API for CRUD operations
+  /// and model serialization/deserialization for type [T].
+  ApiAdapterBase<T> get apiAdapter;
+
+  /// Fetches a model from local storage by its unique identifier.
+  ///
+  /// [id] The unique identifier of the model to fetch.
+  /// [queryParams] Optional query parameters for filtering or
+  /// customizing the fetch.
+  /// Returns the model if found, or throws an error
+  /// if the DAO is not implemented.
   Future<T?> fetchFromLocal(String id, {QueryParams? queryParams}) async {
     if (dao is BaseDaoMixin<T>) {
       return await (dao as BaseDaoMixin<T>).getByIdTyped(
@@ -35,7 +80,12 @@ mixin RepositoryHelpersMixin<T extends SynquillDataModel<T>>
     );
   }
 
-  @override
+  /// Fetches all models from local storage.
+  ///
+  /// [queryParams] Optional query parameters for filtering, sorting,
+  /// or pagination.
+  /// Returns a list of all models matching the query, or throws an error
+  /// if the DAO is not implemented.
   Future<List<T>> fetchAllFromLocal({QueryParams? queryParams}) async {
     if (dao is BaseDaoMixin<T>) {
       return await (dao as BaseDaoMixin<T>).getAllTyped(
@@ -75,7 +125,13 @@ mixin RepositoryHelpersMixin<T extends SynquillDataModel<T>>
     return filteredItems;
   }
 
-  @override
+  /// Watches a model from local storage by its unique identifier.
+  ///
+  /// [id] The unique identifier of the model to watch.
+  /// [queryParams] Optional query parameters for filtering or
+  /// customizing the stream.
+  /// Returns a stream that emits the model when it changes, or throws
+  /// an error if the DAO is not implemented.
   Stream<T?> watchFromLocal(String id, {QueryParams? queryParams}) {
     if (dao is BaseDaoMixin<T>) {
       return (dao as BaseDaoMixin<T>).watchByIdTyped(
@@ -88,7 +144,12 @@ mixin RepositoryHelpersMixin<T extends SynquillDataModel<T>>
     );
   }
 
-  @override
+  /// Watches all models from local storage as a stream.
+  ///
+  /// [queryParams] Optional query parameters for filtering, sorting,
+  /// or pagination.
+  /// Returns a stream that emits the list of models when any change occurs,
+  /// or throws an error if the DAO is not implemented.
   Stream<List<T>> watchAllFromLocal({QueryParams? queryParams}) {
     if (dao is BaseDaoMixin<T>) {
       return (dao as BaseDaoMixin<T>).watchAllTyped(queryParams: queryParams);
@@ -98,13 +159,18 @@ mixin RepositoryHelpersMixin<T extends SynquillDataModel<T>>
     );
   }
 
-  @override
-  Future<void> saveToLocal(T item) async {
+  /// Saves a model to local storage.
+  ///
+  /// [item] The model to save.
+  /// [extra] Optional extra data to associate with the save operation.
+  Future<void> saveToLocal(T item, {Map<String, dynamic>? extra}) async {
     // Use dynamic call since we don't have a common interface
     await (dao as dynamic).saveModel(item);
   }
 
-  @override
+  /// Removes a model from local storage if it exists.
+  ///
+  /// [id] The unique identifier of the model to remove.
   Future<void> removeFromLocalIfExists(String id) async {
     final existing = await fetchFromLocal(id, queryParams: null);
     if (existing != null) {
@@ -112,19 +178,29 @@ mixin RepositoryHelpersMixin<T extends SynquillDataModel<T>>
     }
   }
 
-  @override
+  /// Truncates all data in local storage.
+  ///
+  /// Deletes all records from the table associated with the model type [T]
+  /// without firing a remote sync operations.
   Future<void> truncateLocalStorage() async {
     // Use dynamic call to delete all records from the table
     await (dao as dynamic).deleteAll();
   }
 
-  @override
+  /// Checks if a model exists in local storage.
+  ///
+  /// [item] The model to check for existence.
+  /// Returns true if the model exists, false otherwise.
   Future<bool> isExistingItem(T item) async {
     final existing = await fetchFromLocal(item.id, queryParams: null);
     return existing != null;
   }
 
-  @override
+  /// Updates the local cache with a list of models.
+  ///
+  /// [items] The list of models to update the cache with.
+  /// This method skips updating models that have pending sync operations
+  /// to avoid overwriting local changes.
   Future<void> updateLocalCache(List<T> items) async {
     final syncQueueDao = SyncQueueDao(db);
 
@@ -175,7 +251,7 @@ mixin RepositoryHelpersMixin<T extends SynquillDataModel<T>>
             await saveToLocal(recreatedModel);
           } catch (e) {
             // Log error but don't fail the entire operation
-            super.log.warning(
+            log.warning(
               'Warning: Failed to recreate model $modelId from sync queue: $e',
             );
           }
