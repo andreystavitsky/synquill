@@ -22,6 +22,10 @@ class ModelInfo {
   /// The adapters for this model (if any).
   final List<AdapterInfo>? adapters;
 
+  /// Class-level relationships (OneToMany and ManyToOne) defined in
+  /// @SynquillRepository.
+  final List<RelationInfo> relations;
+
   /// Creates a new instance of [ModelInfo].
   const ModelInfo({
     required this.className,
@@ -30,6 +34,7 @@ class ModelInfo {
     required this.importPath,
     required this.fields,
     this.adapters,
+    this.relations = const [],
   });
 }
 
@@ -82,4 +87,42 @@ class FieldInfo {
     this.indexName,
     this.isUniqueIndex = false,
   });
+}
+
+/// Information about a class-level relationship defined in @SynquillRepository
+class RelationInfo {
+  /// Type of the relation (OneToMany or ManyToOne)
+  final RelationType relationType;
+
+  /// The target model type name
+  final String targetType;
+
+  /// The field name in the target model that maps back to this model.
+  /// Used for OneToMany relations.
+  final String? mappedBy;
+
+  /// The foreign key column name in the current model.
+  /// Used for ManyToOne relations.
+  final String? foreignKeyColumn;
+
+  /// Whether cascade delete is enabled for this relation
+  final bool cascadeDelete;
+
+  /// Creates a new [RelationInfo]
+  const RelationInfo({
+    required this.relationType,
+    required this.targetType,
+    this.mappedBy,
+    this.foreignKeyColumn,
+    this.cascadeDelete = false,
+  });
+}
+
+/// Type of relation
+enum RelationType {
+  /// One-to-many relationship
+  oneToMany,
+
+  /// Many-to-one relationship
+  manyToOne,
 }

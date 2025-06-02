@@ -52,6 +52,11 @@ class ModelAnalyzer {
               buildStep,
             );
 
+            // Extract class-level relations from relations field
+            final relations = _extractClassLevelRelations(
+              reader.peek('relations')?.listValue ?? [],
+            );
+
             final fields = extractFields(element);
 
             annotatedModels.add(
@@ -62,6 +67,7 @@ class ModelAnalyzer {
                 endpoint: endpoint,
                 fields: fields,
                 adapters: adapters,
+                relations: relations,
               ),
             );
           }
@@ -77,7 +83,12 @@ class ModelAnalyzer {
       }
     }
 
-    return uniqueModels.values.toList();
+    final models = uniqueModels.values.toList();
+
+    // Validate relations
+    _validateRelations(models);
+
+    return models;
   }
 
   /// Collect all fields from a class including inherited fields
@@ -164,12 +175,11 @@ class ModelAnalyzer {
           field.isPublic &&
           field.name != 'hashCode' &&
           field.name != 'runtimeType') {
-        
         // Skip internal fields that start with $ (like $repository getter)
         if (field.name.startsWith('\$')) {
           continue;
         }
-        
+
         // Check for relation annotations
         final oneToManyAnnotation = _oneToManyChecker.firstAnnotationOf(field);
         final manyToOneAnnotation = _manyToOneChecker.firstAnnotationOf(field);
@@ -300,6 +310,120 @@ class ModelAnalyzer {
     }
 
     return adapterInfoList;
+  }
+
+  /// Extract class-level relations from @SynquillRepository annotations
+  static List<RelationInfo> _extractClassLevelRelations(
+    List<DartObject> relations,
+  ) {
+    final List<RelationInfo> relationInfoList = [];
+
+    for (final relation in relations) {
+      final relationType = relation.type;
+      if (relationType == null) continue;
+
+      final relationName = relationType.element?.name;
+      if (relationName == null) continue;
+
+      final reader = ConstantReader(relation);
+
+      if (relationName == 'OneToMany') {
+        final target = _getRelationTarget(reader.peek('target'));
+        final mappedBy = reader.peek('mappedBy')?.stringValue;
+        final cascadeDelete = reader.peek('cascadeDelete')?.boolValue ?? false;
+
+        if (target != null && mappedBy != null) {
+          relationInfoList.add(
+            RelationInfo(
+              relationType: RelationType.oneToMany,
+              targetType: target,
+              mappedBy: mappedBy,
+              cascadeDelete: cascadeDelete,
+            ),
+          );
+        }
+      } else if (relationName == 'ManyToOne') {
+        final target = _getRelationTarget(reader.peek('target'));
+        final foreignKeyColumn = reader.peek('foreignKeyColumn')?.stringValue;
+        final cascadeDelete = reader.peek('cascadeDelete')?.boolValue ?? false;
+
+        if (target != null) {
+          relationInfoList.add(
+            RelationInfo(
+              relationType: RelationType.manyToOne,
+              targetType: target,
+              foreignKeyColumn: foreignKeyColumn,
+              cascadeDelete: cascadeDelete,
+            ),
+          );
+        }
+      }
+    }
+
+    return relationInfoList;
+  }
+
+  /// Validate that all relation fields exist in the referenced models
+  static void _validateRelations(List<ModelInfo> models) {
+    // Create a map for quick model lookup
+    final modelMap = <String, ModelInfo>{};
+    for (final model in models) {
+      modelMap[model.className] = model;
+    }
+
+    for (final model in models) {
+      for (final relation in model.relations) {
+        if (relation.relationType == RelationType.oneToMany) {
+          // For OneToMany, check that the target model has the mappedBy field
+          final targetModel = modelMap[relation.targetType];
+          if (targetModel == null) {
+            throw ArgumentError(
+              'OneToMany relation in ${model.className} references '
+              'unknown target type ${relation.targetType}',
+            );
+          }
+
+          final mappedBy = relation.mappedBy;
+          if (mappedBy == null) {
+            throw ArgumentError(
+              'OneToMany relation in ${model.className} must specify mappedBy',
+            );
+          }
+
+          final hasField = targetModel.fields.any((f) => f.name == mappedBy);
+          if (!hasField) {
+            throw ArgumentError(
+              'OneToMany relation in ${model.className} specifies '
+              'mappedBy="$mappedBy", but ${relation.targetType} '
+              'does not have a field named "$mappedBy"',
+            );
+          }
+        } else if (relation.relationType == RelationType.manyToOne) {
+          // For ManyToOne, check that current model has foreignKeyColumn field
+          final targetModel = modelMap[relation.targetType];
+          if (targetModel == null) {
+            throw ArgumentError(
+              'ManyToOne relation in ${model.className} references '
+              'unknown target type ${relation.targetType}',
+            );
+          }
+
+          final foreignKeyColumn = relation.foreignKeyColumn;
+          if (foreignKeyColumn != null) {
+            final hasField = model.fields.any(
+              (f) => f.name == foreignKeyColumn,
+            );
+            if (!hasField) {
+              throw ArgumentError(
+                'ManyToOne relation in ${model.className} specifies '
+                'foreignKeyColumn="$foreignKeyColumn", but ${model.className} '
+                'does not have a field named "$foreignKeyColumn"',
+              );
+            }
+          }
+        }
+      }
+    }
   }
 
   /// Convert absolute file URI to relative import path

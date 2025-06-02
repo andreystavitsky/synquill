@@ -18,8 +18,13 @@ class SynquillRepository {
   /// If not provided, defaults to `model_name.drift.dart`.
   final String? tableFile;
 
+  /// Relations defined at class level (OneToMany and ManyToOne).
+  /// This is a cleaner alternative to field-level annotations.
+  /// Each element should be either OneToMany or ManyToOne annotation.
+  final List<Object>? relations;
+
   /// Creates a new [SynquillRepository] annotation.
-  const SynquillRepository({this.adapters, this.tableFile});
+  const SynquillRepository({this.adapters, this.tableFile, this.relations});
 }
 
 /// Annotation to mark a field as a relation to another model.

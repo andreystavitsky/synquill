@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:json_annotation/json_annotation.dart';
-import '../synquill.generated.dart';
 import 'index.dart';
 
 part 'todo.g.dart';
@@ -51,22 +50,23 @@ mixin TodoApiAdapter on BasicApiAdapter<Todo> {
 @JsonSerializable()
 // BaseJsonApiAdapter provides global settings, TodoApiAdapter provides specifics.
 // The SyncedStorage system will merge configurations from these adapters.
-@SynquillRepository(adapters: [JsonApiAdapter, TodoApiAdapter])
-class Todo extends SynquillDataModel<Todo> {
-  @override
-  @JsonKey(readValue: idMapper)
-  final String id;
+@SynquillRepository(
+  adapters: [JsonApiAdapter, TodoApiAdapter],
+  relations: [
+    ManyToOne(target: User, foreignKeyColumn: 'userId'),
+  ],
+)
+class Todo extends ContactBase<Todo> {
   final String title;
   @JsonKey(name: 'completed')
   final bool isCompleted;
 
-  @ManyToOne(target: User, foreignKeyColumn: 'userId')
   @JsonKey(readValue: idMapper)
   final String userId;
 
   Todo({
     /// Unique identifier for the todo item (CUID)
-    String? id,
+    super.id,
 
     /// The title/description of the todo item
     required this.title,
@@ -76,10 +76,10 @@ class Todo extends SynquillDataModel<Todo> {
 
     /// Whether the todo item is completed
     required this.isCompleted,
-  }) : id = id ?? generateCuid();
+  });
 
   Todo.fromDb({
-    required this.id,
+    super.id,
     required this.title,
     required this.userId,
     required this.isCompleted,

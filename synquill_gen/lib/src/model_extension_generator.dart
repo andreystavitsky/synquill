@@ -136,13 +136,17 @@ mixin RelationHelperMixin {
     final buffer = StringBuffer();
     final className = model.className;
 
-    // Find relation fields that need load methods
+    // Find relation fields that need load methods (field-level annotations)
     final relationFields =
         model.fields
             .where((field) => field.isOneToMany || field.isManyToOne)
             .toList();
 
-    if (relationFields.isEmpty) {
+    // Also include class-level relations
+    final hasRelations =
+        relationFields.isNotEmpty || model.relations.isNotEmpty;
+
+    if (!hasRelations) {
       return ''; // No relations, no extensions needed
     }
 
@@ -167,6 +171,17 @@ mixin RelationHelperMixin {
       } else if (field.isManyToOne) {
         _generateManyToOneLoadMethod(buffer, field, allModels);
         _generateManyToOneWatchMethod(buffer, field, allModels);
+      }
+    }
+
+    // Generate methods for class-level relations
+    for (final relation in model.relations) {
+      if (relation.relationType == RelationType.oneToMany) {
+        _generateClassLevelOneToManyLoadMethod(buffer, relation, allModels);
+        _generateClassLevelOneToManyWatchMethod(buffer, relation, allModels);
+      } else if (relation.relationType == RelationType.manyToOne) {
+        _generateClassLevelManyToOneLoadMethod(buffer, relation, allModels);
+        _generateClassLevelManyToOneWatchMethod(buffer, relation, allModels);
       }
     }
 
@@ -213,8 +228,9 @@ mixin RelationHelperMixin {
     buffer.writeln(
       '        loadPolicy: loadPolicy ?? DataLoadPolicy.localOnly,',
     );
-    buffer.writeln('        headers: headers, extra: extra,');
     buffer.writeln('        queryParams: queryParams,');
+    buffer.writeln('        headers: headers,');
+    buffer.writeln('        extra: extra,');
     buffer.writeln('      );');
     buffer.writeln('    } catch (e, stackTrace) {');
     buffer.writeln('      _log.severe(');
@@ -313,7 +329,8 @@ mixin RelationHelperMixin {
     buffer.writeln(
       '        loadPolicy: loadPolicy ?? DataLoadPolicy.localOnly,',
     );
-    buffer.writeln('        headers: headers, extra: extra,');
+    buffer.writeln('        headers: headers,');
+    buffer.writeln('        extra: extra,');
     buffer.writeln('      );');
     buffer.writeln('    } catch (e, stackTrace) {');
     buffer.writeln('      _log.severe(');
@@ -373,6 +390,203 @@ mixin RelationHelperMixin {
     buffer.writeln('            ? Stream.value(null)');
     buffer.writeln('            : targetRepository.watchOne(foreignKey);');
     buffer.writeln('      });');
+    buffer.writeln('    } catch (e, stackTrace) {');
+    buffer.writeln('      _log.severe(');
+    buffer.writeln(
+      '        \'Failed to watch $targetClassName for \$runtimeType[\$id]\',',
+    );
+    buffer.writeln('        e,');
+    buffer.writeln('        stackTrace,');
+    buffer.writeln('      );');
+    buffer.writeln('      rethrow;');
+    buffer.writeln('    }');
+    buffer.writeln('  }');
+    buffer.writeln();
+  }
+
+  /// Generate load method for class-level OneToMany relation
+  static void _generateClassLevelOneToManyLoadMethod(
+    StringBuffer buffer,
+    RelationInfo relation,
+    List<ModelInfo> allModels,
+  ) {
+    final targetClassName = relation.targetType;
+    final methodName = 'load${_pluralize(targetClassName)}';
+    final mappedBy = relation.mappedBy;
+
+    if (mappedBy == null) {
+      buffer.writeln('  // Skipping $methodName - mappedBy not specified');
+      return;
+    }
+
+    buffer.writeln(
+      '  /// Load related ${_pluralize(targetClassName).toLowerCase()} objects',
+    );
+    buffer.writeln(
+      '  /// Uses mappedBy field \'$mappedBy\' in $targetClassName',
+    );
+    buffer.writeln('  Future<List<$targetClassName>> $methodName({');
+    buffer.writeln('    DataLoadPolicy? loadPolicy,');
+    buffer.writeln('    Map<String, String>? headers,');
+    buffer.writeln('    Map<String, dynamic>? extra,');
+    buffer.writeln('  }) async {');
+    buffer.writeln('    try {');
+    buffer.writeln('      final database = DatabaseProvider.instance;');
+    buffer.writeln('      final repository = SynquillRepositoryProvider');
+    buffer.writeln('          .getFrom<$targetClassName>(database);');
+    buffer.writeln('      final queryParams = QueryParams(');
+    buffer.writeln('        filters: [');
+    buffer.writeln('          ${targetClassName}Fields.$mappedBy.equals(id),');
+    buffer.writeln('        ],');
+    buffer.writeln('      );');
+    buffer.writeln('      return await repository.findAll(');
+    buffer.writeln(
+      '        loadPolicy: loadPolicy ?? DataLoadPolicy.localOnly,',
+    );
+    buffer.writeln('        queryParams: queryParams,');
+    buffer.writeln('        headers: headers,');
+    buffer.writeln('        extra: extra,');
+    buffer.writeln('      );');
+    buffer.writeln('    } catch (e, stackTrace) {');
+    buffer.writeln('      _log.severe(');
+    buffer.writeln(
+      '        \'Failed to load ${_pluralize(targetClassName).toLowerCase()} '
+      'for \$runtimeType[\$id]\', e, stackTrace);',
+    );
+    buffer.writeln('      rethrow;');
+    buffer.writeln('    }');
+    buffer.writeln('  }');
+    buffer.writeln();
+  }
+
+  /// Generate watch method for class-level OneToMany relation
+  static void _generateClassLevelOneToManyWatchMethod(
+    StringBuffer buffer,
+    RelationInfo relation,
+    List<ModelInfo> allModels,
+  ) {
+    final targetClassName = relation.targetType;
+    final methodName = 'watch${_pluralize(targetClassName)}';
+    final mappedBy = relation.mappedBy;
+
+    if (mappedBy == null) {
+      buffer.writeln('  // Skipping $methodName - mappedBy not specified');
+      return;
+    }
+
+    buffer.writeln(
+      '  /// Watch related ${_pluralize(targetClassName).toLowerCase()} objects as a stream',
+    );
+    buffer.writeln(
+      '  /// Uses mappedBy field \'$mappedBy\' in $targetClassName',
+    );
+    buffer.writeln('  Stream<List<$targetClassName>> $methodName({');
+    buffer.writeln('    DataLoadPolicy? loadPolicy,');
+    buffer.writeln('    Map<String, String>? headers,');
+    buffer.writeln('    Map<String, dynamic>? extra,');
+    buffer.writeln('  }) {');
+    buffer.writeln('    try {');
+    buffer.writeln('      final database = DatabaseProvider.instance;');
+    buffer.writeln('      final repository = SynquillRepositoryProvider');
+    buffer.writeln('          .getFrom<$targetClassName>(database);');
+    buffer.writeln('      final queryParams = QueryParams(');
+    buffer.writeln('        filters: [');
+    buffer.writeln('          ${targetClassName}Fields.$mappedBy.equals(id),');
+    buffer.writeln('        ],');
+    buffer.writeln('      );');
+    buffer.writeln('      return repository.watchAll(');
+    buffer.writeln('        queryParams: queryParams,');
+    buffer.writeln('      );');
+    buffer.writeln('    } catch (e, stackTrace) {');
+    buffer.writeln('      _log.severe(');
+    buffer.writeln(
+      '        \'Failed to watch ${_pluralize(targetClassName).toLowerCase()} '
+      'for \$runtimeType[\$id]\', e, stackTrace);',
+    );
+    buffer.writeln('      rethrow;');
+    buffer.writeln('    }');
+    buffer.writeln('  }');
+    buffer.writeln();
+  }
+
+  /// Generate load method for class-level ManyToOne relation
+  static void _generateClassLevelManyToOneLoadMethod(
+    StringBuffer buffer,
+    RelationInfo relation,
+    List<ModelInfo> allModels,
+  ) {
+    final targetClassName = relation.targetType;
+    final methodName = 'load$targetClassName';
+    final foreignKeyColumn =
+        relation.foreignKeyColumn ?? '${targetClassName.toLowerCase()}Id';
+
+    buffer.writeln('  /// Load related $targetClassName object');
+    buffer.writeln('  /// Uses foreign key field \'$foreignKeyColumn\'');
+    buffer.writeln('  Future<$targetClassName?> $methodName({');
+    buffer.writeln('    DataLoadPolicy? loadPolicy,');
+    buffer.writeln('    Map<String, String>? headers,');
+    buffer.writeln('    Map<String, dynamic>? extra,');
+    buffer.writeln('  }) async {');
+    buffer.writeln('    try {');
+    buffer.writeln('      final foreignKey = toJson()[\'$foreignKeyColumn\'];');
+    buffer.writeln('      if (foreignKey == null) return null;');
+    buffer.writeln('      final database = DatabaseProvider.instance;');
+    buffer.writeln('      final repository = SynquillRepositoryProvider');
+    buffer.writeln('          .getFrom<$targetClassName>(database);');
+    buffer.writeln('      return await repository.findOne(');
+    buffer.writeln('        foreignKey.toString(),');
+    buffer.writeln(
+      '        loadPolicy: loadPolicy ?? DataLoadPolicy.localOnly,',
+    );
+    buffer.writeln('        headers: headers,');
+    buffer.writeln('        extra: extra,');
+    buffer.writeln('      );');
+    buffer.writeln('    } catch (e, stackTrace) {');
+    buffer.writeln('      _log.severe(');
+    buffer.writeln(
+      '        \'Failed to load $targetClassName for \$runtimeType[\$id]\',',
+    );
+    buffer.writeln('        e,');
+    buffer.writeln('        stackTrace,');
+    buffer.writeln('      );');
+    buffer.writeln('      rethrow;');
+    buffer.writeln('    }');
+    buffer.writeln('  }');
+    buffer.writeln();
+  }
+
+  /// Generate watch method for class-level ManyToOne relation
+  static void _generateClassLevelManyToOneWatchMethod(
+    StringBuffer buffer,
+    RelationInfo relation,
+    List<ModelInfo> allModels,
+  ) {
+    final targetClassName = relation.targetType;
+    final methodName = 'watch$targetClassName';
+    final foreignKeyColumn =
+        relation.foreignKeyColumn ?? '${targetClassName.toLowerCase()}Id';
+
+    buffer.writeln('  /// Watch related $targetClassName object as a stream');
+    buffer.writeln('  /// Uses foreign key field \'$foreignKeyColumn\'');
+    buffer.writeln('  Stream<$targetClassName?> $methodName({');
+    buffer.writeln('    DataLoadPolicy? loadPolicy,');
+    buffer.writeln('    Map<String, String>? headers,');
+    buffer.writeln('    Map<String, dynamic>? extra,');
+    buffer.writeln('  }) {');
+    buffer.writeln('    try {');
+    buffer.writeln('      final foreignKey = toJson()[\'$foreignKeyColumn\'];');
+    buffer.writeln('      if (foreignKey == null) {');
+    buffer.writeln('        return Stream.value(null);');
+    buffer.writeln('      }');
+    buffer.writeln('      final database = DatabaseProvider.instance;');
+    buffer.writeln('      final repository = SynquillRepositoryProvider');
+    buffer.writeln('          .getFrom<$targetClassName>(database);');
+    buffer.writeln('      return repository.watchOne(');
+    buffer.writeln('        foreignKey.toString(),');
+    buffer.writeln(
+      '        loadPolicy: loadPolicy ?? DataLoadPolicy.localOnly,',
+    );
+    buffer.writeln('      );');
     buffer.writeln('    } catch (e, stackTrace) {');
     buffer.writeln('      _log.severe(');
     buffer.writeln(

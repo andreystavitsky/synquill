@@ -31,33 +31,27 @@ mixin UserApiAdapter on BasicApiAdapter<User> {
 @JsonSerializable()
 // BaseJsonApiAdapter provides global settings, UserApiAdapter provides specifics.
 // The SyncedStorage system will merge configurations from these adapters.
-@SynquillRepository(adapters: [JsonApiAdapter, UserApiAdapter])
+@SynquillRepository(
+  adapters: [JsonApiAdapter, UserApiAdapter],
+  relations: [
+    OneToMany(target: Todo, mappedBy: 'userId'),
+    OneToMany(target: Post, mappedBy: 'userId'),
+  ],
+)
 class User extends SynquillDataModel<User> {
   @override
   @JsonKey(readValue: idMapper)
   final String id;
   final String name;
 
-  @OneToMany(target: Todo, mappedBy: 'userId')
-  @JsonKey(readValue: idMapper)
-  final List<String> todoIds;
-
-  @OneToMany(target: Post, mappedBy: 'userId')
-  @JsonKey(readValue: idMapper)
-  final List<String> postIds;
-
   User({
     String? id,
     required this.name,
-    this.todoIds = const [],
-    this.postIds = const [],
   }) : id = id ?? generateCuid();
 
   User.fromDb({
     required this.id,
     required this.name,
-    this.todoIds = const [],
-    this.postIds = const [],
     DateTime? createdAt,
     DateTime? updatedAt,
     DateTime? lastSyncedAt,
