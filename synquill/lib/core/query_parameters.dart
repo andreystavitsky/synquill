@@ -347,6 +347,39 @@ class QueryParams {
     return addSorts([sort]);
   }
 
+  /// Merges this QueryParams with a required filter, removing any existing
+  /// filter on the same field to prevent conflicts.
+  ///
+  /// This ensures that the required filter takes precedence over any
+  /// user-provided filters on the same field.
+  QueryParams mergeWithRequiredFilter(FilterCondition requiredFilter) {
+    final filteredConditions =
+        filters
+            .where(
+              (filter) =>
+                  filter.field.fieldName != requiredFilter.field.fieldName,
+            )
+            .toList();
+
+    return copyWith(filters: [...filteredConditions, requiredFilter]);
+  }
+
+  /// Creates QueryParams with a required filter, or merges with
+  /// existing params.
+  ///
+  /// If [queryParams] is null, creates new QueryParams with just the required
+  /// filter. Otherwise, merges the existing params with the required filter,
+  /// removing any existing filter on the same field.
+  static QueryParams withRequiredFilter(
+    QueryParams? queryParams,
+    FilterCondition requiredFilter,
+  ) {
+    if (queryParams == null) {
+      return QueryParams(filters: [requiredFilter]);
+    }
+    return queryParams.mergeWithRequiredFilter(requiredFilter);
+  }
+
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||

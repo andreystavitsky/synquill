@@ -94,7 +94,10 @@ mixin RelationHelperMixin {
   }
   
   /// Watch related object using ManyToOne relation
-  Stream<T?> watchManyToOneRelation<T extends SynquillDataModel<T>, S extends SynquillDataModel<S>>({
+  Stream<T?> watchManyToOneRelation<
+    T extends SynquillDataModel<T>, 
+    S extends SynquillDataModel<S>>
+  ({
     required String foreignKeyField,
   }) {
     try {
@@ -151,7 +154,8 @@ mixin RelationHelperMixin {
     }
 
     buffer.writeln(
-      '/// Generated extension methods for loading related objects for $className',
+      '/// Generated extension methods for loading '
+      'related objects for $className',
     );
     buffer.writeln('extension ${className}RelationExtensions on $className {');
     buffer.writeln('  /// Logger for the $className relation extensions.');
@@ -185,6 +189,10 @@ mixin RelationHelperMixin {
       }
     }
 
+    // Note: QueryParams merging is now handled by
+    // QueryParams.withRequiredFilter() in the core library,
+    // so we no longer generate duplicate utility methods
+
     buffer.writeln('}');
     return buffer.toString();
   }
@@ -214,21 +222,32 @@ mixin RelationHelperMixin {
     buffer.writeln('    DataLoadPolicy? loadPolicy,');
     buffer.writeln('    Map<String, String>? headers,');
     buffer.writeln('    Map<String, dynamic>? extra,');
+    buffer.writeln('    QueryParams? queryParams,');
     buffer.writeln('  }) async {');
     buffer.writeln('    try {');
     buffer.writeln('      final database = DatabaseProvider.instance;');
     buffer.writeln('      final repository = SynquillRepositoryProvider');
     buffer.writeln('          .getFrom<$targetClassName>(database);');
-    buffer.writeln('      final queryParams = QueryParams(');
-    buffer.writeln('        filters: [');
-    buffer.writeln('          ${targetClassName}Fields.$mappedBy.equals(id),');
-    buffer.writeln('        ],');
+    buffer.writeln('      ');
+    buffer.writeln('      // Create required filter for the relation');
+    buffer.writeln(
+      '      final requiredFilter '
+      '= ${targetClassName}Fields.$mappedBy.equals(id);',
+    );
+    buffer.writeln('      ');
+    buffer.writeln('      // Merge user queryParams with required filter');
+    buffer.writeln(
+      '      final mergedQueryParams = QueryParams.withRequiredFilter(',
+    );
+    buffer.writeln('        queryParams,');
+    buffer.writeln('        requiredFilter,');
     buffer.writeln('      );');
+    buffer.writeln('      ');
     buffer.writeln('      return await repository.findAll(');
     buffer.writeln(
       '        loadPolicy: loadPolicy ?? DataLoadPolicy.localOnly,',
     );
-    buffer.writeln('        queryParams: queryParams,');
+    buffer.writeln('        queryParams: mergedQueryParams,');
     buffer.writeln('        headers: headers,');
     buffer.writeln('        extra: extra,');
     buffer.writeln('      );');
@@ -260,23 +279,36 @@ mixin RelationHelperMixin {
     }
 
     buffer.writeln(
-      '  /// Watch related ${_pluralize(targetClassName).toLowerCase()} objects as a stream',
+      '  /// Watch related '
+      '${_pluralize(targetClassName).toLowerCase()} objects as a stream',
     );
     buffer.writeln(
       '  /// Uses mappedBy field \'$mappedBy\' in $targetClassName',
     );
-    buffer.writeln('  Stream<List<$targetClassName>> $methodName() {');
+    buffer.writeln('  Stream<List<$targetClassName>> $methodName({');
+    buffer.writeln('    QueryParams? queryParams,');
+    buffer.writeln('  }) {');
     buffer.writeln('    try {');
     buffer.writeln('      final database = DatabaseProvider.instance;');
     buffer.writeln('      final repository = SynquillRepositoryProvider');
     buffer.writeln('          .getFrom<$targetClassName>(database);');
-    buffer.writeln('      final queryParams = QueryParams(');
-    buffer.writeln('        filters: [');
-    buffer.writeln('          ${targetClassName}Fields.$mappedBy.equals(id),');
-    buffer.writeln('        ],');
+    buffer.writeln('      ');
+    buffer.writeln('      // Create required filter for the relation');
+    buffer.writeln(
+      '      final requiredFilter = '
+      '${targetClassName}Fields.$mappedBy.equals(id);',
+    );
+    buffer.writeln('      ');
+    buffer.writeln('      // Merge user queryParams with required filter');
+    buffer.writeln(
+      '      final mergedQueryParams = QueryParams.withRequiredFilter(',
+    );
+    buffer.writeln('        queryParams,');
+    buffer.writeln('        requiredFilter,');
     buffer.writeln('      );');
+    buffer.writeln('      ');
     buffer.writeln('      return repository.watchAll(');
-    buffer.writeln('        queryParams: queryParams,');
+    buffer.writeln('        queryParams: mergedQueryParams,');
     buffer.writeln('      );');
     buffer.writeln('    } catch (e, stackTrace) {');
     buffer.writeln('      _log.severe(');
@@ -429,21 +461,32 @@ mixin RelationHelperMixin {
     buffer.writeln('    DataLoadPolicy? loadPolicy,');
     buffer.writeln('    Map<String, String>? headers,');
     buffer.writeln('    Map<String, dynamic>? extra,');
+    buffer.writeln('    QueryParams? queryParams,');
     buffer.writeln('  }) async {');
     buffer.writeln('    try {');
     buffer.writeln('      final database = DatabaseProvider.instance;');
     buffer.writeln('      final repository = SynquillRepositoryProvider');
     buffer.writeln('          .getFrom<$targetClassName>(database);');
-    buffer.writeln('      final queryParams = QueryParams(');
-    buffer.writeln('        filters: [');
-    buffer.writeln('          ${targetClassName}Fields.$mappedBy.equals(id),');
-    buffer.writeln('        ],');
+    buffer.writeln('      ');
+    buffer.writeln('      // Create required filter for the relation');
+    buffer.writeln(
+      '      final requiredFilter = '
+      '${targetClassName}Fields.$mappedBy.equals(id);',
+    );
+    buffer.writeln('      ');
+    buffer.writeln('      // Merge user queryParams with required filter');
+    buffer.writeln(
+      '      final mergedQueryParams = QueryParams.withRequiredFilter(',
+    );
+    buffer.writeln('        queryParams,');
+    buffer.writeln('        requiredFilter,');
     buffer.writeln('      );');
+    buffer.writeln('      ');
     buffer.writeln('      return await repository.findAll(');
     buffer.writeln(
       '        loadPolicy: loadPolicy ?? DataLoadPolicy.localOnly,',
     );
-    buffer.writeln('        queryParams: queryParams,');
+    buffer.writeln('        queryParams: mergedQueryParams,');
     buffer.writeln('        headers: headers,');
     buffer.writeln('        extra: extra,');
     buffer.writeln('      );');
@@ -475,27 +518,36 @@ mixin RelationHelperMixin {
     }
 
     buffer.writeln(
-      '  /// Watch related ${_pluralize(targetClassName).toLowerCase()} objects as a stream',
+      '  /// Watch related '
+      '${_pluralize(targetClassName).toLowerCase()} objects as a stream',
     );
     buffer.writeln(
       '  /// Uses mappedBy field \'$mappedBy\' in $targetClassName',
     );
     buffer.writeln('  Stream<List<$targetClassName>> $methodName({');
-    buffer.writeln('    DataLoadPolicy? loadPolicy,');
-    buffer.writeln('    Map<String, String>? headers,');
-    buffer.writeln('    Map<String, dynamic>? extra,');
+    buffer.writeln('    QueryParams? queryParams,');
     buffer.writeln('  }) {');
     buffer.writeln('    try {');
     buffer.writeln('      final database = DatabaseProvider.instance;');
     buffer.writeln('      final repository = SynquillRepositoryProvider');
     buffer.writeln('          .getFrom<$targetClassName>(database);');
-    buffer.writeln('      final queryParams = QueryParams(');
-    buffer.writeln('        filters: [');
-    buffer.writeln('          ${targetClassName}Fields.$mappedBy.equals(id),');
-    buffer.writeln('        ],');
+    buffer.writeln('      ');
+    buffer.writeln('      // Create required filter for the relation');
+    buffer.writeln(
+      '      final requiredFilter = '
+      '${targetClassName}Fields.$mappedBy.equals(id);',
+    );
+    buffer.writeln('      ');
+    buffer.writeln('      // Merge user queryParams with required filter');
+    buffer.writeln(
+      '      final mergedQueryParams = QueryParams.withRequiredFilter(',
+    );
+    buffer.writeln('        queryParams,');
+    buffer.writeln('        requiredFilter,');
     buffer.writeln('      );');
+    buffer.writeln('      ');
     buffer.writeln('      return repository.watchAll(');
-    buffer.writeln('        queryParams: queryParams,');
+    buffer.writeln('        queryParams: mergedQueryParams,');
     buffer.writeln('      );');
     buffer.writeln('    } catch (e, stackTrace) {');
     buffer.writeln('      _log.severe(');
