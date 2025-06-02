@@ -279,7 +279,7 @@ $apiAdapterGetter
     for (final model in models) {
       final className = model.className;
       final repositoryName = '${className}Repository';
-      final propertyName = '${className.toLowerCase()}s';
+      final propertyName = BuilderUtils.toCamelCasePlural(className);
 
       buffer.writeln('  /// Access repository for $className models');
       buffer.writeln('  $repositoryName get $propertyName {');
