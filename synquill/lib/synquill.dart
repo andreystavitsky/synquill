@@ -18,6 +18,10 @@ export 'package:logging/logging.dart';
 
 part 'adapters/api_adapter.dart';
 part 'adapters/basic_api_adapter.dart';
+part 'adapters/mixins/dio_client_mixin.dart';
+part 'adapters/mixins/error_handling_mixin.dart';
+part 'adapters/mixins/http_execution_mixin.dart';
+part 'adapters/mixins/response_parsing_mixin.dart';
 part 'core/annotations.dart';
 part 'core/database_provider.dart';
 part 'core/exceptions.dart';
