@@ -31,6 +31,7 @@ extension SynquillDataModelExtensions<T extends SynquillDataModel<T>>
   /// ```
   Future<T> save({
     DataSavePolicy savePolicy = DataSavePolicy.localFirst,
+    Map<String, dynamic>? extra,
   }) async {
     _log.fine('save() called on ${T.toString()} instance with ID $id');
 
@@ -42,7 +43,11 @@ extension SynquillDataModelExtensions<T extends SynquillDataModel<T>>
       final repository = SynquillRepositoryProvider.getFrom<T>(database);
 
       // Cast this to T since we know it's a SyncedDataModel<T>
-      final result = await repository.save(this as T, savePolicy: savePolicy);
+      final result = await repository.save(
+        this as T,
+        savePolicy: savePolicy,
+        extra: extra,
+      );
 
       _log.fine('Successfully saved ${T.toString()} with ID $id');
       return result;
@@ -70,6 +75,7 @@ extension SynquillDataModelExtensions<T extends SynquillDataModel<T>>
   /// ```
   Future<void> delete({
     DataSavePolicy savePolicy = DataSavePolicy.localFirst,
+    Map<String, dynamic>? extra,
   }) async {
     _log.fine('delete() called on ${T.toString()} instance with ID $id');
 
@@ -80,7 +86,7 @@ extension SynquillDataModelExtensions<T extends SynquillDataModel<T>>
       // Get repository using RepositoryProvider
       final repository = SynquillRepositoryProvider.getFrom<T>(database);
 
-      await repository.delete(id, savePolicy: savePolicy);
+      await repository.delete(id, savePolicy: savePolicy, extra: extra);
 
       _log.fine('Successfully deleted ${T.toString()} with ID $id');
     } catch (e, stackTrace) {
@@ -115,6 +121,7 @@ extension SynquillDataModelExtensions<T extends SynquillDataModel<T>>
   /*
   Future<T?> refresh({
     DataLoadPolicy loadPolicy = DataLoadPolicy.remoteFirst,
+    Map<String, dynamic>? extra,
   }) async {
     _log.fine(
       'refresh() called on ${T.toString()} instance with ID $id'
@@ -128,7 +135,8 @@ extension SynquillDataModelExtensions<T extends SynquillDataModel<T>>
       // Get repository using RepositoryProvider
       final repository = SyncedRepositoryProvider.getFrom<T>(database);
 
-      final result = await repository.findOne(id, loadPolicy: loadPolicy);
+      final result = await repository.findOne(id, loadPolicy: loadPolicy, 
+        extra: extra);
 
       if (result != null) {
         _log.fine('Successfully refreshed ${T.toString()} with ID $id');
