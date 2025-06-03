@@ -27,6 +27,7 @@ part 'core/database_provider.dart';
 part 'core/exceptions.dart';
 part 'core/mixins.dart';
 part 'core/model_info_registry_provider.dart';
+part 'core/pluralization_utils.dart';
 part 'core/query_parameters.dart';
 part 'core/repository_mixins/repository_types.dart';
 part 'core/repository_mixins/repository_local_operations.dart';

@@ -17,10 +17,7 @@ dependencies:
   meta: ^1.16.0
   source_gen: ^2.0.0
   synquill:
-    git:
-      url: https://github.com/andreystavitsky/synquill.git
-      ref: main
-      path: synquill
+    path: ../synquill
 
 dev_dependencies:
   build_runner: ^2.4.15

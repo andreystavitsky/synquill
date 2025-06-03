@@ -35,11 +35,11 @@ abstract class ApiAdapterBase<TModel extends SynquillDataModel<TModel>> {
 
   /// Plural form of the entity name for collection endpoints.
   ///
-  /// Defaults to adding 's' to the singular type.
-  /// Override in subclasses for irregular plurals.
+  /// Uses proper English pluralization rules.
+  /// Override in subclasses for custom entity names.
   ///
-  /// Example: `events`, `todos`, `users`
-  String get pluralType => '${type}s';
+  /// Example: `categories`, `todos`, `users`, `plainModelJsons`
+  String get pluralType => PluralizationUtils.pluralize(type);
 
   // HTTP Method Configuration
   // These provide defaults but can be overridden per model
