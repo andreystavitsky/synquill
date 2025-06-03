@@ -17,12 +17,20 @@ abstract class ApiAdapterBase<TModel extends SynquillDataModel<TModel>> {
   /// HTTP headers applied to every request.
   /// Can be overridden in subclasses for model-specific headers.
   ///
-  /// Default implementation provides standard JSON headers.
+  /// Default implementation provides only Accept header.
+  /// Content-Type is added dynamically for operations that send data.
   /// Can be async to allow for dynamic header generation (e.g., auth tokens).
   FutureOr<Map<String, String>> get baseHeaders => const {
-    'Content-Type': 'application/json',
     'Accept': 'application/json',
   };
+
+  /// HTTP headers for operations that send data (POST, PUT, PATCH).
+  /// Includes Content-Type header for JSON data.
+  /// Can be overridden in subclasses for model-specific headers.
+  FutureOr<Map<String, String>> get headersWithContentType async {
+    final base = await baseHeaders;
+    return {...base, 'Content-Type': 'application/json'};
+  }
 
   /// Logical entity name, singular.
   ///
@@ -196,6 +204,20 @@ abstract class ApiAdapterBase<TModel extends SynquillDataModel<TModel>> {
     Map<String, dynamic>? extra,
   }) async {
     final base = await baseHeaders;
+    if (requestHeaders == null) return base;
+    return {...base, ...requestHeaders};
+  }
+
+  /// Merges headers with Content-Type for operations that send data.
+  ///
+  /// Uses headersWithContentType as base, which includes Content-Type.
+  /// Request-specific headers take precedence over base headers.
+  /// Utility method for create, update, and replace operations.
+  FutureOr<Map<String, String>> mergeHeadersWithContentType(
+    Map<String, String>? requestHeaders, {
+    Map<String, dynamic>? extra,
+  }) async {
+    final base = await headersWithContentType;
     if (requestHeaders == null) return base;
     return {...base, ...requestHeaders};
   }

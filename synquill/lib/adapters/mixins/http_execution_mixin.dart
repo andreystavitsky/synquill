@@ -120,7 +120,10 @@ mixin HttpExecutionMixin<TModel extends SynquillDataModel<TModel>>
     Map<String, String>? headers,
     Map<String, dynamic>? extra,
   }) async {
-    final mergedHeaders = await mergeHeaders(headers, extra: extra);
+    final mergedHeaders = await mergeHeadersWithContentType(
+      headers,
+      extra: extra,
+    );
     final uri = await urlForCreate(extra: extra);
 
     final response = await executeRequest<dynamic>(
@@ -144,7 +147,10 @@ mixin HttpExecutionMixin<TModel extends SynquillDataModel<TModel>>
     Map<String, String>? headers,
     Map<String, dynamic>? extra,
   }) async {
-    final mergedHeaders = await mergeHeaders(headers, extra: extra);
+    final mergedHeaders = await mergeHeadersWithContentType(
+      headers,
+      extra: extra,
+    );
     final uri = await urlForUpdate(model.id, extra: extra);
 
     final response = await executeRequest<dynamic>(
@@ -168,7 +174,10 @@ mixin HttpExecutionMixin<TModel extends SynquillDataModel<TModel>>
     Map<String, String>? headers,
     Map<String, dynamic>? extra,
   }) async {
-    final mergedHeaders = await mergeHeaders(headers, extra: extra);
+    final mergedHeaders = await mergeHeadersWithContentType(
+      headers,
+      extra: extra,
+    );
     final uri = await urlForReplace(model.id, extra: extra);
 
     final response = await executeRequest<dynamic>(
