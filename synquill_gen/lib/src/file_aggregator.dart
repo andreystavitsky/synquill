@@ -16,6 +16,8 @@ class FileAggregator {
     // Imports
     // only import synquill as it contains all necessary imports
     buffer.writeln('import \'package:synquill/synquill.dart\';');
+    buffer.writeln('import \'package:synquill/synquill_core.dart\' show ');
+    buffer.writeln('  DatabaseAccessor, GeneratedDatabase;');
 
     final aggregatedImports = <String>{};
     for (final model in models) {
@@ -60,7 +62,7 @@ class FileAggregator {
 
     // Imports
     // only import synquill as it contains all necessary imports
-    buffer.writeln('import \'package:synquill/synquill.dart\';');
+    buffer.writeln('import \'package:synquill/synquill_core.dart\';');
     // Import model files with relative paths (tables and DAOs are in
     // their .g.dart parts)
     final aggregatedImports = <String>{};

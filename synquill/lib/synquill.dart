@@ -12,7 +12,7 @@ import 'package:queue/queue.dart';
 import 'package:dio/dio.dart';
 
 export 'package:drift/native.dart';
-export 'package:drift/drift.dart' hide JsonKey;
+
 export 'package:stream_transform/stream_transform.dart' show Switch;
 export 'package:logging/logging.dart';
 
