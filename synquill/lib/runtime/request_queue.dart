@@ -160,6 +160,11 @@ class RequestQueueManager {
         // For now, default to foreground
         return QueueType.foreground;
       case SyncOperation.read:
+        // Read operations are routed to the load queue, which is optimized for
+        // parallel, stateless fetches. Unlike the foreground queue (used for
+        // writes), the load queue allows higher concurrency and is designed for
+        // non-mutating operations that do not require strict ordering or
+        // idempotency guarantees.
         // Read operations are typically load operations
         return QueueType.load;
     }

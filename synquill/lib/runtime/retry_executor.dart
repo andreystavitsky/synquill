@@ -486,6 +486,11 @@ class RetryExecutor {
         await _performDeleteOperation(repository, modelData, headers, extra);
         break;
 
+      // Read operations are intentionally not supported in the retry executor.
+      // Reads are stateless, do not modify remote or local data, and do not
+      // require retry or idempotency guarantees. All read operations should be
+      // handled through direct API calls or the load queue, not via the
+      // sync/retry system.
       case SyncOperation.read:
         throw StateError(
           'Read operations should not be processed through retry executor',
