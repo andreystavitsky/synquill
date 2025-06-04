@@ -1,7 +1,7 @@
 part of synquill;
 
 /// {@template api_adapter}
-/// Abstract interface for REST API adapters used by SyncedDataStorage.
+/// Abstract interface for REST API adapters used by SynquillStorage.
 ///
 /// Each adapter provides HTTP configuration, URL builders, and CRUD methods
 /// for a specific model type. All HTTP-related configuration can be overridden

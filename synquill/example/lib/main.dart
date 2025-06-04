@@ -131,7 +131,7 @@ class TodoApp extends StatelessWidget {
 
 /// Background task dispatcher for WorkManager
 ///
-/// This function demonstrates proper usage of SyncedStorage background sync
+/// This function demonstrates proper usage of SynquillStorage background sync
 /// methods with required pragma annotation for isolate accessibility.
 @pragma('vm:entry-point')
 void callbackDispatcher() {
@@ -152,7 +152,7 @@ void callbackDispatcher() {
         ),
       );
 
-      // Initialize SyncedStorage in background isolate
+      // Initialize SynquillStorage in background isolate
       await SynquillStorage.initForBackgroundIsolate(
         database: database,
         config: SynquillStorageConfig(

@@ -27,11 +27,11 @@ abstract class SynquillRepositoryBase<T extends SynquillDataModel<T>>
 
   /// Creates a new synchronized repository.
   SynquillRepositoryBase(this.db) {
-    log = Logger('SyncedRepository<${T.toString()}>');
+    log = Logger('SynquillRepository<${T.toString()}>');
     try {
       _queueManager = SynquillStorage.queueManager;
     } catch (_) {
-      // For tests or when SyncedStorage is not initialized
+      // For tests or when SynquillStorage is not initialized
       _queueManager = RequestQueueManager(config: SynquillStorage.config);
     }
   }

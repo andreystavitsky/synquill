@@ -49,7 +49,7 @@ mixin TodoApiAdapter on BasicApiAdapter<Todo> {
 
 @JsonSerializable()
 // BaseJsonApiAdapter provides global settings, TodoApiAdapter provides specifics.
-// The SyncedStorage system will merge configurations from these adapters.
+// The SynquillStorage system will merge configurations from these adapters.
 @SynquillRepository(
   adapters: [JsonApiAdapter, TodoApiAdapter],
   relations: [

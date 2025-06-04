@@ -10,7 +10,7 @@ part of synquill;
 extension SynquillDataModelExtensions<T extends SynquillDataModel<T>>
     on SynquillDataModel<T> {
   /// Logger for the model extensions.
-  static Logger get _log => Logger('SyncedDataModelExtensions');
+  static Logger get _log => Logger('SynquillDataModelExtensions');
 
   /// Saves this model instance using the associated repository.
   ///
@@ -42,7 +42,7 @@ extension SynquillDataModelExtensions<T extends SynquillDataModel<T>>
       // Get repository using RepositoryProvider
       final repository = SynquillRepositoryProvider.getFrom<T>(database);
 
-      // Cast this to T since we know it's a SyncedDataModel<T>
+      // Cast this to T since we know it's a SynquillDataModel<T>
       final result = await repository.save(
         this as T,
         savePolicy: savePolicy,
@@ -133,7 +133,7 @@ extension SynquillDataModelExtensions<T extends SynquillDataModel<T>>
       final database = DatabaseProvider.instance;
 
       // Get repository using RepositoryProvider
-      final repository = SyncedRepositoryProvider.getFrom<T>(database);
+      final repository = SynquillRepositoryProvider.getFrom<T>(database);
 
       final result = await repository.findOne(id, loadPolicy: loadPolicy, 
         extra: extra);

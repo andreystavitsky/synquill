@@ -56,7 +56,7 @@ class BackgroundSyncManager {
         'Starting background sync task processing, forceSync: $forceSync',
       );
 
-      // Get the retry executor instance from SyncedStorage
+      // Get the retry executor instance from SynquillStorage
       final retryExecutor = SynquillStorage.retryExecutor;
 
       // Process all due tasks with a 20-second timeout
@@ -94,7 +94,9 @@ class BackgroundSyncManager {
     if (!_isInitialized) return;
 
     try {
-      // TODO: Need to implement
+      // Stop the retry executor to prevent further background work
+      SynquillStorage.retryExecutor.stop();
+      // Platform specific cancellation would go here
       _logger!.info('Background sync cancelled successfully');
     } catch (e, stackTrace) {
       _logger!.warning('Failed to cancel background sync: $e', e, stackTrace);
@@ -151,7 +153,7 @@ class BackgroundSyncManager {
     }
   }
 
-  /// Checks if SyncedStorage is properly initialized for background operations.
+  /// Checks if SynquillStorage is properly initialized for background operations.
   ///
   /// This is useful for ensuring that background isolates have access
   /// to the necessary components before attempting sync operations.
@@ -162,7 +164,7 @@ class BackgroundSyncManager {
       SynquillStorage.database;
       return true;
     } catch (e) {
-      _logger?.warning('SyncedStorage not ready for background sync: $e');
+      _logger?.warning('SynquillStorage not ready for background sync: $e');
       return false;
     }
   }

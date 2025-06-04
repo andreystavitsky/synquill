@@ -19,7 +19,7 @@ class PlainModel extends SynquillDataModel<PlainModel> {
     required this.id,
     required this.name,
     required this.value,
-    // The following fields are part of SyncedDataModel but not typically
+    // The following fields are part of SynquillDataModel but not typically
     // serialized/deserialized in the core model.
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -38,7 +38,7 @@ class PlainModel extends SynquillDataModel<PlainModel> {
         'id': id,
         'name': name,
         'value': value,
-        // createdAt, updatedAt, lastSyncedAt are part of SyncedDataModel
+        // createdAt, updatedAt, lastSyncedAt are part of SynquillDataModel
         // and handled by the repository/sync layer, not typically part of
         // core model serialization to general API unless API expects them.
       };

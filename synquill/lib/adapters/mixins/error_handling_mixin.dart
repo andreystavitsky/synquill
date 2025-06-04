@@ -15,7 +15,7 @@ mixin ErrorHandlingMixin<TModel extends SynquillDataModel<TModel>>
 
   /// Maps a DioException to the appropriate SynquillStorageException.
   @protected
-  SynquillStorageException mapDioErrorToSyncedStorageException(
+  SynquillStorageException mapDioErrorToSynquillStorageException(
     DioException error,
   ) {
     logger.warning(
