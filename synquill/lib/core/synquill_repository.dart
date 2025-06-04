@@ -36,7 +36,39 @@ abstract class SynquillRepositoryBase<T extends SynquillDataModel<T>>
     }
   }
 
-  /// A stream of changes to this repository.
+  /// A broadcast stream of [RepositoryChange] events that notifies
+  /// listeners when a repository item is created, updated, deleted,
+  /// or when an error occurs.
+  ///
+  /// Events are emitted by repository mixins using [changeController].
+  /// Subscribe to this stream to react to local data changes,
+  /// update UI, trigger side-effects, or coordinate sync.
+  ///
+  /// Emits:
+  /// - [RepositoryChangeType.created]: when a new item is inserted.
+  /// - [RepositoryChangeType.updated]: when an item is modified.
+  /// - [RepositoryChangeType.deleted]: when an item is removed.
+  /// - [RepositoryChangeType.error]: when an operation fails.
+  ///
+  /// Example:
+  /// ```dart
+  /// repository.changes.listen((change) {
+  ///   switch (change.type) {
+  ///     case RepositoryChangeType.created:
+  ///       // handle new item
+  ///       break;
+  ///     case RepositoryChangeType.updated:
+  ///       // handle update
+  ///       break;
+  ///     case RepositoryChangeType.deleted:
+  ///       // handle deletion
+  ///       break;
+  ///     case RepositoryChangeType.error:
+  ///       // handle error
+  ///       break;
+  ///   }
+  /// });
+  /// ```
   Stream<RepositoryChange<T>> get changes => _changeController.stream;
 
   /// Gets the stream controller for emitting change events.
