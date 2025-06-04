@@ -117,7 +117,7 @@ class RetryExecutor {
 
     try {
       // Check connectivity before processing any tasks
-      // Skip processing if offline (unless forceSync is specifically 
+      // Skip processing if offline (unless forceSync is specifically
       // requesting offline processing)
       final isConnected = await SynquillStorage.isConnected;
       if (!isConnected && !forceSync) {
@@ -223,7 +223,7 @@ class RetryExecutor {
   Future<void> _processTaskList(List<Map<String, dynamic>> tasks) async {
     for (final taskData in tasks) {
       // Double-check connectivity before processing each task
-      // This prevents processing if connection is lost during task list 
+      // This prevents processing if connection is lost during task list
       // execution
       final isConnected = await SynquillStorage.isConnected;
       if (!isConnected) {
@@ -232,7 +232,7 @@ class RetryExecutor {
         );
         break;
       }
-      
+
       await _processQueueTask(taskData);
     }
   }
@@ -485,6 +485,11 @@ class RetryExecutor {
       case SyncOperation.delete:
         await _performDeleteOperation(repository, modelData, headers, extra);
         break;
+
+      case SyncOperation.read:
+        throw StateError(
+          'Read operations should not be processed through retry executor',
+        );
     }
   }
 

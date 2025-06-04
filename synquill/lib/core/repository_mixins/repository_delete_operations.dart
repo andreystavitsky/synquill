@@ -120,7 +120,7 @@ mixin RepositoryDeleteOperations<T extends SynquillDataModel<T>> {
                 () => apiAdapter.deleteOne(id, extra: extra, headers: headers),
             idempotencyKey:
                 '$id-remoteFirst-delete-'
-                '${DateTime.now().millisecondsSinceEpoch}',
+                '${cuid()}',
             operation: SyncOperation.delete,
             modelType: T.toString(),
             modelId: id,
@@ -218,8 +218,7 @@ mixin RepositoryDeleteOperations<T extends SynquillDataModel<T>> {
         modelType: T.toString(),
         modelId: modelId,
         payload: payload,
-        idempotencyKey:
-            '$modelId-delete-${DateTime.now().millisecondsSinceEpoch}',
+        idempotencyKey: '$modelId-delete-${cuid()}',
         scheduleDelete: scheduleDelete,
         headers: headers != null ? convert.jsonEncode(headers) : null,
         extra: extra != null ? convert.jsonEncode(extra) : null,

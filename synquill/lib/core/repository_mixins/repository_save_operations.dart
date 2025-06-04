@@ -53,9 +53,7 @@ mixin RepositorySaveOperations<T extends SynquillDataModel<T>>
         );
 
         // Create sync queue entry for persistence and retry capability
-        final idempotencyKey =
-            '${item.id}-${operation.name}-'
-            '${DateTime.now().millisecondsSinceEpoch}';
+        final idempotencyKey = '${item.id}-${operation.name}-${cuid()}';
         int syncQueueId;
 
         final syncQueueDao = SyncQueueDao(SynquillStorage.database);
@@ -182,8 +180,7 @@ mixin RepositorySaveOperations<T extends SynquillDataModel<T>>
           final operation =
               isExisting ? SyncOperation.update : SyncOperation.create;
           final idempotencyKey =
-              '${item.id}-remoteFirst-${operation.name}-'
-              '${DateTime.now().millisecondsSinceEpoch}';
+              '${item.id}-remoteFirst-${operation.name}-${cuid()}';
 
           final remoteFirstTask = NetworkTask<T>(
             exec: () async {
@@ -307,6 +304,10 @@ mixin RepositorySaveOperations<T extends SynquillDataModel<T>>
         case SyncOperation.delete:
           await apiAdapter.deleteOne(item.id, extra: extra, headers: headers);
           break;
+        case SyncOperation.read:
+          throw StateError(
+            'Read operations should not be processed as sync operations',
+          );
       }
       log.info('Sync operation ${operation.name} successful for ${item.id}');
     } catch (e, stackTrace) {

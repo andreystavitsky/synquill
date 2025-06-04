@@ -159,6 +159,9 @@ class RequestQueueManager {
         // These could be foreground or background depending on context
         // For now, default to foreground
         return QueueType.foreground;
+      case SyncOperation.read:
+        // Read operations are typically load operations
+        return QueueType.load;
     }
   }
 

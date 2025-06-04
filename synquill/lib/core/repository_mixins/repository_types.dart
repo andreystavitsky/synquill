@@ -26,6 +26,9 @@ enum SyncOperation {
 
   /// Delete an item
   delete,
+
+  /// Read/fetch an item (for immediate operations only, not queued)
+  read,
 }
 
 /// A change in a repository.

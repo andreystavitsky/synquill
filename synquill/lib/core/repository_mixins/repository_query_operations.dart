@@ -53,10 +53,8 @@ mixin RepositoryQueryOperations<T extends SynquillDataModel<T>>
                   queryParams: queryParams,
                   headers: headers,
                 ),
-            idempotencyKey:
-                '$id-remoteFirst-fetch-'
-                '${DateTime.now().millisecondsSinceEpoch}',
-            operation: SyncOperation.update, // Use update as closest match
+            idempotencyKey: '$id-remoteFirst-fetch-${cuid()}',
+            operation: SyncOperation.read,
             modelType: T.toString(),
             modelId: id,
             taskName: 'remoteFirst_fetch_$T',
@@ -272,8 +270,8 @@ mixin RepositoryQueryOperations<T extends SynquillDataModel<T>>
                 ),
             idempotencyKey:
                 'all-remoteFirst-fetch-'
-                '${DateTime.now().millisecondsSinceEpoch}',
-            operation: SyncOperation.update, // Use update as closest match
+                '${cuid()}',
+            operation: SyncOperation.read,
             modelType: T.toString(),
             modelId: 'all',
             taskName: 'remoteFirst_fetchAll_$T',
@@ -459,8 +457,8 @@ mixin RepositoryQueryOperations<T extends SynquillDataModel<T>>
           );
         }
       },
-      idempotencyKey: 'load-$id-${DateTime.now().millisecondsSinceEpoch}',
-      operation: SyncOperation.update, // Use update as the closest match
+      idempotencyKey: 'load-$id-${cuid()}',
+      operation: SyncOperation.read,
       modelType: T.toString(),
       modelId: id,
       taskName: 'LoadRefresh-${T.toString()}-$id',
@@ -529,9 +527,8 @@ mixin RepositoryQueryOperations<T extends SynquillDataModel<T>>
           );
         }
       },
-      idempotencyKey:
-          'load-all-${T.toString()}-${DateTime.now().millisecondsSinceEpoch}',
-      operation: SyncOperation.update, // Use update as the closest match
+      idempotencyKey: 'load-all-${T.toString()}-${cuid()}',
+      operation: SyncOperation.read,
       modelType: T.toString(),
       modelId: 'all',
       taskName: 'LoadRefreshAll-${T.toString()}',
