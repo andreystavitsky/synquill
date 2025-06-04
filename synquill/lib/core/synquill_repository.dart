@@ -1,4 +1,3 @@
-// filepath: /Users/andrii/Work/FlutterProjects/synquill/synquill/lib/core/synquill_repository.dart
 part of synquill;
 
 /// Base class for synchronized repositories.

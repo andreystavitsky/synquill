@@ -354,6 +354,7 @@ class SynquillStorage {
     // Cancel connectivity subscription before reset
     await _connectivitySubscription?.cancel();
 
+    await _queueManager?.dispose();
     await _database?.close();
     _instance = null;
     _config = null;
@@ -366,6 +367,8 @@ class SynquillStorage {
     _retryExecutor = null;
     _dependencyResolver = null;
     _backgroundSyncManager = null;
+    // Clear any cached repository instances
+    SynquillRepositoryProvider.reset();
   }
 
   /// Closes the synced storage system and releases all resources.

@@ -106,7 +106,7 @@ class SynquillRepositoryProvider {
           'Call SyncedRepositoryProvider.register<$M>((db) => YourRepo(db)) '
           'first.';
       _log.severe(errorMsg);
-      throw Exception(errorMsg);
+      throw StateError(errorMsg);
     }
 
     final typeInstances = _instances.putIfAbsent(M, () => {});

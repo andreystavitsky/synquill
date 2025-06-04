@@ -12,7 +12,7 @@ class SynquillStorageException implements Exception {
   SynquillStorageException(this.message, [this.stackTrace]);
 
   @override
-  String toString() => 'SyncedStorageException: $message';
+  String toString() => 'SynquillStorageException: $message';
 }
 
 /// Thrown when an operation is attempted on a Freezed union type
