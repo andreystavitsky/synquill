@@ -67,6 +67,36 @@ class SynquillStorageConfig {
   ///  Defaults to false.
   final bool recordResponseHeaders;
 
+  /// Queue capacity management timeouts
+
+  /// Timeout for foreground queue when waiting for capacity.
+  /// Defaults to 10 seconds for critical user operations.
+  final Duration foregroundQueueCapacityTimeout;
+
+  /// Timeout for load queue when waiting for capacity.
+  /// Defaults to 5 seconds for UI-related operations.
+  final Duration loadQueueCapacityTimeout;
+
+  /// Timeout for background queue when waiting for capacity.
+  /// Defaults to 2 seconds for background operations.
+  final Duration backgroundQueueCapacityTimeout;
+
+  /// Interval for checking queue capacity during wait.
+  /// Defaults to 100 milliseconds.
+  final Duration queueCapacityCheckInterval;
+
+  /// Maximum queue capacity for foreground operations.
+  /// Defaults to 50 to prevent memory issues.
+  final int maxForegroundQueueCapacity;
+
+  /// Maximum queue capacity for load operations.
+  /// Defaults to 50 to prevent memory issues.
+  final int maxLoadQueueCapacity;
+
+  /// Maximum queue capacity for background operations.
+  /// Defaults to 50 to prevent memory issues.
+  final int maxBackgroundQueueCapacity;
+
   /// Creates a new [SynquillStorageConfig].
   const SynquillStorageConfig({
     this.dio,
@@ -87,6 +117,13 @@ class SynquillStorageConfig {
     this.recordResponseBody = false,
     this.recordRequestHeaders = false,
     this.recordResponseHeaders = false,
+    this.foregroundQueueCapacityTimeout = const Duration(seconds: 10),
+    this.loadQueueCapacityTimeout = const Duration(seconds: 5),
+    this.backgroundQueueCapacityTimeout = const Duration(seconds: 2),
+    this.queueCapacityCheckInterval = const Duration(milliseconds: 100),
+    this.maxForegroundQueueCapacity = 50,
+    this.maxLoadQueueCapacity = 50,
+    this.maxBackgroundQueueCapacity = 50,
   });
 }
 
@@ -586,13 +623,13 @@ class SynquillStorage {
 
   /// Helper: initialize request queue, dependency resolver, and retry executor.
   static void _initializeCoreSystems() {
-    _queueManager = RequestQueueManager();
+    _queueManager ??= RequestQueueManager(config: _config);
     _logger!.info('Request queue manager initialized');
 
-    _dependencyResolver = DependencyResolver();
+    _dependencyResolver ??= DependencyResolver();
     _logger!.info('Dependency resolver initialized');
 
-    _retryExecutor = RetryExecutor(_database!, _queueManager!);
+    _retryExecutor ??= RetryExecutor(_database!, _queueManager!);
     _retryExecutor!.start();
     _logger!.info('Retry executor started');
   }

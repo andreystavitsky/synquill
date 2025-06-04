@@ -6,7 +6,7 @@ enum QueueType {
   /// (parallel: 1, delay: 50ms).
   foreground,
 
-  /// Load queue for remoteFirst load operations
+  /// Load queue for localThenRemote load operations
   /// (parallel: 2, delay: 50ms).
   load,
 
@@ -24,21 +24,44 @@ enum QueueType {
 /// - backgroundQueue: For localFirst sync operations
 ///
 /// Features:
-/// - Capacity limits (50 tasks max per queue)
+/// - Smart capacity management with queue-specific timeouts
 /// - Duplicate detection via idempotency keys
 /// - Connectivity-responsive queue clearing/restoration
 ///
-/// This implements N-01 from the technical specification.
 class RequestQueueManager {
   final Map<QueueType, RequestQueue> _queues = {};
   final Map<QueueType, Set<String>> _activeIdempotencyKeys = {};
   late final Logger _log;
 
   /// Maximum number of tasks per queue to prevent memory issues
-  static const int maxQueueCapacity = 50;
+  final Map<QueueType, int> _maxQueueCapacities;
+
+  /// Timeout durations for waiting when queues are at capacity
+  final Map<QueueType, Duration> _capacityWaitTimeouts;
+
+  /// Polling interval when waiting for queue capacity
+  final Duration _capacityCheckInterval;
 
   /// Creates a new RequestQueueManager with configured queues.
-  RequestQueueManager() {
+  RequestQueueManager({SynquillStorageConfig? config})
+    : _maxQueueCapacities = {
+        QueueType.foreground: config?.maxForegroundQueueCapacity ?? 50,
+        QueueType.load: config?.maxLoadQueueCapacity ?? 50,
+        QueueType.background: config?.maxBackgroundQueueCapacity ?? 50,
+      },
+      _capacityWaitTimeouts = {
+        QueueType.foreground:
+            config?.foregroundQueueCapacityTimeout ??
+            const Duration(seconds: 10),
+        QueueType.load:
+            config?.loadQueueCapacityTimeout ?? const Duration(seconds: 5),
+        QueueType.background:
+            config?.backgroundQueueCapacityTimeout ??
+            const Duration(seconds: 2),
+      },
+      _capacityCheckInterval =
+          config?.queueCapacityCheckInterval ??
+          const Duration(milliseconds: 100) {
     _log = Logger('RequestQueueManager');
 
     // Initialize the three queues with specific configurations
@@ -75,7 +98,8 @@ class RequestQueueManager {
   /// defaults based on operation.
   ///
   /// Returns the task result or throws an exception if:
-  /// - Queue is at capacity (50 tasks)
+  /// - Queue remains at capacity after timeout
+  ///   (10s foreground, 5s load, 2s background)
   /// - Task is a duplicate (same idempotency key)
   /// - Device is offline for remoteFirst operations
   Future<T> enqueueTask<T>(NetworkTask<T> task, {QueueType? queueType}) async {
@@ -83,15 +107,8 @@ class RequestQueueManager {
     final queue = _queues[queueType]!;
     final idempotencyKeys = _activeIdempotencyKeys[queueType]!;
 
-    // Check capacity limit
-    if (queue.activeAndPendingTasks >= maxQueueCapacity) {
-      final message =
-          'Queue ${queueType.name} is at capacity ($maxQueueCapacity tasks)';
-      _log.warning(message);
-      throw SynquillStorageException(message);
-    }
-
-    // Check for duplicate idempotency key
+    // Check for duplicate idempotency key FIRST (before capacity check)
+    // This prevents race conditions in idempotency key handling
     if (idempotencyKeys.contains(task.idempotencyKey)) {
       final message =
           'Duplicate task with idempotency key: ${task.idempotencyKey}';
@@ -99,26 +116,29 @@ class RequestQueueManager {
       throw SynquillStorageException(message);
     }
 
-    // For remoteFirst operations, check connectivity
-    if (_isRemoteFirstOperation(queueType) &&
-        !await SynquillStorage.isConnected) {
-      const message = 'Cannot perform remoteFirst operation while offline';
-      _log.warning(message);
-      throw SynquillStorageException(message);
-    }
-
-    _log.fine('Enqueueing ${task} to ${queueType.name} queue');
-
-    // Track idempotency key
+    // Track idempotency key immediately to prevent race conditions
     idempotencyKeys.add(task.idempotencyKey);
 
     try {
+      // Check capacity limit with wait-based strategy
+      await _waitForQueueCapacity(queue, queueType);
+
+      // For remoteFirst operations, check connectivity
+      if (_isRemoteFirstOperation(queueType) &&
+          !await SynquillStorage.isConnected) {
+        const message = 'Cannot perform remoteFirst operation while offline';
+        _log.warning(message);
+        throw SynquillStorageException(message);
+      }
+
+      _log.fine('Enqueueing ${task} to ${queueType.name} queue');
+
       final result = await queue.addTask<T>(() async {
-        // Execute the task and return its future result directly
+        // Execute the task and return the result directly
         // The task.execute() will handle exceptions internally
-        // and complete the completer
         await task.execute();
-        return task.future;
+        // task.future is now completed, await it to get the result
+        return await task.future;
       }, taskName: task.toString());
 
       return result;
@@ -145,6 +165,52 @@ class RequestQueueManager {
   /// Checks if the queue type represents a remoteFirst operation.
   bool _isRemoteFirstOperation(QueueType queueType) {
     return queueType == QueueType.foreground || queueType == QueueType.load;
+  }
+
+  /// Waits for queue capacity to become available, with timeout based on
+  /// queue type.
+  ///
+  /// This method polls the queue capacity at regular intervals until either:
+  /// - Space becomes available in the queue
+  /// - The timeout expires (throws SynquillStorageException)
+  Future<void> _waitForQueueCapacity(
+    RequestQueue queue,
+    QueueType queueType,
+  ) async {
+    final maxCapacity = _maxQueueCapacities[queueType]!;
+
+    if (queue.activeAndPendingTasks < maxCapacity) {
+      return; // Capacity available immediately
+    }
+
+    final timeout = _capacityWaitTimeouts[queueType]!;
+    final startTime = DateTime.now();
+
+    _log.info(
+      'Queue ${queueType.name} is at capacity ($maxCapacity tasks), '
+      'waiting up to ${timeout.inSeconds}s for space',
+    );
+
+    while (DateTime.now().difference(startTime) < timeout) {
+      await Future.delayed(_capacityCheckInterval);
+
+      if (queue.activeAndPendingTasks < maxCapacity) {
+        final waitTime = DateTime.now().difference(startTime);
+        _log.fine(
+          'Queue ${queueType.name} capacity became available after '
+          '${waitTime.inMilliseconds}ms',
+        );
+        return;
+      }
+    }
+
+    // Timeout expired - throw exception
+    final waitTime = DateTime.now().difference(startTime);
+    final message =
+        'Queue ${queueType.name} remained at capacity after '
+        '${waitTime.inMilliseconds}ms timeout';
+    _log.warning(message);
+    throw SynquillStorageException(message);
   }
 
   /// Gets statistics for all queues.
@@ -268,8 +334,6 @@ class QueueStats {
 /// This class wraps the `package:queue` to provide a configurable concurrency
 /// for tasks. It ensures that network requests can be processed in a controlled
 /// manner, respecting order and concurrency limits.
-///
-/// This implements N-01 from the technical specification.
 class RequestQueue {
   final Queue _queue;
   final Logger _log;

@@ -33,7 +33,7 @@ abstract class SynquillRepositoryBase<T extends SynquillDataModel<T>>
       _queueManager = SynquillStorage.queueManager;
     } catch (_) {
       // For tests or when SyncedStorage is not initialized
-      _queueManager = RequestQueueManager();
+      _queueManager = RequestQueueManager(config: SynquillStorage.config);
     }
   }
 

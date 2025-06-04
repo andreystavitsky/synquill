@@ -10,6 +10,9 @@ mixin RepositoryQueryOperations<T extends SynquillDataModel<T>>
   /// The stream controller for repository change events.
   StreamController<RepositoryChange<T>> get changeController;
 
+  /// The request queue manager for handling queued operations.
+  RequestQueueManager get queueManager;
+
   /// Finds an item by ID.
   ///
   /// Returns null if the item doesn't exist.
@@ -89,66 +92,12 @@ mixin RepositoryQueryOperations<T extends SynquillDataModel<T>>
             '${result != null ? "found" : "not found"}. '
             'Async refreshing from remote.',
           );
-          // Async remote refresh without blocking
-          unawaited(
-            fetchFromRemote(
-                  id,
-                  extra: extra,
-                  queryParams: queryParams,
-                  headers: headers,
-                )
-                .then((remoteItem) {
-                  if (remoteItem != null) {
-                    log.fine(
-                      'Async remote fetch for $id (localThenRemote) successful.'
-                      ' Updating local copy.',
-                    );
-                    saveToLocal(remoteItem).catchError((
-                      saveError,
-                      saveStackTrace,
-                    ) {
-                      log.warning(
-                        'Error saving async fetched item for $T $id in '
-                        'localThenRemote',
-                        saveError,
-                        saveStackTrace,
-                      );
-                    });
-                  } else {
-                    log.fine(
-                      'Async remote fetch for $id (localThenRemote) '
-                      'returned null.',
-                    );
-                  }
-                })
-                .catchError((fetchError, fetchStackTrace) {
-                  if (fetchError is ApiExceptionGone) {
-                    log.fine(
-                      'Async remote fetch for $id (localThenRemote) '
-                      'found no content. Removing local copy.',
-                      fetchError,
-                      fetchStackTrace,
-                    );
-                    removeFromLocalIfExists(id).catchError((
-                      removeError,
-                      removeStackTrace,
-                    ) {
-                      log.warning(
-                        'Error removing local copy for $T $id after async '
-                        'not found/no content',
-                        removeError,
-                        removeStackTrace,
-                      );
-                    });
-                  } else {
-                    log.fine(
-                      'Async remote fetch for $id (localThenRemote) failed, '
-                      'keeping local result',
-                      fetchError,
-                      fetchStackTrace,
-                    );
-                  }
-                }),
+          // Async remote refresh using load queue instead of unawaited
+          _enqueueRemoteFetchTask(
+            id,
+            queryParams: queryParams,
+            extra: extra,
+            headers: headers,
           );
         } catch (localError, localStackTrace) {
           log.warning(
@@ -233,21 +182,8 @@ mixin RepositoryQueryOperations<T extends SynquillDataModel<T>>
         log.info(
           'Policy: ${loadPolicy.name}. Async refresh then watch from local',
         );
-        // Trigger async fetch to ensure local is up to date
-        unawaited(
-          findOne(
-            id,
-            loadPolicy: loadPolicy,
-            queryParams: queryParams,
-          ).catchError((e, stackTrace) {
-            log.warning(
-              'Error during async refresh for watch $T $id',
-              e,
-              stackTrace,
-            );
-            return null; // Return null on error
-          }),
-        );
+        // Trigger async fetch to ensure local is up to date using load queue
+        _enqueueRemoteFetchTask(id, queryParams: queryParams);
         // Return local watch stream
         return watchFromLocal(id, queryParams: queryParams);
     }
@@ -354,60 +290,11 @@ mixin RepositoryQueryOperations<T extends SynquillDataModel<T>>
             'Got ${results.length} items locally. Async refreshing from '
             'remote.',
           );
-          unawaited(
-            fetchAllFromRemote(
-                  queryParams: queryParams,
-                  extra: extra,
-                  headers: headers,
-                )
-                .then((remoteItems) {
-                  log.fine(
-                    'Async remote fetch for all $T (localThenRemote) '
-                    'completed with '
-                    '${remoteItems.length} items. Updating cache.',
-                  );
-                  updateLocalCache(remoteItems).catchError((
-                    updateError,
-                    updateStackTrace,
-                  ) {
-                    log.warning(
-                      'Error updating local cache for all $T '
-                      'in localThenRemote async update',
-                      updateError,
-                      updateStackTrace,
-                    );
-                  });
-                })
-                .catchError((fetchError, fetchStackTrace) {
-                  if (fetchError is ApiExceptionNotFound ||
-                      fetchError is ApiExceptionGone) {
-                    log.fine(
-                      'Async remote fetch for all $T (localThenRemote) found '
-                      'no items or no content. Clearing local cache.',
-                      fetchError,
-                      fetchStackTrace,
-                    );
-                    updateLocalCache([]).catchError((
-                      updateError,
-                      updateStackTrace,
-                    ) {
-                      log.warning(
-                        'Error clearing local cache after async '
-                        'not found/no content '
-                        'for all $T in localThenRemote',
-                        updateError,
-                        updateStackTrace,
-                      );
-                    });
-                  } else {
-                    log.fine(
-                      'Async remote fetch for all $T (localThenRemote) failed, '
-                      'keeping local results',
-                      fetchError,
-                      fetchStackTrace,
-                    );
-                  }
-                }),
+          // Async remote refresh using load queue instead of unawaited
+          _enqueueRemoteFetchAllTask(
+            queryParams: queryParams,
+            extra: extra,
+            headers: headers,
           );
         } catch (localError, localStackTrace) {
           log.warning(
@@ -481,5 +368,148 @@ mixin RepositoryQueryOperations<T extends SynquillDataModel<T>>
       changeController.add(RepositoryChange.error(e, stackTrace));
       rethrow;
     }
+  }
+
+  /// Enqueues a remote fetch task for localThenRemote operations.
+  ///
+  /// This method uses the load queue (QueueType.load) to perform async
+  /// remote fetching for localThenRemote operations, as intended by the
+  /// queue architecture.
+  void _enqueueRemoteFetchTask(
+    String id, {
+    QueryParams? queryParams,
+    Map<String, dynamic>? extra,
+    Map<String, String>? headers,
+  }) {
+    final task = NetworkTask<void>(
+      exec: () async {
+        try {
+          final remoteItem = await fetchFromRemote(
+            id,
+            extra: extra,
+            queryParams: queryParams,
+            headers: headers,
+          );
+
+          if (remoteItem != null) {
+            log.fine(
+              'Async remote fetch for $id (localThenRemote) successful.'
+              ' Updating local copy.',
+            );
+            await saveToLocal(remoteItem);
+          } else {
+            log.fine(
+              'Async remote fetch for $id (localThenRemote) '
+              'returned null.',
+            );
+          }
+        } on ApiExceptionGone catch (fetchError, fetchStackTrace) {
+          log.fine(
+            'Async remote fetch for $id (localThenRemote) '
+            'found no content. Removing local copy.',
+            fetchError,
+            fetchStackTrace,
+          );
+          await removeFromLocalIfExists(id);
+        } catch (fetchError, fetchStackTrace) {
+          log.fine(
+            'Async remote fetch for $id (localThenRemote) failed, '
+            'keeping local result',
+            fetchError,
+            fetchStackTrace,
+          );
+        }
+      },
+      idempotencyKey: 'load-$id-${DateTime.now().millisecondsSinceEpoch}',
+      operation: SyncOperation.update, // Use update as the closest match
+      modelType: T.toString(),
+      modelId: id,
+      taskName: 'LoadRefresh-${T.toString()}-$id',
+    );
+
+    // Use unawaited to avoid blocking, but enqueue to load queue
+    unawaited(
+      queueManager.enqueueTask(task, queueType: QueueType.load).catchError((
+        e,
+        stackTrace,
+      ) {
+        log.warning(
+          'Failed to enqueue remote fetch task for $T $id',
+          e,
+          stackTrace,
+        );
+      }),
+    );
+  }
+
+  /// Enqueues a remote fetch all task for localThenRemote operations.
+  ///
+  /// This method uses the load queue (QueueType.load) to perform async
+  /// remote fetching for localThenRemote operations.
+  void _enqueueRemoteFetchAllTask({
+    QueryParams? queryParams,
+    Map<String, dynamic>? extra,
+    Map<String, String>? headers,
+  }) {
+    final task = NetworkTask<void>(
+      exec: () async {
+        try {
+          final remoteItems = await fetchAllFromRemote(
+            queryParams: queryParams,
+            extra: extra,
+            headers: headers,
+          );
+
+          log.fine(
+            'Async remote fetch for all $T (localThenRemote) '
+            'completed with ${remoteItems.length} items. Updating cache.',
+          );
+          await updateLocalCache(remoteItems);
+        } on ApiExceptionNotFound catch (fetchError, fetchStackTrace) {
+          log.fine(
+            'Async remote fetch for all $T (localThenRemote) found '
+            'no items or no content. Clearing local cache.',
+            fetchError,
+            fetchStackTrace,
+          );
+          await updateLocalCache([]);
+        } on ApiExceptionGone catch (fetchError, fetchStackTrace) {
+          log.fine(
+            'Async remote fetch for all $T (localThenRemote) found '
+            'no items or no content. Clearing local cache.',
+            fetchError,
+            fetchStackTrace,
+          );
+          await updateLocalCache([]);
+        } catch (fetchError, fetchStackTrace) {
+          log.fine(
+            'Async remote fetch for all $T (localThenRemote) failed, '
+            'keeping local results',
+            fetchError,
+            fetchStackTrace,
+          );
+        }
+      },
+      idempotencyKey:
+          'load-all-${T.toString()}-${DateTime.now().millisecondsSinceEpoch}',
+      operation: SyncOperation.update, // Use update as the closest match
+      modelType: T.toString(),
+      modelId: 'all',
+      taskName: 'LoadRefreshAll-${T.toString()}',
+    );
+
+    // Use unawaited to avoid blocking, but enqueue to load queue
+    unawaited(
+      queueManager.enqueueTask(task, queueType: QueueType.load).catchError((
+        e,
+        stackTrace,
+      ) {
+        log.warning(
+          'Failed to enqueue remote fetch all task for $T',
+          e,
+          stackTrace,
+        );
+      }),
+    );
   }
 }
