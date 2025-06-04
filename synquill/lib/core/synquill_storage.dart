@@ -354,6 +354,8 @@ class SynquillStorage {
     // Cancel connectivity subscription before reset
     await _connectivitySubscription?.cancel();
 
+    // Wait for any active queue tasks to complete before disposing
+    await _queueManager?.joinAll();
     await _queueManager?.dispose();
     await _database?.close();
     _instance = null;
