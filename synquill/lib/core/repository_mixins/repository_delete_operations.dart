@@ -113,7 +113,26 @@ mixin RepositoryDeleteOperations<T extends SynquillDataModel<T>> {
       case DataSavePolicy.remoteFirst:
         log.info('Policy: remoteFirst. Deleting $T from remote API first.');
         try {
-          await apiAdapter.deleteOne(id, extra: extra, headers: headers);
+          // Create a NetworkTask for remoteFirst delete operation
+          // and route through foreground queue for immediate execution
+          final remoteFirstDeleteTask = NetworkTask<void>(
+            exec:
+                () => apiAdapter.deleteOne(id, extra: extra, headers: headers),
+            idempotencyKey:
+                '$id-remoteFirst-delete-'
+                '${cuid()}',
+            operation: SyncOperation.delete,
+            modelType: T.toString(),
+            modelId: id,
+            taskName: 'remoteFirst_delete_$T',
+          );
+
+          // Execute via foreground queue
+          await queueManager.enqueueTask(
+            remoteFirstDeleteTask,
+            queueType: QueueType.foreground,
+          );
+
           log.fine(
             'Remote delete for $id successful. Removing from local copy.',
           );
@@ -199,8 +218,7 @@ mixin RepositoryDeleteOperations<T extends SynquillDataModel<T>> {
         modelType: T.toString(),
         modelId: modelId,
         payload: payload,
-        idempotencyKey:
-            '$modelId-delete-${DateTime.now().millisecondsSinceEpoch}',
+        idempotencyKey: '$modelId-delete-${cuid()}',
         scheduleDelete: scheduleDelete,
         headers: headers != null ? convert.jsonEncode(headers) : null,
         extra: extra != null ? convert.jsonEncode(extra) : null,

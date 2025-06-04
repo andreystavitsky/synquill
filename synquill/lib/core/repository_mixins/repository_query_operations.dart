@@ -43,18 +43,36 @@ mixin RepositoryQueryOperations<T extends SynquillDataModel<T>>
       case DataLoadPolicy.remoteFirst:
         log.info('Policy: remoteFirst. Fetching $T $id from remote API');
         try {
-          final T? remoteItem = await fetchFromRemote(
-            id,
-            extra: extra,
-            queryParams: queryParams,
-            headers: headers,
+          // Create a NetworkTask for remoteFirst query operation
+          // and route through foreground queue for immediate execution
+          final remoteFirstFetchTask = NetworkTask<T?>(
+            exec:
+                () => fetchFromRemote(
+                  id,
+                  extra: extra,
+                  queryParams: queryParams,
+                  headers: headers,
+                ),
+            idempotencyKey: '$id-remoteFirst-fetch-${cuid()}',
+            operation: SyncOperation.read,
+            modelType: T.toString(),
+            modelId: id,
+            taskName: 'remoteFirst_fetch_$T',
           );
+
+          // Execute via foreground queue
+          final T? remoteItem = await queueManager.enqueueTask(
+            remoteFirstFetchTask,
+            queueType: QueueType.foreground,
+          );
+
           if (remoteItem != null) {
             log.fine('Remote fetch for $id successful. Updating local copy.');
             await saveToLocal(remoteItem);
             result = remoteItem;
           } else {
-            // fetchFromRemote returned null without ApiExceptionNotFound/NoContent.
+            // fetchFromRemote returned null without
+            // ApiExceptionNotFound/NoContent.
             // This is an unexpected response. Fall back to local.
             log.warning(
               'Remote fetch for $T $id returned null unexpectedly. '
@@ -241,11 +259,30 @@ mixin RepositoryQueryOperations<T extends SynquillDataModel<T>>
       case DataLoadPolicy.remoteFirst:
         log.info('Policy: remoteFirst. Fetching all $T from remote API');
         try {
-          final List<T> remoteItems = await fetchAllFromRemote(
-            queryParams: queryParams,
-            extra: extra,
-            headers: headers,
+          // Create a NetworkTask for remoteFirst findAll operation
+          // and route through foreground queue for immediate execution
+          final remoteFirstFetchAllTask = NetworkTask<List<T>>(
+            exec:
+                () => fetchAllFromRemote(
+                  queryParams: queryParams,
+                  extra: extra,
+                  headers: headers,
+                ),
+            idempotencyKey:
+                'all-remoteFirst-fetch-'
+                '${cuid()}',
+            operation: SyncOperation.read,
+            modelType: T.toString(),
+            modelId: 'all',
+            taskName: 'remoteFirst_fetchAll_$T',
           );
+
+          // Execute via foreground queue
+          final List<T> remoteItems = await queueManager.enqueueTask(
+            remoteFirstFetchAllTask,
+            queueType: QueueType.foreground,
+          );
+
           // Unlike findOne, an empty list from fetchAllFromRemote is
           // a valid response.
           // It means no items match the query on the remote.
@@ -420,8 +457,8 @@ mixin RepositoryQueryOperations<T extends SynquillDataModel<T>>
           );
         }
       },
-      idempotencyKey: 'load-$id-${DateTime.now().millisecondsSinceEpoch}',
-      operation: SyncOperation.update, // Use update as the closest match
+      idempotencyKey: 'load-$id-${cuid()}',
+      operation: SyncOperation.read,
       modelType: T.toString(),
       modelId: id,
       taskName: 'LoadRefresh-${T.toString()}-$id',
@@ -490,9 +527,8 @@ mixin RepositoryQueryOperations<T extends SynquillDataModel<T>>
           );
         }
       },
-      idempotencyKey:
-          'load-all-${T.toString()}-${DateTime.now().millisecondsSinceEpoch}',
-      operation: SyncOperation.update, // Use update as the closest match
+      idempotencyKey: 'load-all-${T.toString()}-${cuid()}',
+      operation: SyncOperation.read,
       modelType: T.toString(),
       modelId: 'all',
       taskName: 'LoadRefreshAll-${T.toString()}',

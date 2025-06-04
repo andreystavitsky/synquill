@@ -58,6 +58,15 @@ mixin RepositorySyncOperations<T extends SynquillDataModel<T>> {
         case SyncOperation.delete:
           await apiAdapter.deleteOne(item.id, extra: extra, headers: headers);
           break;
+        // Read operations are intentionally not processed as sync operations.
+        // Reads do not modify data, do not require offline persistence, and
+        // should be handled directly via API or load queue. This avoids
+        // unnecessary complexity and ensures only mutating operations are
+        // tracked for sync/retry.
+        case SyncOperation.read:
+          throw StateError(
+            'Read operations should not be processed as sync operations',
+          );
       }
       log.info('Sync operation ${operation.name} successful for ${item.id}');
     } catch (e, stackTrace) {
@@ -265,7 +274,7 @@ mixin RepositorySyncOperations<T extends SynquillDataModel<T>> {
     // Create idempotency key for this operation
     final idempotencyKey =
         '${item.id}-${operation.name}-'
-        '${DateTime.now().millisecondsSinceEpoch}';
+        '${cuid()}';
 
     try {
       // Manage sync queue entry (create/update as needed)
