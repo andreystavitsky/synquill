@@ -12,13 +12,17 @@ class ModelInfoRegistryGenerator {
     for (final model in models) {
       final className = model.className;
 
-      // Find fields with cascade delete enabled
-      final cascadeDeleteFields =
-          model.fields
-              .where((field) => field.isOneToMany && field.cascadeDelete)
+      // Find class-level relations with cascade delete enabled
+      final cascadeDeleteRelations =
+          model.relations
+              .where(
+                (relation) =>
+                    relation.relationType == RelationType.oneToMany &&
+                    relation.cascadeDelete,
+              )
               .toList();
 
-      if (cascadeDeleteFields.isNotEmpty) {
+      if (cascadeDeleteRelations.isNotEmpty) {
         buffer.writeln('  // Register cascade delete relations for $className');
         buffer.writeln(
           '  ModelInfoRegistryProvider.registerCascadeDeleteRelations(',
@@ -26,11 +30,13 @@ class ModelInfoRegistryGenerator {
         buffer.writeln('    \'$className\',');
         buffer.writeln('    [');
 
-        for (final field in cascadeDeleteFields) {
+        for (final relation in cascadeDeleteRelations) {
           buffer.writeln('      CascadeDeleteRelation(');
-          buffer.writeln('        fieldName: \'${field.name}\',');
-          buffer.writeln('        targetType: \'${field.relationTarget}\',');
-          buffer.writeln('        mappedBy: \'${field.mappedBy}\',');
+          buffer.writeln(
+            '        fieldName: \'${relation.targetType.toLowerCase()}s\',',
+          );
+          buffer.writeln('        targetType: \'${relation.targetType}\',');
+          buffer.writeln('        mappedBy: \'${relation.mappedBy}\',');
           buffer.writeln('      ),');
         }
 

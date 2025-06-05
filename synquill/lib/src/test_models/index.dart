@@ -4,6 +4,8 @@ export 'todo.dart';
 export 'post.dart';
 export 'project.dart';
 export 'category.dart';
+export 'company.dart';
+export 'department.dart';
 export 'plain_model.dart';
 export 'contact_base.dart';
 export 'contact.dart';

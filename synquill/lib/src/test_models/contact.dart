@@ -5,11 +5,12 @@ import 'index.dart';
 part 'contact.g.dart';
 
 @JsonSerializable()
-@SynquillRepository()
+@SynquillRepository(
+  relations: [ManyToOne(target: User, foreignKeyColumn: 'userId')],
+)
 class Contact extends ContactBase<Contact> {
   final String? importedContactId;
 
-  @ManyToOne(target: User, foreignKeyColumn: 'userId')
   final String userId;
 
   Contact({

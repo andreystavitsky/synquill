@@ -4,7 +4,16 @@ import 'index.dart';
 part 'project.g.dart';
 
 @JsonSerializable()
-@SynquillRepository()
+@SynquillRepository(
+  relations: [
+    ManyToOne(target: User, foreignKeyColumn: 'ownerId', cascadeDelete: true),
+    ManyToOne(
+      target: Category,
+      foreignKeyColumn: 'categoryId',
+      cascadeDelete: true,
+    ),
+  ],
+)
 class Project extends SynquillDataModel<Project> {
   @override
   final String id;
@@ -14,11 +23,9 @@ class Project extends SynquillDataModel<Project> {
   final String description;
 
   // Project belongs to a User (owner/creator)
-  @ManyToOne(target: User, foreignKeyColumn: 'ownerId')
   final String ownerId;
 
   // Project belongs to a Category
-  @ManyToOne(target: Category, foreignKeyColumn: 'categoryId')
   final String categoryId;
 
   Project({

@@ -4,7 +4,6 @@
 // ignore_for_file: avoid_relative_lib_imports
 
 import 'dart:async';
-import 'package:synquill/synquill.dart';
 import 'package:test/test.dart';
 
 import 'package:synquill/synquill.generated.dart';
@@ -1128,7 +1127,10 @@ void main() {
       );
 
       // Delete the Work category - this should cascade delete its projects
-      await categoryRepository.delete(workCategory.id);
+      await categoryRepository.delete(
+        workCategory.id,
+        savePolicy: DataSavePolicy.localFirst,
+      );
 
       // Verify the category was deleted
       final categoriesAfterDelete = await categoryRepository.findAll();

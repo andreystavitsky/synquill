@@ -168,16 +168,6 @@ mixin RelationHelperMixin {
     buffer.writeln('  }');
     buffer.writeln();
 
-    for (final field in relationFields) {
-      if (field.isOneToMany) {
-        _generateOneToManyLoadMethod(buffer, field, allModels);
-        _generateOneToManyWatchMethod(buffer, field, allModels);
-      } else if (field.isManyToOne) {
-        _generateManyToOneLoadMethod(buffer, field, allModels);
-        _generateManyToOneWatchMethod(buffer, field, allModels);
-      }
-    }
-
     // Generate methods for class-level relations
     for (final relation in model.relations) {
       if (relation.relationType == RelationType.oneToMany) {
@@ -185,7 +175,12 @@ mixin RelationHelperMixin {
         _generateClassLevelOneToManyWatchMethod(buffer, relation, allModels);
       } else if (relation.relationType == RelationType.manyToOne) {
         _generateClassLevelManyToOneLoadMethod(buffer, relation, allModels);
-        _generateClassLevelManyToOneWatchMethod(buffer, relation, allModels);
+        _generateClassLevelManyToOneWatchMethod(
+          buffer,
+          relation,
+          allModels,
+          className,
+        );
       }
     }
 
@@ -195,245 +190,6 @@ mixin RelationHelperMixin {
 
     buffer.writeln('}');
     return buffer.toString();
-  }
-
-  /// Generate load method for @OneToMany relation
-  static void _generateOneToManyLoadMethod(
-    StringBuffer buffer,
-    FieldInfo field,
-    List<ModelInfo> allModels,
-  ) {
-    final targetClassName = field.relationTarget!;
-    final methodName = 'load${_pluralize(targetClassName)}';
-    final mappedBy = field.mappedBy;
-
-    if (mappedBy == null) {
-      buffer.writeln('  // Skipping $methodName - mappedBy not specified');
-      return;
-    }
-
-    buffer.writeln(
-      '  /// Load related ${_pluralize(targetClassName).toLowerCase()} objects',
-    );
-    buffer.writeln(
-      '  /// Uses mappedBy field \'$mappedBy\' in $targetClassName',
-    );
-    buffer.writeln('  Future<List<$targetClassName>> $methodName({');
-    buffer.writeln('    DataLoadPolicy? loadPolicy,');
-    buffer.writeln('    Map<String, String>? headers,');
-    buffer.writeln('    Map<String, dynamic>? extra,');
-    buffer.writeln('    QueryParams? queryParams,');
-    buffer.writeln('  }) async {');
-    buffer.writeln('    try {');
-    buffer.writeln('      final database = DatabaseProvider.instance;');
-    buffer.writeln('      final repository = SynquillRepositoryProvider');
-    buffer.writeln('          .getFrom<$targetClassName>(database);');
-    buffer.writeln('      ');
-    buffer.writeln('      // Create required filter for the relation');
-    buffer.writeln(
-      '      final requiredFilter '
-      '= ${targetClassName}Fields.$mappedBy.equals(id);',
-    );
-    buffer.writeln('      ');
-    buffer.writeln('      // Merge user queryParams with required filter');
-    buffer.writeln(
-      '      final mergedQueryParams = QueryParams.withRequiredFilter(',
-    );
-    buffer.writeln('        queryParams,');
-    buffer.writeln('        requiredFilter,');
-    buffer.writeln('      );');
-    buffer.writeln('      ');
-    buffer.writeln('      return await repository.findAll(');
-    buffer.writeln(
-      '        loadPolicy: loadPolicy ?? DataLoadPolicy.localOnly,',
-    );
-    buffer.writeln('        queryParams: mergedQueryParams,');
-    buffer.writeln('        headers: headers,');
-    buffer.writeln('        extra: extra,');
-    buffer.writeln('      );');
-    buffer.writeln('    } catch (e, stackTrace) {');
-    buffer.writeln('      _log.severe(');
-    buffer.writeln(
-      '        \'Failed to load ${_pluralize(targetClassName).toLowerCase()} '
-      'for \$runtimeType[\$id]\', e, stackTrace);',
-    );
-    buffer.writeln('      rethrow;');
-    buffer.writeln('    }');
-    buffer.writeln('  }');
-    buffer.writeln();
-  }
-
-  /// Generate watch method for @OneToMany relation
-  static void _generateOneToManyWatchMethod(
-    StringBuffer buffer,
-    FieldInfo field,
-    List<ModelInfo> allModels,
-  ) {
-    final targetClassName = field.relationTarget!;
-    final methodName = 'watch${_pluralize(targetClassName)}';
-    final mappedBy = field.mappedBy;
-
-    if (mappedBy == null) {
-      buffer.writeln('  // Skipping $methodName - mappedBy not specified');
-      return;
-    }
-
-    buffer.writeln(
-      '  /// Watch related '
-      '${_pluralize(targetClassName).toLowerCase()} objects as a stream',
-    );
-    buffer.writeln(
-      '  /// Uses mappedBy field \'$mappedBy\' in $targetClassName',
-    );
-    buffer.writeln('  Stream<List<$targetClassName>> $methodName({');
-    buffer.writeln('    QueryParams? queryParams,');
-    buffer.writeln('  }) {');
-    buffer.writeln('    try {');
-    buffer.writeln('      final database = DatabaseProvider.instance;');
-    buffer.writeln('      final repository = SynquillRepositoryProvider');
-    buffer.writeln('          .getFrom<$targetClassName>(database);');
-    buffer.writeln('      ');
-    buffer.writeln('      // Create required filter for the relation');
-    buffer.writeln(
-      '      final requiredFilter = '
-      '${targetClassName}Fields.$mappedBy.equals(id);',
-    );
-    buffer.writeln('      ');
-    buffer.writeln('      // Merge user queryParams with required filter');
-    buffer.writeln(
-      '      final mergedQueryParams = QueryParams.withRequiredFilter(',
-    );
-    buffer.writeln('        queryParams,');
-    buffer.writeln('        requiredFilter,');
-    buffer.writeln('      );');
-    buffer.writeln('      ');
-    buffer.writeln('      return repository.watchAll(');
-    buffer.writeln('        queryParams: mergedQueryParams,');
-    buffer.writeln('      );');
-    buffer.writeln('    } catch (e, stackTrace) {');
-    buffer.writeln('      _log.severe(');
-    buffer.writeln(
-      '        \'Failed to watch ${_pluralize(targetClassName).toLowerCase()} '
-      'for \$runtimeType[\$id]\',',
-    );
-    buffer.writeln('        e,');
-    buffer.writeln('        stackTrace,');
-    buffer.writeln('      );');
-    buffer.writeln('      rethrow;');
-    buffer.writeln('    }');
-    buffer.writeln('  }');
-    buffer.writeln();
-  }
-
-  /// Generate load method for @ManyToOne relation
-  static void _generateManyToOneLoadMethod(
-    StringBuffer buffer,
-    FieldInfo field,
-    List<ModelInfo> allModels,
-  ) {
-    final targetClassName = field.relationTarget!;
-    final methodName = 'load$targetClassName';
-    final foreignKeyColumn = field.foreignKeyColumn;
-
-    if (foreignKeyColumn == null) {
-      buffer.writeln(
-        '  // Skipping $methodName - foreignKeyColumn not specified',
-      );
-      return;
-    }
-
-    // The foreign key field should be the current field itself (like userId)
-    final foreignKeyFieldName = field.name; // This is 'userId' in Todo model
-
-    buffer.writeln('  /// Load related $targetClassName object');
-    buffer.writeln('  /// Uses foreign key \'$foreignKeyFieldName\'');
-    buffer.writeln('  Future<$targetClassName?> $methodName({');
-    buffer.writeln('    DataLoadPolicy? loadPolicy,');
-    buffer.writeln('    Map<String, String>? headers,');
-    buffer.writeln('    Map<String, dynamic>? extra,');
-    buffer.writeln('  }) async {');
-    buffer.writeln('    try {');
-    buffer.writeln('      final database = DatabaseProvider.instance;');
-    buffer.writeln('      final repository = SynquillRepositoryProvider');
-    buffer.writeln('          .getFrom<$targetClassName>(database);');
-    buffer.writeln('      return await repository.findOne(');
-    buffer.writeln('        $foreignKeyFieldName, // Foreign key value');
-    buffer.writeln(
-      '        loadPolicy: loadPolicy ?? DataLoadPolicy.localOnly,',
-    );
-    buffer.writeln('        headers: headers,');
-    buffer.writeln('        extra: extra,');
-    buffer.writeln('      );');
-    buffer.writeln('    } catch (e, stackTrace) {');
-    buffer.writeln('      _log.severe(');
-    buffer.writeln(
-      '        \'Failed to load $targetClassName for \$runtimeType[\$id]\',',
-    );
-    buffer.writeln('        e,');
-    buffer.writeln('        stackTrace,');
-    buffer.writeln('      );');
-    buffer.writeln('      rethrow;');
-    buffer.writeln('    }');
-    buffer.writeln('  }');
-    buffer.writeln();
-  }
-
-  /// Generate watch method for @ManyToOne relation
-  static void _generateManyToOneWatchMethod(
-    StringBuffer buffer,
-    FieldInfo field,
-    List<ModelInfo> allModels,
-  ) {
-    final targetClassName = field.relationTarget!;
-    final methodName = 'watch$targetClassName';
-    final foreignKeyColumn = field.foreignKeyColumn;
-
-    if (foreignKeyColumn == null) {
-      buffer.writeln(
-        '  // Skipping $methodName - foreignKeyColumn not specified',
-      );
-      return;
-    }
-
-    // The foreign key field should be the current field itself (like userId)
-    final foreignKeyFieldName = field.name; // This is 'userId' in Todo model
-
-    // Find the source model info to get the class name
-    final sourceClassName =
-        allModels.firstWhere((model) => model.fields.contains(field)).className;
-
-    buffer.writeln('  /// Watch related $targetClassName object as a stream');
-    buffer.writeln('  /// Uses foreign key \'$foreignKeyFieldName\'');
-    buffer.writeln('  /// Stream updates when the foreign key changes');
-    buffer.writeln('  Stream<$targetClassName?> $methodName() {');
-    buffer.writeln('    try {');
-    buffer.writeln('      final database = DatabaseProvider.instance;');
-    buffer.writeln('      final sourceRepository = SynquillRepositoryProvider');
-    buffer.writeln('          .getFrom<$sourceClassName>(database);');
-    buffer.writeln('      final targetRepository = SynquillRepositoryProvider');
-    buffer.writeln('          .getFrom<$targetClassName>(database);');
-    buffer.writeln(
-      '      return sourceRepository.watchOne(id).switchMap((sourceObject) {',
-    );
-    buffer.writeln(
-      '        final foreignKey = sourceObject?.$foreignKeyFieldName;',
-    );
-    buffer.writeln('        return foreignKey == null');
-    buffer.writeln('            ? Stream.value(null)');
-    buffer.writeln('            : targetRepository.watchOne(foreignKey);');
-    buffer.writeln('      });');
-    buffer.writeln('    } catch (e, stackTrace) {');
-    buffer.writeln('      _log.severe(');
-    buffer.writeln(
-      '        \'Failed to watch $targetClassName for \$runtimeType[\$id]\',',
-    );
-    buffer.writeln('        e,');
-    buffer.writeln('        stackTrace,');
-    buffer.writeln('      );');
-    buffer.writeln('      rethrow;');
-    buffer.writeln('    }');
-    buffer.writeln('  }');
-    buffer.writeln();
   }
 
   /// Generate load method for class-level OneToMany relation
@@ -612,6 +368,7 @@ mixin RelationHelperMixin {
     StringBuffer buffer,
     RelationInfo relation,
     List<ModelInfo> allModels,
+    String sourceClassName,
   ) {
     final targetClassName = relation.targetType;
     final methodName = 'watch$targetClassName';
@@ -620,29 +377,49 @@ mixin RelationHelperMixin {
 
     buffer.writeln('  /// Watch related $targetClassName object as a stream');
     buffer.writeln('  /// Uses foreign key field \'$foreignKeyColumn\'');
+    buffer.writeln(
+      '  /// Automatically switches to new target when foreign key changes',
+    );
     buffer.writeln('  Stream<$targetClassName?> $methodName({');
     buffer.writeln('    DataLoadPolicy? loadPolicy,');
     buffer.writeln('    Map<String, String>? headers,');
     buffer.writeln('    Map<String, dynamic>? extra,');
     buffer.writeln('  }) {');
     buffer.writeln('    try {');
-    buffer.writeln('      final foreignKey = toJson()[\'$foreignKeyColumn\'];');
-    buffer.writeln('      if (foreignKey == null) {');
-    buffer.writeln('        return Stream.value(null);');
-    buffer.writeln('      }');
     buffer.writeln('      final database = DatabaseProvider.instance;');
-    buffer.writeln('      final repository = SynquillRepositoryProvider');
+    buffer.writeln('      final sourceRepository = SynquillRepositoryProvider');
+    buffer.writeln('          .getFrom<$sourceClassName>(database);');
+    buffer.writeln('      final targetRepository = SynquillRepositoryProvider');
     buffer.writeln('          .getFrom<$targetClassName>(database);');
-    buffer.writeln('      return repository.watchOne(');
-    buffer.writeln('        foreignKey.toString(),');
+    buffer.writeln();
     buffer.writeln(
-      '        loadPolicy: loadPolicy ?? DataLoadPolicy.localOnly,',
+      '      // Watch the source object for changes in foreign key',
     );
-    buffer.writeln('      );');
+    buffer.writeln('      return sourceRepository.watchOne(id)');
+    buffer.writeln('          .switchMap((sourceObject) {');
+    buffer.writeln('        if (sourceObject == null) {');
+    buffer.writeln('          return Stream.value(null);');
+    buffer.writeln('        }');
+    buffer.writeln();
+    buffer.writeln('        final foreignKey = sourceObject.toJson()');
+    buffer.writeln('            [\'$foreignKeyColumn\'];');
+    buffer.writeln('        if (foreignKey == null) {');
+    buffer.writeln('          return Stream.value(null);');
+    buffer.writeln('        }');
+    buffer.writeln();
+    buffer.writeln('        // Switch to watching the target object');
+    buffer.writeln('        return targetRepository.watchOne(');
+    buffer.writeln('          foreignKey.toString(),');
+    buffer.writeln(
+      '          loadPolicy: loadPolicy ?? DataLoadPolicy.localOnly,',
+    );
+    buffer.writeln('        );');
+    buffer.writeln('      });');
     buffer.writeln('    } catch (e, stackTrace) {');
     buffer.writeln('      _log.severe(');
     buffer.writeln(
-      '        \'Failed to watch $targetClassName for \$runtimeType[\$id]\',',
+      '        \'Failed to watch $targetClassName for '
+      '$sourceClassName[\$id]\',',
     );
     buffer.writeln('        e,');
     buffer.writeln('        stackTrace,');
