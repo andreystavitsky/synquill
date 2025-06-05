@@ -45,6 +45,7 @@ class TestUserRepository extends SynquillRepositoryBase<TestUser> {
     DataSavePolicy? savePolicy,
     Map<String, String>? headers,
     Map<String, dynamic>? extra,
+    Set<String>? deletionContext,
   }) async {
     // Use the base class implementation which includes queue integration
     return await super.delete(id, savePolicy: savePolicy);

@@ -95,6 +95,7 @@ class TestRepository extends SynquillRepositoryBase<TestModel> {
     DataSavePolicy? savePolicy,
     Map<String, String>? headers,
     Map<String, dynamic>? extra,
+    Set<String>? deletionContext,
   }) async {
     // Call the base class delete method which uses removeFromLocalIfExists
     await removeFromLocalIfExists(id);

@@ -67,24 +67,71 @@ mixin RepositoryDeleteOperations<T extends SynquillDataModel<T>> {
   /// [id] The unique identifier of the item to delete.
   /// [savePolicy] Controls whether to delete from local storage, remote API,
   /// or both.
+  /// [deletionContext] Internal parameter for cycle detection in cascade
+  /// deletes. Should not be used by external callers.
   Future<void> delete(
     String id, {
     DataSavePolicy? savePolicy,
     Map<String, dynamic>? extra,
     Map<String, String>? headers,
+    Set<String>? deletionContext,
+  }) async {
+    // Use provided deletion context or create empty set for new operations
+    final effectiveDeletionContext = deletionContext ?? <String>{};
+
+    // Delegate to private method with deletion context
+    await _deleteWithContext(
+      id,
+      savePolicy: savePolicy,
+      deletionContext: effectiveDeletionContext,
+      extra: extra,
+      headers: headers,
+    );
+  }
+
+  /// Private method that handles deletion with cycle detection context.
+  ///
+  /// [id] The unique identifier of the item to delete.
+  /// [savePolicy] Controls whether to delete from local storage, remote API,
+  /// or both.
+  /// [deletionContext] Set of IDs currently being deleted to prevent cycles.
+  Future<void> _deleteWithContext(
+    String id, {
+    DataSavePolicy? savePolicy,
+    required Set<String> deletionContext,
+    Map<String, dynamic>? extra,
+    Map<String, String>? headers,
   }) async {
     savePolicy ??= defaultSavePolicy;
-    log.info('Deleting $T with ID $id using policy ${savePolicy.name}');
+    log.fine('Current deletion context: $deletionContext');
+    log.fine('Using policy: ${savePolicy.name}');
 
-    // Handle cascade delete first
+    // Check for cycles - if this item is already being deleted, skip it
+    if (deletionContext.contains(id)) {
+      log.warning(
+        'Cycle detected: $T with ID $id is already being deleted, '
+        'skipping to prevent infinite recursion',
+      );
+      return;
+    }
+
+    // Add current ID to deletion context to track it
+    final updatedContext = {...deletionContext, id};
+    log.fine('Updated deletion context: $updatedContext');
+
+    // Handle cascade delete first with updated context
     await _handleCascadeDelete(
       id: id,
       savePolicy: savePolicy,
+      deletionContext: updatedContext,
       extra: extra,
       headers: headers,
     );
 
+    log.fine('_handleCascadeDelete completed for ${T.toString()} $id');
+
     // Use smart delete logic to handle sync queue entries properly
+    log.info('About to fetch item from local for ${T.toString()} $id');
 
     final itemToDelete = await fetchFromLocal(id, queryParams: null);
 
@@ -244,9 +291,12 @@ mixin RepositoryDeleteOperations<T extends SynquillDataModel<T>> {
   Future<void> _handleCascadeDelete({
     required String id,
     required DataSavePolicy savePolicy,
+    required Set<String> deletionContext,
     Map<String, dynamic>? extra,
     Map<String, String>? headers,
   }) async {
+    log.info('===== _handleCascadeDelete START for ${T.toString()} $id =====');
+    log.info('Deletion context in cascade delete: $deletionContext');
     try {
       // Use the generated ModelInfoRegistry to get cascade delete info
       final modelTypeName = T.toString();
@@ -273,6 +323,7 @@ mixin RepositoryDeleteOperations<T extends SynquillDataModel<T>> {
             parentId: id,
             relation: relation,
             savePolicy: savePolicy,
+            deletionContext: deletionContext,
             extra: extra,
             headers: headers,
           );
@@ -305,9 +356,15 @@ mixin RepositoryDeleteOperations<T extends SynquillDataModel<T>> {
     required String parentId,
     required CascadeDeleteRelation relation,
     required DataSavePolicy savePolicy,
+    required Set<String> deletionContext,
     Map<String, dynamic>? extra,
     Map<String, String>? headers,
   }) async {
+    log.info(
+      '===== _deleteCascadeRelatedItems START for $parentId → '
+      '${relation.targetType} =====',
+    );
+    log.info('Deletion context in cascade related items: $deletionContext');
     try {
       final targetType = relation.targetType;
       final mappedBy = relation.mappedBy;
@@ -341,15 +398,28 @@ mixin RepositoryDeleteOperations<T extends SynquillDataModel<T>> {
         'cascade delete',
       );
 
-      // Delete each related item (this will recursively handle their
-      // cascade deletes)
+      // Delete each related item with cycle detection
       for (final item in relatedItems) {
+        log.info('Processing cascade delete for ${item.id}');
+        // Check for cycles before processing each item
+        if (deletionContext.contains(item.id)) {
+          log.warning(
+            'Cycle detected: $targetType with ID ${item.id} is already '
+            'being deleted, skipping to prevent infinite recursion',
+          );
+          continue; // Skip this item to prevent cycle
+        }
+
+        log.info('About to delete ${item.id} via targetRepository.delete');
+        // Pass deletion context to prevent cycles across repositories
         await targetRepository.delete(
           item.id,
           savePolicy: savePolicy,
           extra: extra,
           headers: headers,
+          deletionContext: deletionContext,
         );
+        log.info('Completed delete for ${item.id}');
       }
 
       log.info(

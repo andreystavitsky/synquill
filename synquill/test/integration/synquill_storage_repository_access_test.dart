@@ -116,6 +116,7 @@ class TestUserRepository extends SynquillRepositoryBase<TestUser> {
     Object? savePolicy,
     Map<String, String>? headers,
     Map<String, dynamic>? extra,
+    Set<String>? deletionContext,
   }) async {
     // No-op for testing
   }

@@ -103,6 +103,7 @@ class TestReactiveRepository extends SynquillRepositoryBase<TestModel> {
     Object? savePolicy,
     Map<String, String>? headers,
     Map<String, dynamic>? extra,
+    Set<String>? deletionContext,
   }) async {}
 
   // Override protected methods

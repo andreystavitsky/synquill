@@ -274,6 +274,7 @@ class MockTestRepository extends SynquillRepositoryBase<TestModel> {
     DataSavePolicy? savePolicy,
     Map<String, String>? headers,
     Map<String, dynamic>? extra,
+    Set<String>? deletionContext,
   }) async {
     savePolicy ??= defaultSavePolicy;
 

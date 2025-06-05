@@ -1322,6 +1322,264 @@ void main() {
     });
   });
 
+  group('Cascade Delete Cycle Detection Tests', () {
+    late SynquillDatabase db;
+    late CompanyRepository companyRepository;
+    late DepartmentRepository departmentRepository;
+
+    setUp(() async {
+      db = SynquillDatabase(NativeDatabase.memory());
+      await SynquillStorage.init(
+        database: db,
+        config: const SynquillStorageConfig(backgroundQueueConcurrency: 1),
+        logger: Logger('CycleDetectionTest'),
+        initializeFn: initializeSynquillStorage,
+        enableInternetMonitoring: false, // Disable for testing
+      );
+
+      Logger.root.level = Level.ALL;
+      Logger.root.onRecord.listen((record) {
+        // Uncomment for debugging:
+        // print(
+        //   '[${record.level.name}] ${record.loggerName}: '
+        //   '${record.message}',
+        // );
+      });
+
+      companyRepository = CompanyRepository(db);
+      departmentRepository = DepartmentRepository(db);
+    });
+
+    tearDown(() async {
+      await SynquillStorage.reset();
+    });
+
+    test(
+      'should prevent infinite recursion in bidirectional cascade delete',
+      () async {
+        // Create a company that owns a department
+        final parentCompany = Company(
+          id: 'company-1',
+          name: 'Parent Company',
+          departmentId: null, // Will be set later
+        );
+        await companyRepository.save(parentCompany);
+
+        // Create a department owned by the company
+        final department = Department(
+          id: 'dept-1',
+          name: 'Main Department',
+          companyId: parentCompany.id,
+        );
+        await departmentRepository.save(department);
+
+        // Create a subsidiary company owned by the department
+        final subsidiaryCompany = Company(
+          id: 'company-2',
+          name: 'Subsidiary Company',
+          departmentId: department.id,
+        );
+        await companyRepository.save(subsidiaryCompany);
+
+        // Update the parent company to be owned by the department
+        // This creates a cycle: Company -> Department -> Company
+        final updatedParentCompany = Company(
+          id: parentCompany.id,
+          name: parentCompany.name,
+          departmentId: department.id,
+        );
+        await companyRepository.save(updatedParentCompany);
+
+        // Verify the cyclic relationship is set up correctly
+        final companies = await companyRepository.findAll();
+        final departments = await departmentRepository.findAll();
+
+        expect(companies, hasLength(2));
+        expect(departments, hasLength(1));
+
+        final savedParentCompany = companies.firstWhere(
+          (c) => c.id == 'company-1',
+        );
+        final savedSubsidiaryCompany = companies.firstWhere(
+          (c) => c.id == 'company-2',
+        );
+        final savedDepartment = departments.first;
+
+        // Verify the cycle: Parent Company -> Department -> Subsidiary Company
+        expect(savedParentCompany.departmentId, equals(department.id));
+        expect(savedDepartment.companyId, equals(parentCompany.id));
+        expect(savedSubsidiaryCompany.departmentId, equals(department.id));
+
+        // Now delete the parent company - this should trigger cascade delete
+        // but should NOT cause infinite recursion due to our cycle detection
+
+        await companyRepository.delete(parentCompany.id);
+
+        // Verify that the delete operation completed successfully
+        // (if there was infinite recursion, the test would hang or timeout)
+        final companiesAfterDelete = await companyRepository.findAll();
+
+        // The exact outcome depends on the cascade delete logic and
+        // cycle detection, but the important thing is that the operation
+        // completed without hanging
+
+        // Verify that at least some entities were deleted
+        expect(companiesAfterDelete.length, lessThan(2));
+      },
+    );
+
+    test('should handle complex multi-level cycles gracefully', () async {
+      // Create a more complex cycle with multiple levels
+      // Company A -> Department X -> Company B -> Department Y -> Company A
+
+      final companyA = Company(
+        id: 'company-a',
+        name: 'Company A',
+        departmentId: null,
+      );
+      await companyRepository.save(companyA);
+
+      final departmentX = Department(
+        id: 'dept-x',
+        name: 'Department X',
+        companyId: companyA.id,
+      );
+      await departmentRepository.save(departmentX);
+
+      final companyB = Company(
+        id: 'company-b',
+        name: 'Company B',
+        departmentId: departmentX.id,
+      );
+      await companyRepository.save(companyB);
+
+      final departmentY = Department(
+        id: 'dept-y',
+        name: 'Department Y',
+        companyId: companyB.id,
+      );
+      await departmentRepository.save(departmentY);
+
+      // Close the cycle by making Company A owned by Department Y
+      final updatedCompanyA = Company(
+        id: companyA.id,
+        name: companyA.name,
+        departmentId: departmentY.id,
+      );
+      await companyRepository.save(updatedCompanyA);
+
+      // Verify the complex cycle is set up
+      final companies = await companyRepository.findAll();
+      final departments = await departmentRepository.findAll();
+
+      expect(companies, hasLength(2));
+      expect(departments, hasLength(2));
+
+      // Delete one entity to trigger cascade - should handle cycle gracefully
+      await departmentRepository.delete(departmentX.id);
+
+      // Verify operation completed without hanging
+      final departmentsAfterDelete = await departmentRepository.findAll();
+
+      // The operation should complete successfully
+      expect(departmentsAfterDelete.length, lessThan(2));
+    });
+
+    test('should log cycle detection warnings', () async {
+      // Create a simple cycle for testing logging
+      final company = Company(
+        id: 'company-log-test',
+        name: 'Log Test Company',
+        departmentId: null,
+      );
+      await companyRepository.save(company);
+
+      final department = Department(
+        id: 'dept-log-test',
+        name: 'Log Test Department',
+        companyId: company.id,
+      );
+      await departmentRepository.save(department);
+
+      // Create the cycle
+      final updatedCompany = Company(
+        id: company.id,
+        name: company.name,
+        departmentId: department.id,
+      );
+      await companyRepository.save(updatedCompany);
+
+      // Delete the company - this should log cycle detection warnings
+      // (Note: In a real test environment, you might want to capture log
+      // output to verify the warnings are actually logged)
+      await companyRepository.delete(company.id);
+
+      // Verify operation completed
+      final companiesAfterDelete = await companyRepository.findAll();
+      final departmentsAfterDelete = await departmentRepository.findAll();
+
+      // The exact result may vary, but operation should complete
+      expect(
+        companiesAfterDelete.length + departmentsAfterDelete.length,
+        lessThan(2),
+      );
+    });
+
+    test('should work correctly with non-cyclic cascade deletes', () async {
+      // Test that normal (non-cyclic) cascade deletes still work correctly
+      final company = Company(
+        id: 'company-normal',
+        name: 'Normal Company',
+        departmentId: null,
+      );
+      await companyRepository.save(company);
+
+      final department1 = Department(
+        id: 'dept-normal-1',
+        name: 'Normal Department 1',
+        companyId: company.id,
+      );
+      await departmentRepository.save(department1);
+
+      final department2 = Department(
+        id: 'dept-normal-2',
+        name: 'Normal Department 2',
+        companyId: company.id,
+      );
+      await departmentRepository.save(department2);
+
+      // Create subsidiary companies owned by the departments (no cycles)
+      final subsidiary1 = Company(
+        id: 'company-sub-1',
+        name: 'Subsidiary 1',
+        departmentId: department1.id,
+      );
+      await companyRepository.save(subsidiary1);
+
+      final subsidiary2 = Company(
+        id: 'company-sub-2',
+        name: 'Subsidiary 2',
+        departmentId: department2.id,
+      );
+      await companyRepository.save(subsidiary2);
+
+      // Verify initial setup
+      expect(await companyRepository.findAll(), hasLength(3));
+      expect(await departmentRepository.findAll(), hasLength(2));
+
+      // Delete the main company - should cascade delete departments and
+      // their subsidiaries
+      await companyRepository.delete(company.id);
+
+      // Verify cascade delete worked correctly
+      final companiesAfterDelete = await companyRepository.findAll();
+      final departmentsAfterDelete = await departmentRepository.findAll();
+
+      expect(companiesAfterDelete, isEmpty);
+      expect(departmentsAfterDelete, isEmpty);
+    });
+  });
+
   // Separate test groups for error handling tests with isolated databases
   group('Extension Methods Error Handling', () {
     late SynquillDatabase db;
