@@ -5,16 +5,18 @@ targets:
       synquill_gen|proxyExternal:
         generate_for:
           - lib/**.dart 
+          - test/**.dart 
       synquill_gen|aggregateBuilder:
         generate_for:
           - $lib$
+          - test/**.dart 
 
 builders:
   proxyExternal:
     import: "package:synquill_gen/synquill_gen.dart"
     builder_factories: ["proxyBuilder"]
     build_extensions: {".dart": []} 
-    auto_apply: dependents
+    auto_apply: all_packages
     build_to: cache
     applies_builders:
       - drift_dev|preparing_builder
@@ -36,8 +38,6 @@ builders:
         "synquill.generated.g.dart"
       ]
     }
-    auto_apply: dependents
+    auto_apply: all_packages
     build_to: source
-    required_inputs:
-      - lib/**.g.dart
 

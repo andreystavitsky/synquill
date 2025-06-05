@@ -68,7 +68,7 @@ lcov.info
 # Coverage
 coverage/
 generated_code_example/
-test/
+
 
 # Mac
 .DS_Store

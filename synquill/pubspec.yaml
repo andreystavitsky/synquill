@@ -26,6 +26,8 @@ dev_dependencies:
   build_runner: ^2.4.15
   lints: ^6.0.0
   mockito: any
+  synquill_gen:
+    path: ../synquill_gen
   test: any
 
 # For information on the generic Dart part of this file, see the
