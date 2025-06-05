@@ -3,7 +3,6 @@ import 'dart:developer' as developer;
 
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../models/index.dart';
-import '../../synquill.generated.dart';
 
 part 'home_event.dart';
 part 'home_state.dart';
@@ -63,12 +62,10 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
       developer.log('[HomeBloc] Todos changed - updating state',
           name: 'HomeBloc');
       final currentState = state as HomeLoaded;
-      final userTodos =
-          event.todos.where((todo) => todo.userId == _currentUserId).toList();
 
       // Only emit if todos actually changed
-      if (!_listsEqual(currentState.todos, userTodos)) {
-        emit(currentState.copyWith(todos: userTodos));
+      if (!_listsEqual(currentState.todos, event.todos)) {
+        emit(currentState.copyWith(todos: event.todos));
       }
     }
   }
@@ -81,12 +78,10 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
       developer.log('[HomeBloc] Posts changed - updating state',
           name: 'HomeBloc');
       final currentState = state as HomeLoaded;
-      final userPosts =
-          event.posts.where((post) => post.userId == _currentUserId).toList();
 
       // Only emit if posts actually changed
-      if (!_listsEqual(currentState.posts, userPosts)) {
-        emit(currentState.copyWith(posts: userPosts));
+      if (!_listsEqual(currentState.posts, event.posts)) {
+        emit(currentState.copyWith(posts: event.posts));
       }
     }
   }
@@ -104,6 +99,58 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
 
       if (currentUser != null && currentUser != currentState.user) {
         emit(currentState.copyWith(user: currentUser));
+
+        _todosSubscription?.cancel();
+        _postsSubscription?.cancel();
+
+        /*_todosSubscription = currentUser.watchTodos().listen((todos) {
+          if (!isClosed) {
+            add(HomeTodosChanged(todos));
+          }
+        });
+
+        _postsSubscription = currentUser.watchPosts().listen((posts) {
+          if (!isClosed) {
+            add(HomePostsChanged(posts));
+          }
+        });*/
+
+        _todosSubscription = SynquillStorage.instance.todos
+            .watchAll(
+          queryParams: QueryParams(
+            filters: [TodoFields.userId.equals(currentUser.id)],
+            sorts: [
+              SortCondition(
+                  field: TodoFields.updatedAt,
+                  direction: SortDirection.descending)
+            ],
+          ),
+        )
+            .listen((todos) {
+          if (!isClosed) {
+            add(HomeTodosChanged(todos));
+
+            // todoIds are now available through loadTodos() and watchTodos() extension methods
+          }
+        });
+
+        // Watch posts changes
+        _postsSubscription = SynquillStorage.instance.posts
+            .watchAll(
+          queryParams: QueryParams(
+            filters: [PostFields.userId.equals(currentUser.id)],
+            sorts: [
+              SortCondition(
+                  field: PostFields.updatedAt,
+                  direction: SortDirection.descending)
+            ],
+          ),
+        )
+            .listen((posts) {
+          if (!isClosed) {
+            add(HomePostsChanged(posts));
+          }
+        });
       }
     }
   }
@@ -118,7 +165,7 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
     _usersSubscription?.cancel();
 
     // Watch todos changes
-    _todosSubscription = SynquillDataRepository.todos
+    _todosSubscription = SynquillStorage.instance.todos
         .watchAll(
       queryParams: QueryParams(
         sorts: [
@@ -134,7 +181,7 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
     });
 
     // Watch posts changes
-    _postsSubscription = SynquillDataRepository.posts
+    _postsSubscription = SynquillStorage.instance.posts
         .watchAll(
       queryParams: QueryParams(
         sorts: [
@@ -151,7 +198,7 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
 
     // Watch user changes
     _usersSubscription =
-        SynquillDataRepository.users.watchAll().listen((users) {
+        SynquillStorage.instance.users.watchAll().listen((users) {
       if (!isClosed) {
         add(HomeUsersChanged(users));
       }
@@ -172,7 +219,7 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
           name: 'HomeBloc');
 
       // Load user data
-      final users = await SynquillDataRepository.users.findAll();
+      final users = await SynquillStorage.instance.users.findAll();
       final currentUser =
           users.where((user) => user.id == _currentUserId).firstOrNull;
 
@@ -183,18 +230,17 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
         return;
       }
 
-      /*// Load todos and posts for the current user
-      final todos = await SyncedRepository.todos.findAll();
-      final posts = await SyncedRepository.posts.findAll();
-
-      final userTodos =
-          todos.where((todo) => todo.userId == _currentUserId).toList();
-      final userPosts =
-          posts.where((post) => post.userId == _currentUserId).toList();
+      // Load todos and posts for the current user
+      final todos = await SynquillStorage.instance.todos.findAll(
+          queryParams:
+              QueryParams.filters([TodoFields.userId.equals(currentUser.id)]));
+      final posts = await SynquillStorage.instance.posts.findAll(
+          queryParams:
+              QueryParams.filters([PostFields.userId.equals(currentUser.id)]));
 
       developer.log(
-          '[HomeBloc] Data loaded - todos: ${userTodos.length}, posts: ${userPosts.length}',
-          name: 'HomeBloc');*/
+          '[HomeBloc] Data loaded - todos: ${todos.length}, posts: ${posts.length}',
+          name: 'HomeBloc');
 
       emit(HomeLoaded(
         user: currentUser,

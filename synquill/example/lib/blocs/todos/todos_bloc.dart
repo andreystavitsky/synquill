@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../synquill.generated.dart';
 import '../../models/index.dart';
 
 part 'todos_event.dart';
@@ -26,7 +25,7 @@ class TodosBloc extends Bloc<TodosEvent, TodosState> {
 
     try {
       // Get the current user (assuming first user is the current user)
-      final users = await SynquillDataRepository.users.findAll();
+      final users = await SynquillStorage.instance.users.findAll();
       if (users.isEmpty) {
         emit(TodosError('No user found. Please create a user first.'));
         return;
@@ -43,7 +42,7 @@ class TodosBloc extends Bloc<TodosEvent, TodosState> {
 
   void _listenToTodos(String userId) {
     _todosSubscription?.cancel();
-    _todosSubscription = SynquillDataRepository.todos
+    _todosSubscription = SynquillStorage.instance.todos
         .watchAll(
           queryParams: QueryParams(
             sorts: [
@@ -64,7 +63,7 @@ class TodosBloc extends Bloc<TodosEvent, TodosState> {
     Emitter<TodosState> emit,
   ) async {
     try {
-      final users = await SynquillDataRepository.users.findAll();
+      final users = await SynquillStorage.instance.users.findAll();
       if (users.isEmpty) {
         emit(TodosError('No user found.'));
         return;
@@ -78,7 +77,7 @@ class TodosBloc extends Bloc<TodosEvent, TodosState> {
         userId: user.id,
       );
 
-      await SynquillDataRepository.todos.save(newTodo);
+      await SynquillStorage.instance.todos.save(newTodo);
 
       // The stream listener will automatically emit the updated state
     } catch (e) {
@@ -91,7 +90,7 @@ class TodosBloc extends Bloc<TodosEvent, TodosState> {
     Emitter<TodosState> emit,
   ) async {
     try {
-      final users = await SynquillDataRepository.users.findAll();
+      final users = await SynquillStorage.instance.users.findAll();
       if (users.isEmpty) {
         emit(TodosError('No user found.'));
         return;
@@ -106,7 +105,7 @@ class TodosBloc extends Bloc<TodosEvent, TodosState> {
         userId: user.id,
       );
 
-      await SynquillDataRepository.todos.save(updatedTodo);
+      await SynquillStorage.instance.todos.save(updatedTodo);
 
       // The stream listener will automatically emit the updated state
     } catch (e) {
@@ -119,7 +118,7 @@ class TodosBloc extends Bloc<TodosEvent, TodosState> {
     Emitter<TodosState> emit,
   ) async {
     try {
-      await SynquillDataRepository.todos.delete(event.todoId);
+      await SynquillStorage.instance.todos.delete(event.todoId);
 
       // The stream listener will automatically emit the updated state
     } catch (e) {

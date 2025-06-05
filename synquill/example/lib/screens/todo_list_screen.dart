@@ -1,7 +1,6 @@
 import 'package:drift_db_viewer/drift_db_viewer.dart';
 import 'package:flutter/material.dart';
 import 'package:synquill_example/models/index.dart';
-import 'package:synquill_example/synquill.generated.dart';
 
 class TodoListScreen extends StatefulWidget {
   const TodoListScreen({
@@ -73,7 +72,7 @@ class _TodoListScreenState extends State<TodoListScreen>
   Future<void> _loadUsers() async {
     try {
       // Load users using the static findAll method
-      final usersLoaded = await SynquillDataRepository.users.findAll(
+      final usersLoaded = await SynquillStorage.instance.users.findAll(
         loadPolicy: DataLoadPolicy.localOnly,
       );
 
@@ -132,7 +131,7 @@ class _TodoListScreenState extends State<TodoListScreen>
 
   Future<void> _deleteTodo(int index) async {
     try {
-      await SynquillDataRepository.todos.delete(
+      await SynquillStorage.instance.todos.delete(
         _todos[index].id,
         savePolicy: DataSavePolicy.remoteFirst,
       );

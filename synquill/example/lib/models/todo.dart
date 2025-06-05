@@ -28,7 +28,7 @@ mixin TodoApiAdapter on BasicApiAdapter<Todo> {
 
   @override
   FutureOr<Uri> urlForFindAll({Map<String, dynamic>? extra}) async {
-    final users = await SynquillDataRepository.users
+    final users = await SynquillStorage.instance.users
         .findAll(loadPolicy: DataLoadPolicy.localOnly);
 
     if (users.isEmpty) {
@@ -49,7 +49,7 @@ mixin TodoApiAdapter on BasicApiAdapter<Todo> {
 
 @JsonSerializable()
 // BaseJsonApiAdapter provides global settings, TodoApiAdapter provides specifics.
-// The SynquillStorage system will merge configurations from these adapters.
+// The SyncedStorage system will merge configurations from these adapters.
 @SynquillRepository(
   adapters: [JsonApiAdapter, TodoApiAdapter],
   relations: [

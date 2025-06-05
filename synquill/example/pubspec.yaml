@@ -32,6 +32,8 @@ dependencies:
   # State management with BLoC
   flutter_bloc: ^9.1.1
 
+  intl: any
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

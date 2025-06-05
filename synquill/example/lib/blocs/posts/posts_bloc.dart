@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../synquill.generated.dart';
 import '../../models/index.dart';
 
 part 'posts_event.dart';
@@ -26,7 +25,7 @@ class PostsBloc extends Bloc<PostsEvent, PostsState> {
 
     try {
       // Get the current user (assuming first user is the current user)
-      final users = await SynquillDataRepository.users.findAll();
+      final users = await SynquillStorage.instance.users.findAll();
       if (users.isEmpty) {
         emit(PostsError('No user found. Please create a user first.'));
         return;
@@ -43,7 +42,7 @@ class PostsBloc extends Bloc<PostsEvent, PostsState> {
 
   void _listenToPosts(String userId) {
     _postsSubscription?.cancel();
-    _postsSubscription = SynquillDataRepository.posts
+    _postsSubscription = SynquillStorage.instance.posts
         .watchAll(
           queryParams: QueryParams(
             sorts: [
@@ -64,7 +63,7 @@ class PostsBloc extends Bloc<PostsEvent, PostsState> {
     Emitter<PostsState> emit,
   ) async {
     try {
-      final users = await SynquillDataRepository.users.findAll();
+      final users = await SynquillStorage.instance.users.findAll();
       if (users.isEmpty) {
         emit(PostsError('No user found.'));
         return;
@@ -78,7 +77,7 @@ class PostsBloc extends Bloc<PostsEvent, PostsState> {
         userId: user.id,
       );
 
-      await SynquillDataRepository.posts.save(newPost);
+      await SynquillStorage.instance.posts.save(newPost);
 
       // The stream listener will automatically emit the updated state
     } catch (e) {
@@ -91,7 +90,7 @@ class PostsBloc extends Bloc<PostsEvent, PostsState> {
     Emitter<PostsState> emit,
   ) async {
     try {
-      final users = await SynquillDataRepository.users.findAll();
+      final users = await SynquillStorage.instance.users.findAll();
       if (users.isEmpty) {
         emit(PostsError('No user found.'));
         return;
@@ -106,7 +105,7 @@ class PostsBloc extends Bloc<PostsEvent, PostsState> {
         userId: user.id,
       );
 
-      await SynquillDataRepository.posts.save(updatedPost);
+      await SynquillStorage.instance.posts.save(updatedPost);
 
       // The stream listener will automatically emit the updated state
     } catch (e) {
@@ -119,7 +118,7 @@ class PostsBloc extends Bloc<PostsEvent, PostsState> {
     Emitter<PostsState> emit,
   ) async {
     try {
-      await SynquillDataRepository.posts.delete(event.postId);
+      await SynquillStorage.instance.posts.delete(event.postId);
 
       // The stream listener will automatically emit the updated state
     } catch (e) {

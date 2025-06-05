@@ -2,7 +2,7 @@ import 'package:drift_flutter/drift_flutter.dart';
 import 'package:internet_connection_checker_plus/internet_connection_checker_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:synquill/synquill.dart';
+import 'package:synquill/synquill_core.dart';
 import 'package:synquill_example/synquill.generated.dart';
 import 'package:workmanager/workmanager.dart';
 import 'screens/home_screen.dart';
@@ -61,6 +61,8 @@ void main() async {
     ),
     initializeFn: initializeSynquillStorage,
   );
+
+  await InternetConnection().hasInternetAccess;
 
   runApp(const TodoApp());
 }
@@ -131,7 +133,7 @@ class TodoApp extends StatelessWidget {
 
 /// Background task dispatcher for WorkManager
 ///
-/// This function demonstrates proper usage of SynquillStorage background sync
+/// This function demonstrates proper usage of SyncedStorage background sync
 /// methods with required pragma annotation for isolate accessibility.
 @pragma('vm:entry-point')
 void callbackDispatcher() {
@@ -152,7 +154,7 @@ void callbackDispatcher() {
         ),
       );
 
-      // Initialize SynquillStorage in background isolate
+      // Initialize SyncedStorage in background isolate
       await SynquillStorage.initForBackgroundIsolate(
         database: database,
         config: SynquillStorageConfig(
@@ -167,6 +169,8 @@ void callbackDispatcher() {
 
       // Process background sync tasks
       await SynquillStorage.processBackgroundSync();
+
+      await SynquillStorage.close();
 
       print("Background sync completed successfully");
       return true;

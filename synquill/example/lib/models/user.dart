@@ -30,7 +30,7 @@ mixin UserApiAdapter on BasicApiAdapter<User> {
 
 @JsonSerializable()
 // BaseJsonApiAdapter provides global settings, UserApiAdapter provides specifics.
-// The SynquillStorage system will merge configurations from these adapters.
+// The SyncedStorage system will merge configurations from these adapters.
 @SynquillRepository(
   adapters: [JsonApiAdapter, UserApiAdapter],
   relations: [
@@ -66,7 +66,7 @@ class User extends SynquillDataModel<User> {
   @override
   Map<String, dynamic> toJson() => _$UserToJson(this);
 
-  // The SynquillDataModel<T> already has a `T fromJson(Map<String, dynamic> json)`
+  // The SyncedDataModel<T> already has a `T fromJson(Map<String, dynamic> json)`
   // and `Map<String, dynamic> toJson()` that will be implemented by the code generator
   // or should be implemented by the class itself if not using a generator.
   // Since User.fromJson and toJson() are factory/instance methods for JsonSerializable,

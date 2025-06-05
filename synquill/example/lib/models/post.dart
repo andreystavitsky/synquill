@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:json_annotation/json_annotation.dart';
-import '../synquill.generated.dart';
 import 'index.dart';
 
 part 'post.g.dart';
@@ -25,7 +24,7 @@ mixin PostApiAdapter on BasicApiAdapter<Post> {
 
   @override
   FutureOr<Uri> urlForFindAll({Map<String, dynamic>? extra}) async {
-    final users = await SynquillDataRepository.users
+    final users = await SynquillStorage.instance.users
         .findAll(loadPolicy: DataLoadPolicy.localOnly);
 
     if (users.isEmpty) {
@@ -46,8 +45,13 @@ mixin PostApiAdapter on BasicApiAdapter<Post> {
 
 @JsonSerializable()
 // BaseJsonApiAdapter provides global settings, PostApiAdapter provides specifics.
-// The SynquillStorage system will merge configurations from these adapters.
-@SynquillRepository(adapters: [JsonApiAdapter, PostApiAdapter])
+// The SyncedStorage system will merge configurations from these adapters.
+@SynquillRepository(
+  adapters: [JsonApiAdapter, PostApiAdapter],
+  relations: [
+    ManyToOne(target: User, foreignKeyColumn: 'userId'),
+  ],
+)
 class Post extends SynquillDataModel<Post> {
   @override
   @JsonKey(readValue: idMapper)
@@ -55,7 +59,6 @@ class Post extends SynquillDataModel<Post> {
   final String title;
   final String body;
 
-  @ManyToOne(target: User, foreignKeyColumn: 'userId')
   @JsonKey(readValue: idMapper)
   final String userId;
 

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:intl/intl.dart';
 import '../blocs/todos/todos_bloc.dart';
 import '../models/index.dart';
 
@@ -146,6 +147,26 @@ class TodosView extends StatelessWidget {
     );
   }
 
+  /// Helper method to format DateTime to a user-friendly string
+  String _formatUpdatedAt(DateTime? updatedAt) {
+    if (updatedAt == null) return 'Never updated';
+
+    final now = DateTime.now();
+    final difference = now.difference(updatedAt);
+
+    if (difference.inDays > 7) {
+      return DateFormat('MMM d, y').format(updatedAt);
+    } else if (difference.inDays > 0) {
+      return '${difference.inDays} day${difference.inDays == 1 ? '' : 's'} ago';
+    } else if (difference.inHours > 0) {
+      return '${difference.inHours} hour${difference.inHours == 1 ? '' : 's'} ago';
+    } else if (difference.inMinutes > 0) {
+      return '${difference.inMinutes} minute${difference.inMinutes == 1 ? '' : 's'} ago';
+    } else {
+      return 'Just now';
+    }
+  }
+
   Widget _buildTodoCard(BuildContext context, Todo todo) {
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
@@ -168,6 +189,12 @@ class TodosView extends StatelessWidget {
                 ? Theme.of(context).colorScheme.onSurfaceVariant
                 : null,
           ),
+        ),
+        subtitle: Text(
+          'Updated ${_formatUpdatedAt(todo.updatedAt)}',
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
         ),
         trailing: PopupMenuButton<String>(
           onSelected: (value) {
