@@ -756,7 +756,6 @@ void main() {
 
   group('CONCURRENCY ANALYSIS: High-Priority Race Condition Tests', () {
     late TestDatabase database;
-    late TestUserRepository repository;
     late MockApiAdapter mockAdapter;
     late Logger logger;
 
@@ -764,7 +763,6 @@ void main() {
       database = TestDatabase(NativeDatabase.memory());
       logger = Logger('ConcurrencyTest');
       mockAdapter = MockApiAdapter();
-      repository = TestUserRepository(database, mockAdapter);
 
       TestUserRepository.clearLocal();
       SynquillRepositoryProvider.register<TestUser>(
@@ -794,7 +792,6 @@ void main() {
     });
 
     test('HIGH: Idempotency Key Race Condition Test', () async {
-      print('\n=== TESTING IDEMPOTENCY KEY RACE CONDITIONS ===');
       final queueManager = SynquillStorage.queueManager;
       mockAdapter.clearLog();
 
@@ -806,11 +803,6 @@ void main() {
       final completers = <Completer<void>>[];
       var successCount = 0;
       var failureCount = 0;
-
-      print(
-        'Creating $concurrentTasks concurrent tasks with same '
-        'idempotency key...',
-      );
 
       // Launch all tasks simultaneously to create race condition
       for (int i = 0; i < concurrentTasks; i++) {
@@ -840,12 +832,10 @@ void main() {
           taskFuture
               .then((result) {
                 successCount++;
-                print('✓ Task $i completed successfully with result: $result');
                 if (!completer.isCompleted) completer.complete();
               })
               .catchError((error) {
                 failureCount++;
-                print('✗ Task $i failed: $error');
                 if (!completer.isCompleted) completer.complete();
               }),
         );
@@ -853,12 +843,6 @@ void main() {
 
       // Wait for all tasks to complete (either success or failure)
       await Future.wait(completers.map((c) => c.future));
-
-      print('Results: $successCount successes, $failureCount failures');
-      print(
-        'Expected: 1 success, ${concurrentTasks - 1} failures '
-        '(due to duplicate idempotency)',
-      );
 
       // Only ONE task should succeed, others should fail due to
       // duplicate idempotency key
@@ -872,13 +856,9 @@ void main() {
         equals(concurrentTasks - 1),
         reason: 'Other tasks should fail due to duplicate idempotency key',
       );
-
-      print('✓ Idempotency key race condition test PASSED\n');
     });
 
     test('HIGH: Queue Capacity Race Condition Test', () async {
-      print('\n=== TESTING QUEUE CAPACITY RACE CONDITIONS ===');
-
       // Reinitialize with very small queue capacity
       await SynquillStorage.reset();
       await SynquillStorage.init(
@@ -903,11 +883,6 @@ void main() {
       final queueManager = SynquillStorage.queueManager;
       const int overflowTasks = 10; // More than capacity
 
-      print(
-        'Testing with queue capacity: 3, attempting to add: '
-        '$overflowTasks tasks',
-      );
-
       final List<Future<dynamic>> futures = [];
       final List<String> errors = [];
       int successCount = 0;
@@ -917,9 +892,7 @@ void main() {
       for (int i = 0; i < overflowTasks; i++) {
         final task = NetworkTask<String>(
           exec: () async {
-            print('Capacity test task $i starting');
             await Future.delayed(const Duration(milliseconds: 200));
-            print('Capacity test task $i completing');
             return 'capacity-result-$i';
           },
           idempotencyKey: 'capacity-test-$i',
@@ -932,13 +905,11 @@ void main() {
         final future = queueManager
             .enqueueTask(task, queueType: QueueType.background)
             .then((result) {
-              print('Capacity task $i succeeded');
               successCount++;
               return result;
             })
             .catchError((error) {
               final errorMsg = 'Capacity task $i failed: $error';
-              print(errorMsg);
               errors.add(errorMsg);
               if (error.toString().contains('capacity') ||
                   error.toString().contains('timeout') ||
@@ -956,13 +927,6 @@ void main() {
 
       await Future.wait(futures);
 
-      print('\nQueue Capacity Test Results:');
-      print('- Total tasks attempted: $overflowTasks');
-      print('- Successful tasks: $successCount');
-      print('- Capacity-related errors: $capacityErrors');
-      print('- Other errors: ${errors.length - capacityErrors}');
-      print('- Error details: ${errors.join(", ")}');
-
       // Should not exceed queue capacity significantly
       expect(
         successCount,
@@ -974,20 +938,14 @@ void main() {
         greaterThan(0),
         reason: 'Some tasks should fail due to capacity limits',
       );
-
-      print('✓ Queue capacity race condition test PASSED\n');
     });
 
     test('HIGH: RetryExecutor Timer Management Race Condition', () async {
-      print('\n=== TESTING RETRY EXECUTOR TIMER RACE CONDITIONS ===');
       final retryExecutor = SynquillStorage.retryExecutor;
 
       const int cycles = 20;
-      print('Performing $cycles rapid start/stop/mode-switch cycles...');
 
       for (int i = 0; i < cycles; i++) {
-        print('Cycle $i: start → background → foreground → stop');
-
         // Start in foreground mode
         retryExecutor.start(backgroundMode: false);
         await Future.delayed(const Duration(milliseconds: 10));
@@ -1009,12 +967,9 @@ void main() {
       retryExecutor.start(backgroundMode: false);
       await Future.delayed(const Duration(milliseconds: 100));
       retryExecutor.stop();
-
-      print('✓ RetryExecutor timer management race condition test PASSED\n');
     });
 
     test('HIGH: Database Concurrent Task Status Updates', () async {
-      print('\n=== TESTING DATABASE CONCURRENT UPDATES ===');
       final syncQueueDao = SyncQueueDao(database);
 
       const int concurrentUpdates = 15;
@@ -1037,11 +992,6 @@ void main() {
         );
         taskIds.add(taskId);
       }
-
-      print(
-        'Created ${taskIds.length} tasks, '
-        'performing concurrent status updates...',
-      );
 
       // Perform concurrent updates on all tasks
       final updateFutures = <Future<void>>[];
@@ -1068,9 +1018,6 @@ void main() {
       // Use getAllItems() instead of getDueTasks() because updateTaskRetry
       // sets next_retry_at to future dates, making tasks not "due"
       final remainingTasks = await syncQueueDao.getAllItems();
-      print(
-        'Remaining tasks after concurrent updates: ${remainingTasks.length}',
-      );
 
       // All tasks should still exist (not corrupted by concurrent updates)
       expect(
@@ -1078,8 +1025,6 @@ void main() {
         equals(taskIds.length),
         reason: 'All tasks should still exist after concurrent updates',
       );
-
-      print('✓ Database concurrent updates test PASSED\n');
     });
   });
 
@@ -1123,13 +1068,11 @@ void main() {
     });
 
     test('STRESS: Mixed Queue Type Concurrent Load', () async {
-      print('\n=== TESTING MIXED QUEUE TYPE LOAD ===');
       final queueManager = SynquillStorage.queueManager;
       mockAdapter.clearLog();
 
       const int tasksPerQueue = 20;
       final allTasks = <Future<void>>[];
-      var completedTasks = 0;
 
       // Create tasks for each queue type
       for (final queueType in [
@@ -1137,8 +1080,6 @@ void main() {
         QueueType.background,
         QueueType.load,
       ]) {
-        print('Creating $tasksPerQueue tasks for ${queueType.name} queue...');
-
         for (int i = 0; i < tasksPerQueue; i++) {
           final task = NetworkTask<String>(
             exec: () async {
@@ -1158,36 +1099,16 @@ void main() {
           );
           allTasks.add(taskFuture);
 
-          unawaited(
-            taskFuture.then((result) {
-              completedTasks++;
-              if (completedTasks % 10 == 0) {
-                print('Completed $completedTasks/${allTasks.length} tasks...');
-              }
-            }),
-          );
+          unawaited(taskFuture.then((result) {}));
         }
       }
 
-      print('Waiting for all ${allTasks.length} tasks to complete...');
-      final startTime = DateTime.now();
-
       await Future.wait(allTasks);
-
-      final endTime = DateTime.now();
-      final duration = endTime.difference(startTime);
-
-      print('All tasks completed in ${duration.inMilliseconds}ms');
-      print(
-        'Average task time: '
-        '${duration.inMilliseconds / allTasks.length}ms',
-      );
 
       // Verify all queues are empty
       final stats = queueManager.getQueueStats();
 
       // Check final queue stats with proper retry logic
-      print('Final queue stats:');
       var finalStats = stats;
 
       for (final queueType in [
@@ -1196,23 +1117,13 @@ void main() {
         QueueType.load,
       ]) {
         var queueStats = finalStats[queueType]!;
-        print(
-          '  ${queueType.name}: ${queueStats.activeAndPendingTasks} '
-          'active+pending, ${queueStats.pendingTasks} pending',
-        );
 
         // Wait a bit more for background queue and recheck if needed
         if (queueType == QueueType.background &&
             queueStats.activeAndPendingTasks > 0) {
-          print('Background queue still has tasks, waiting 200ms more...');
           await Future.delayed(const Duration(milliseconds: 200));
           finalStats = queueManager.getQueueStats();
           queueStats = finalStats[queueType]!;
-          print(
-            '  ${queueType.name} (retry): '
-            '${queueStats.activeAndPendingTasks} '
-            'active+pending, ${queueStats.pendingTasks} pending',
-          );
         }
 
         expect(
@@ -1221,17 +1132,11 @@ void main() {
           reason: '${queueType.name} queue should be empty after stress test',
         );
       }
-
-      print('✓ Mixed queue type stress test PASSED\n');
     });
 
     test('STRESS: Network Interruption During Operations', () async {
-      print('\n=== TESTING NETWORK INTERRUPTION SCENARIOS ===');
-
       final queueManager = SynquillStorage.queueManager;
       const int taskCount = 8;
-
-      print('Creating $taskCount network-dependent tasks');
 
       // Create tasks that simulate network operations
       final futures = <Future<dynamic>>[];
@@ -1241,8 +1146,6 @@ void main() {
       for (int i = 0; i < taskCount; i++) {
         final task = NetworkTask<String>(
           exec: () async {
-            print('Network task $i starting');
-
             // Simulate network operation
             if (i % 3 == 0) {
               // Simulate network failure for some tasks
@@ -1263,13 +1166,11 @@ void main() {
         final future = queueManager
             .enqueueTask(task, queueType: QueueType.background)
             .then((result) {
-              print('Network task $i succeeded: $result');
               results.add(result);
               return result;
             })
             .catchError((error) {
               final errorMsg = 'Network task $i failed: $error';
-              print(errorMsg);
               errors.add(errorMsg);
               return 'error-$i';
             });
@@ -1279,36 +1180,24 @@ void main() {
 
       // Simulate connectivity changes during execution
       await Future.delayed(const Duration(milliseconds: 25));
-      print('Simulating connectivity change...');
       queueManager.clearQueuesOnDisconnect();
 
       await Future.wait(futures);
-
-      print('\nNetwork Interruption Test Results:');
-      print('- Tasks attempted: $taskCount');
-      print('- Successful results: ${results.length}');
-      print('- Failed tasks: ${errors.length}');
-      print('- Error details: ${errors.join(", ")}');
 
       // System should handle network interruptions gracefully
       expect(
         results.length + errors.length,
         equals(taskCount),
         reason:
-            'All tasks should either succeed or fail gracefully during network interruption',
+            'All tasks should either succeed or fail gracefully during '
+            'network interruption',
       );
-
-      print('✓ Network interruption test PASSED\n');
     });
 
     test('STRESS: Resource Exhaustion Scenarios', () async {
-      print('\n=== TESTING RESOURCE EXHAUSTION SCENARIOS ===');
-
       // Create a large number of tasks to test resource management
       const int largeTaskCount = 50;
       final queueManager = SynquillStorage.queueManager;
-
-      print('Creating $largeTaskCount resource-intensive tasks');
 
       final List<Future<dynamic>> futures = [];
       final List<String> errors = [];
@@ -1349,20 +1238,6 @@ void main() {
       final endTime = DateTime.now();
       final duration = endTime.difference(startTime);
 
-      print('\nResource Exhaustion Test Results:');
-      print('- Tasks attempted: $largeTaskCount');
-      print('- Successful tasks: $successCount');
-      print('- Failed tasks: ${errors.length}');
-      print('- Execution time: ${duration.inMilliseconds}ms');
-      print(
-        '- Tasks per second: '
-        '${(largeTaskCount * 1000 / duration.inMilliseconds).toStringAsFixed(2)}',
-      );
-
-      if (errors.isNotEmpty) {
-        print('- Error sample: ${errors.take(3).join(", ")}');
-      }
-
       // System should handle resource pressure gracefully
       expect(
         successCount,
@@ -1376,20 +1251,11 @@ void main() {
             'Tasks should complete within reasonable time even '
             'under resource pressure',
       );
-
-      print('✓ Resource exhaustion test PASSED\n');
     });
 
     test('EDGE: State Consistency Under Concurrent Operations', () async {
-      print('\n=== TESTING STATE CONSISTENCY UNDER LOAD ===');
-
       const int userCount = 10;
       const int operationsPerUser = 5;
-
-      print(
-        'Testing state consistency with $userCount users, '
-        '$operationsPerUser operations each',
-      );
 
       final List<Future<void>> allOperations = [];
       final Map<String, int> operationCounts = {};
@@ -1406,11 +1272,7 @@ void main() {
           email: 'initial$userId@example.com',
         );
 
-        allOperations.add(
-          repository.save(initialUser).then((_) {
-            print('Created initial user: $userIdStr');
-          }),
-        );
+        allOperations.add(repository.save(initialUser).then((_) {}));
 
         // Multiple concurrent updates to the same user
         for (int op = 0; op < operationsPerUser; op++) {
@@ -1425,9 +1287,7 @@ void main() {
 
               await repository.save(updatedUser);
               operationCounts[userIdStr] = operationCounts[userIdStr]! + 1;
-            }).catchError((error) {
-              print('Update operation failed for $userIdStr op $op: $error');
-            }),
+            }).catchError((error) {}),
           );
         }
       }
@@ -1436,13 +1296,10 @@ void main() {
       await Future.wait(allOperations);
 
       // Verify final state consistency
-      print('\nVerifying final state consistency...');
       for (int userId = 0; userId < userCount; userId++) {
         final userIdStr = 'consistency-user-$userId';
         final user = await repository.findOne(userIdStr);
-        final expectedOps = operationCounts[userIdStr] ?? 0;
 
-        print('User $userIdStr: ${expectedOps} operations completed');
         expect(user, isNotNull, reason: 'User $userId should exist');
         expect(user!.id, equals(userIdStr), reason: 'User ID should match');
         expect(
@@ -1451,8 +1308,6 @@ void main() {
           reason: 'User name should be updated',
         );
       }
-
-      print('✓ State consistency test PASSED\n');
     });
   });
 
@@ -1500,7 +1355,6 @@ void main() {
     });
 
     test('STRESS: Mixed Queue Type Concurrent Load', () async {
-      print('\n=== TESTING MIXED QUEUE TYPE LOAD ===');
       final queueManager = SynquillStorage.queueManager;
       mockAdapter.clearLog();
 
@@ -1516,8 +1370,6 @@ void main() {
       ];
 
       for (final queueType in queueTypes) {
-        print('Creating $tasksPerQueue tasks for ${queueType.name} queue');
-
         for (int i = 0; i < tasksPerQueue; i++) {
           final task = NetworkTask<String>(
             exec: () async {
@@ -1540,54 +1392,30 @@ void main() {
           unawaited(
             taskFuture.then((result) {
               completedTasks++;
-              if (completedTasks % 10 == 0) {
-                print('Completed $completedTasks/${allTasks.length} tasks...');
-              }
+              if (completedTasks % 10 == 0) {}
             }),
           );
         }
       }
 
-      print('Waiting for all ${allTasks.length} tasks to complete...');
-      final startTime = DateTime.now();
-
       await Future.wait(allTasks);
-
-      final endTime = DateTime.now();
-      final duration = endTime.difference(startTime);
-
-      print('All tasks completed in ${duration.inMilliseconds}ms');
-      print(
-        'Average task time: '
-        '${duration.inMilliseconds / allTasks.length}ms',
-      );
 
       // Verify all queues are empty
       final stats = queueManager.getQueueStats();
 
       // Check final queue stats with proper retry logic
-      print('Final queue stats:');
+
       var finalStats = stats;
 
       for (final queueType in queueTypes) {
         var queueStats = finalStats[queueType]!;
-        print(
-          '  ${queueType.name}: ${queueStats.activeAndPendingTasks} '
-          'active+pending, ${queueStats.pendingTasks} pending',
-        );
 
         // Wait a bit more for background queue and recheck if needed
         if (queueType == QueueType.background &&
             queueStats.activeAndPendingTasks > 0) {
-          print('Background queue still has tasks, waiting 200ms more...');
           await Future.delayed(const Duration(milliseconds: 200));
           finalStats = queueManager.getQueueStats();
           queueStats = finalStats[queueType]!;
-          print(
-            '  ${queueType.name} (retry): '
-            '${queueStats.activeAndPendingTasks} '
-            'active+pending, ${queueStats.pendingTasks} pending',
-          );
         }
 
         expect(
@@ -1596,20 +1424,11 @@ void main() {
           reason: '${queueType.name} queue should be empty after test',
         );
       }
-
-      print('✓ Mixed queue type stress test PASSED\n');
     });
 
     test('STRESS: State Consistency Under Load', () async {
-      print('\n=== TESTING STATE CONSISTENCY UNDER LOAD ===');
-
       const int userCount = 8;
       const int operationsPerUser = 3;
-
-      print(
-        'Testing state consistency with $userCount users, '
-        '$operationsPerUser operations each',
-      );
 
       final List<Future<void>> allOperations = [];
       final Map<String, int> operationCounts = {};
@@ -1626,11 +1445,7 @@ void main() {
           email: 'initial$userId@example.com',
         );
 
-        allOperations.add(
-          repository.save(initialUser).then((_) {
-            print('Created initial user: $userIdStr');
-          }),
-        );
+        allOperations.add(repository.save(initialUser).then((_) {}));
 
         // Multiple concurrent updates to the same user
         for (int op = 0; op < operationsPerUser; op++) {
@@ -1645,9 +1460,7 @@ void main() {
 
               await repository.save(updatedUser);
               operationCounts[userIdStr] = operationCounts[userIdStr]! + 1;
-            }).catchError((error) {
-              print('Update operation failed for $userIdStr op $op: $error');
-            }),
+            }).catchError((error) {}),
           );
         }
       }
@@ -1656,13 +1469,10 @@ void main() {
       await Future.wait(allOperations);
 
       // Verify final state consistency
-      print('\nVerifying final state consistency...');
       for (int userId = 0; userId < userCount; userId++) {
         final userIdStr = 'consistency-user-$userId';
         final user = await repository.findOne(userIdStr);
-        final expectedOps = operationCounts[userIdStr] ?? 0;
 
-        print('User $userIdStr: ${expectedOps} operations completed');
         expect(user, isNotNull, reason: 'User $userId should exist');
         expect(user!.id, equals(userIdStr), reason: 'User ID should match');
         expect(
@@ -1671,8 +1481,6 @@ void main() {
           reason: 'User name should be updated',
         );
       }
-
-      print('✓ State consistency test PASSED\n');
     });
   });
 
@@ -1728,8 +1536,6 @@ void main() {
     });
 
     test('Stream Controller Disposal in Error Scenarios', () async {
-      print('Testing stream controller disposal in error scenarios...');
-
       // Create a test user to trigger repository operations
       final user = TestUser(
         id: 'stream-test-user-1',
@@ -1745,14 +1551,9 @@ void main() {
       subscription = repository.changes.listen(
         (change) {
           streamEvents.add(change);
-          print('Received change event: ${change.type}');
         },
-        onError: (error) {
-          print('Stream error: $error');
-        },
-        onDone: () {
-          print('Stream closed');
-        },
+        onError: (error) {},
+        onDone: () {},
       );
 
       // Save the user successfully first
@@ -1772,13 +1573,11 @@ void main() {
           savePolicy: DataSavePolicy.remoteFirst,
         );
         fail('Expected save to fail');
-      } catch (e) {
-        print('Expected error caught: $e');
-      }
+      } catch (e) {}
 
       // Wait for error event to propagate
       await Future.delayed(const Duration(milliseconds: 100));
-      
+
       // Verify an error event was emitted
       expect(streamEvents.length, greaterThan(1));
       expect(streamEvents.last.type, equals(RepositoryChangeType.error));
@@ -1796,15 +1595,9 @@ void main() {
       // Verify that basic operations on the repository still handle
       // disposal gracefully (may fail, but shouldn't cause crashes)
       await Future.delayed(const Duration(milliseconds: 50));
-
-      print('✓ Stream controller disposal test PASSED');
-
-      print('✓ Stream controller disposal test PASSED');
     });
 
     test('Multiple Stream Listeners and Broadcast Behavior', () async {
-      print('Testing multiple stream listeners and broadcast behavior...');
-
       final user = TestUser(
         id: 'broadcast-test-user',
         name: 'Broadcast Test User',
@@ -1819,17 +1612,14 @@ void main() {
       // Subscribe multiple listeners to the same broadcast stream
       final subscription1 = repository.changes.listen((change) {
         listener1Events.add(change);
-        print('Listener 1 received: ${change.type}');
       });
 
       final subscription2 = repository.changes.listen((change) {
         listener2Events.add(change);
-        print('Listener 2 received: ${change.type}');
       });
 
       final subscription3 = repository.changes.listen((change) {
         listener3Events.add(change);
-        print('Listener 3 received: ${change.type}');
       });
 
       // Perform operations that should notify all listeners
@@ -1863,13 +1653,9 @@ void main() {
       await subscription2.cancel();
       await subscription1.cancel();
       await subscription3.cancel();
-
-      print('✓ Multiple stream listeners test PASSED');
     });
 
     test('Stream Controller Memory Leak Prevention', () async {
-      print('Testing stream controller memory leak prevention...');
-
       final users = <TestUser>[];
       final subscriptions = <StreamSubscription>[];
 
@@ -1914,15 +1700,9 @@ void main() {
 
       // Give time for cleanup
       await Future.delayed(const Duration(milliseconds: 100));
-
-      print('✓ Stream controller memory leak prevention test PASSED');
     });
 
     test('Stream Controller Lifecycle During Concurrent Operations', () async {
-      print(
-        'Testing stream controller lifecycle during concurrent operations...',
-      );
-
       final user = TestUser(
         id: 'concurrent-stream-test',
         name: 'Concurrent Stream Test User',
@@ -1936,14 +1716,10 @@ void main() {
       final subscription = repository.changes.listen(
         (change) {
           events.add(change);
-          print('Event ${events.length}: ${change.type}');
         },
-        onError: (error) {
-          print('Stream error: $error');
-        },
+        onError: (error) {},
         onDone: () {
           streamStillActive = false;
-          print('Stream completed');
         },
       );
 
@@ -1973,7 +1749,6 @@ void main() {
           );
           fail('Expected save to fail');
         } catch (e) {
-          print('Expected concurrent error: $e');
           // Error should be captured in stream events
         }
       }
@@ -1983,9 +1758,8 @@ void main() {
       await Future.delayed(const Duration(milliseconds: 200));
 
       // Count error events from the stream
-      final errorEvents = events
-          .where((e) => e.type == RepositoryChangeType.error)
-          .length;
+      final errorEvents =
+          events.where((e) => e.type == RepositoryChangeType.error).length;
 
       // Verify the stream controller handled concurrent operations correctly
       expect(events.length, greaterThan(5)); // Should have multiple events
@@ -2001,13 +1775,9 @@ void main() {
 
       // Give time for disposal
       await Future.delayed(const Duration(milliseconds: 100));
-
-      print('✓ Stream controller concurrent operations test PASSED');
     });
 
     test('Stream Controller Error Recovery and Resilience', () async {
-      print('Testing stream controller error recovery and resilience...');
-
       final user = TestUser(
         id: 'resilience-test-user',
         name: 'Resilience Test User',
@@ -2021,14 +1791,10 @@ void main() {
       final subscription = repository.changes.listen(
         (change) {
           events.add(change);
-          print('Received event: ${change.type}');
         },
-        onError: (error) {
-          print('Caught stream error: $error');
-        },
+        onError: (error) {},
         onDone: () {
           streamStillActive = false;
-          print('Stream ended unexpectedly');
         },
       );
 
@@ -2045,9 +1811,7 @@ void main() {
           user.copyWith(id: 'new-user', name: 'New User'),
           savePolicy: DataSavePolicy.remoteFirst,
         );
-      } catch (e) {
-        print('Expected create error: $e');
-      }
+      } catch (e) {}
 
       mockAdapter.shouldFailOnCreate = false;
       mockAdapter.shouldFailOnUpdate = true;
@@ -2058,9 +1822,7 @@ void main() {
           user.copyWith(name: 'Updated Name'),
           savePolicy: DataSavePolicy.remoteFirst,
         );
-      } catch (e) {
-        print('Expected update error: $e');
-      }
+      } catch (e) {}
 
       mockAdapter.shouldFailOnUpdate = false;
       mockAdapter.shouldFailOnDelete = true;
@@ -2071,9 +1833,7 @@ void main() {
           user.id,
           savePolicy: DataSavePolicy.remoteFirst,
         );
-      } catch (e) {
-        print('Expected delete error: $e');
-      }
+      } catch (e) {}
 
       // Reset adapter and verify stream is still functional
       mockAdapter.shouldFailOnDelete = false;
@@ -2083,9 +1843,8 @@ void main() {
       await Future.delayed(const Duration(milliseconds: 100));
 
       // Count error events from the stream
-      final errorEvents = events
-          .where((e) => e.type == RepositoryChangeType.error)
-          .length;
+      final errorEvents =
+          events.where((e) => e.type == RepositoryChangeType.error).length;
 
       // Verify stream is still active and functional after errors
       expect(
@@ -2115,8 +1874,6 @@ void main() {
       );
 
       await subscription.cancel();
-
-      print('✓ Stream controller error recovery test PASSED');
     });
   });
 }

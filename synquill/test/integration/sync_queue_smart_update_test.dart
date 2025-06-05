@@ -413,6 +413,8 @@ void main() {
       // sync queue entries
       await repository.save(model, savePolicy: DataSavePolicy.localFirst);
 
+      await Future.delayed(const Duration(milliseconds: 500));
+
       // Check that no sync queue entries remain
       final syncQueueDao = SyncQueueDao(database);
       final pendingTasks = await syncQueueDao.getDueTasks();
@@ -688,8 +690,11 @@ void main() {
       await repository.save(modelC, savePolicy: DataSavePolicy.localFirst);
 
       // Step 2: Create a pending operation for B by updating it
-      // Set API to fail to ensure sync queue entry is created
-      mockApiAdapter.setNextOperationToFail('API update failure for B');
+      // Set API to fail for model-b to ensure sync queue entry is created
+      mockApiAdapter.setPersistentFailureForModel(
+        'model-b',
+        'API update failure for B',
+      );
 
       final updatedModelB = PlainModel(
         id: 'model-b',
@@ -702,7 +707,7 @@ void main() {
       );
 
       // Wait for sync queue processing to fail and create pending entry
-      await Future.delayed(const Duration(milliseconds: 100));
+      await Future.delayed(const Duration(milliseconds: 500));
 
       // Step 3: Set up API to return [A', B', D] after async delay
       mockApiAdapter.clearRemote();
@@ -772,7 +777,7 @@ void main() {
       );
 
       // Step 9: Wait for stream update indicating merge completion
-      await Future.delayed(const Duration(milliseconds: 200));
+      await Future.delayed(const Duration(milliseconds: 500));
       expect(
         streamEmissions.length,
         greaterThan(1),
@@ -784,6 +789,8 @@ void main() {
       final finalLocalModels = await repository.findAll(
         loadPolicy: DataLoadPolicy.localOnly,
       );
+
+      await Future.delayed(const Duration(milliseconds: 200));
 
       expect(
         finalLocalModels.length,

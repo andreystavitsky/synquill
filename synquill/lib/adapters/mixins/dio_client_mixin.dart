@@ -30,10 +30,14 @@ mixin DioClientMixin<TModel extends SynquillDataModel<TModel>>
     final dio = Dio();
     final config = SynquillStorage.config;
 
+    // Use maximumNetworkTimeout from config for HTTP-level timeouts
+    final networkTimeout =
+        config?.maximumNetworkTimeout ?? const Duration(seconds: 20);
+
     dio.options = BaseOptions(
-      connectTimeout: const Duration(seconds: 30),
-      receiveTimeout: const Duration(seconds: 30),
-      sendTimeout: const Duration(seconds: 30),
+      connectTimeout: networkTimeout,
+      receiveTimeout: networkTimeout,
+      sendTimeout: networkTimeout,
       responseType: ResponseType.json,
       followRedirects: true,
       maxRedirects: 3,

@@ -137,37 +137,19 @@ mixin RepositorySaveOperations<T extends SynquillDataModel<T>>
           log.fine('Created sync queue entry $syncQueueId for ${item.id}');
         }
 
-        // Now try immediate sync execution
-        try {
-          final syncTask = NetworkTask<void>(
-            exec: () => _executeSyncOperation(operation, item, headers, extra),
-            idempotencyKey: idempotencyKey,
-            operation: operation,
-            modelType: T.toString(),
-            modelId: item.id,
-            taskName: 'BackgroundSync-${T.toString()}-${item.id}',
-          );
+        // Try immediate sync in background (fire-and-forget)
+        // If it fails, the task remains in sync queue for RetryExecutor
+        final syncTask = NetworkTask<void>(
+          exec: () => _executeSyncOperation(operation, item, headers, extra),
+          idempotencyKey: idempotencyKey,
+          operation: operation,
+          modelType: T.toString(),
+          modelId: item.id,
+          taskName: 'ImmediateSync-${T.toString()}-${item.id}',
+        );
 
-          await queueManager.enqueueTask(
-            syncTask,
-            queueType: QueueType.background,
-          );
-
-          // If immediate sync succeeded, remove from sync queue
-          await syncQueueDao.deleteTask(syncQueueId);
-          log.fine(
-            'Immediate sync succeeded, removed sync queue entry $syncQueueId',
-          );
-        } catch (e, stackTrace) {
-          log.warning(
-            'Immediate background sync failed for ${item.id}, '
-            'task will be retried by RetryExecutor',
-            e,
-            stackTrace,
-          );
-          // Don't fail the save operation if immediate sync fails
-          // The sync queue entry remains for retry by RetryExecutor
-        }
+        // Use fire-and-forget approach - don't block localFirst saves
+        _tryImmediateSyncInBackground(syncTask, syncQueueId);
 
         resultItem = item;
         break;
@@ -318,5 +300,37 @@ mixin RepositorySaveOperations<T extends SynquillDataModel<T>>
       );
       rethrow;
     }
+  }
+
+  /// Tries immediate sync in background without blocking localFirst saves.
+  ///
+  /// This is a fire-and-forget operation that attempts to sync immediately
+  /// but doesn't block the save operation if it fails or times out.
+  void _tryImmediateSyncInBackground(
+    NetworkTask<void> syncTask,
+    int syncQueueId,
+  ) {
+    final syncQueueDao = SyncQueueDao(SynquillStorage.database);
+
+    // Fire-and-forget: don't await, don't block
+    unawaited(
+      queueManager
+          .enqueueTask(syncTask, queueType: QueueType.background)
+          .then((_) async {
+            // Success: remove from sync queue
+            await syncQueueDao.deleteTask(syncQueueId);
+            log.fine(
+              'Background immediate sync succeeded, '
+              'removed sync queue entry $syncQueueId',
+            );
+          })
+          .catchError((e) {
+            // Failure: log and leave in sync queue for RetryExecutor
+            log.fine(
+              'Background immediate sync failed for ${syncTask.modelId}, '
+              'task will be retried by RetryExecutor: $e',
+            );
+          }),
+    );
   }
 }

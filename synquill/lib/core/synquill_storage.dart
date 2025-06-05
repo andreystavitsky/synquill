@@ -97,6 +97,9 @@ class SynquillStorageConfig {
   /// Defaults to 50 to prevent memory issues.
   final int maxBackgroundQueueCapacity;
 
+  /// Maximum network timeout for HTTP requests.
+  final dynamic maximumNetworkTimeout;
+
   /// Creates a new [SynquillStorageConfig].
   const SynquillStorageConfig({
     this.dio,
@@ -121,6 +124,7 @@ class SynquillStorageConfig {
     this.loadQueueCapacityTimeout = const Duration(seconds: 5),
     this.backgroundQueueCapacityTimeout = const Duration(seconds: 2),
     this.queueCapacityCheckInterval = const Duration(milliseconds: 100),
+    this.maximumNetworkTimeout = const Duration(seconds: 20),
     this.maxForegroundQueueCapacity = 50,
     this.maxLoadQueueCapacity = 50,
     this.maxBackgroundQueueCapacity = 50,

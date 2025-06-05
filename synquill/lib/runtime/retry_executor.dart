@@ -263,9 +263,22 @@ class RetryExecutor {
       // Enqueue the network task
       await _queueManager.enqueueTask(networkTask, queueType: queueType);
 
-      // Wait for task completion
+      // Wait for task completion with timeout protection
+      const maxTaskDuration = Duration(seconds: 20);
       try {
-        await networkTask.future;
+        await networkTask.future.timeout(
+          maxTaskDuration,
+          onTimeout: () {
+            _log.warning(
+              'Network task $taskId timed out after 20 seconds: '
+              '$operation $modelType',
+            );
+            throw TimeoutException(
+              'Network operation exceeded 20 seconds timeout',
+              maxTaskDuration,
+            );
+          },
+        );
 
         // Success - delete from sync queue
         await _syncQueueDao.deleteTask(taskId);
