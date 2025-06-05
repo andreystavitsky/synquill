@@ -43,7 +43,7 @@ mixin HttpExecutionMixin<TModel extends SynquillDataModel<TModel>>
         options: Options(method: method, headers: headers),
       );
     } on DioException catch (e) {
-      throw mapDioErrorToSyncedStorageException(e);
+      throw mapDioErrorToSynquillStorageException(e);
     }
   }
 

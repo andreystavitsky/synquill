@@ -6,7 +6,7 @@ part of synquill;
 /// for model instances. CUIDs are client-generated and collision-resistant.
 String generateCuid() => cuid();
 
-/// Base class for all data models that are to be managed by SyncedStorage.
+/// Base class for all data models that are to be managed by SynquillStorage.
 ///
 /// **IMPORTANT:**
 /// All concrete subclasses MUST implement [toJson] and [fromJson].
@@ -23,7 +23,7 @@ String generateCuid() => cuid();
 /// which concrete model classes should use for ID generation.
 ///
 /// Type `T` is expected to be the concrete model class itself
-/// (e.g., `class MyModel extends SyncedDataModel<MyModel>`).
+/// (e.g., `class MyModel extends SynquillDataModel<MyModel>`).
 abstract class SynquillDataModel<T extends SynquillDataModel<T>> {
   /// A unique identifier for the model instance.
   ///
@@ -32,7 +32,7 @@ abstract class SynquillDataModel<T extends SynquillDataModel<T>> {
   ///
   /// Example usage in a concrete model:
   /// ```dart
-  /// class MyModel extends SyncedDataModel<MyModel> {
+  /// class MyModel extends SynquillDataModel<MyModel> {
   ///   @override
   ///   final String id;
   ///   final String name;
@@ -45,7 +45,7 @@ abstract class SynquillDataModel<T extends SynquillDataModel<T>> {
   /// For Freezed models:
   /// ```dart
   /// @freezed
-  /// sealed class MyModel extends SyncedDataModel<MyModel> with _$MyModel {
+  /// sealed class MyModel extends SynquillDataModel<MyModel> with _$MyModel {
   ///   const factory MyModel({
   ///     required String id,
   ///     required String name,

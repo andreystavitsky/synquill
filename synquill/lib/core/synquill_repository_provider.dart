@@ -25,7 +25,7 @@ enum DataLoadPolicy {
 
 /// Defines a factory function for creating repository instances.
 /// The factory takes a [SynquillDatabase] instance and returns a repository
-/// of type [SyncedRepositoryBase<M>].
+/// of type [SynquillRepositoryBase<M>].
 /// [M] is the model type.
 typedef RepositoryFactory<M extends SynquillDataModel<M>> =
     SynquillRepositoryBase<M> Function(GeneratedDatabase db);
@@ -39,7 +39,7 @@ class SynquillRepositoryProvider {
 
   static final Map<Type, RepositoryFactory<SynquillDataModel<dynamic>>>
   _factories = {};
-  // Cache: Type -> SyncedDatabase instance -> Repository instance
+  // Cache: Type -> SynquillDatabase instance -> Repository instance
   static final Map<
     Type,
     Map<GeneratedDatabase, SynquillRepositoryBase<SynquillDataModel<dynamic>>>
@@ -48,18 +48,18 @@ class SynquillRepositoryProvider {
   // Mapping from model type string names to Type objects for runtime lookup
   static final Map<String, Type> _typeNameMapping = {};
 
-  static final _log = Logger('SyncedRepositoryProvider');
+  static final _log = Logger('SynquillRepositoryProvider');
 
   /// Registers a factory function for creating instances of a repository for a
   /// specific model type [M].
   ///
   /// - [M]: The type of the [SynquillDataModel] the repository handles.
-  /// - [factory]: A function that takes a [SyncedDatabase] and returns an
-  /// instance of `SyncedRepositoryBase<M>`.
+  /// - [factory]: A function that takes a [SynquillDatabase] and returns an
+  /// instance of `SynquillRepositoryBase<M>`.
   ///
   /// Example:
   /// ```dart
-  /// SyncedRepositoryProvider.register<MyModel>((db) => MyRepository(db));
+  /// SynquillRepositoryProvider.register<MyModel>((db) => MyRepository(db));
   /// ```
   static void register<M extends SynquillDataModel<M>>(
     RepositoryFactory<M> factory,
@@ -87,13 +87,13 @@ class SynquillRepositoryProvider {
   /// cache, and return a new instance.
   ///
   /// - [M]: The type of the [SynquillDataModel] for which to get the repository
-  /// - [db]: The [SyncedDatabase] instance the repository will operate on.
+  /// - [db]: The [SynquillDatabase] instance the repository will operate on.
   ///
   /// Throws an [Exception] if no factory is registered for type [M].
   ///
   /// Example:
   /// ```dart
-  /// final myRepo = SyncedRepositoryProvider.get<MyModel>(database);
+  /// final myRepo = SynquillRepositoryProvider.get<MyModel>(database);
   /// ```
   static SynquillRepositoryBase<M> getFrom<M extends SynquillDataModel<M>>(
     GeneratedDatabase db,
@@ -103,7 +103,7 @@ class SynquillRepositoryProvider {
     if (factory == null) {
       final errorMsg =
           'No repository factory registered for type $M. '
-          'Call SyncedRepositoryProvider.register<$M>((db) => YourRepo(db)) '
+          'Call SynquillRepositoryProvider.register<$M>((db) => YourRepo(db)) '
           'first.';
       _log.severe(errorMsg);
       throw StateError(errorMsg);
@@ -132,7 +132,7 @@ class SynquillRepositoryProvider {
   /// default database from [DatabaseProvider].
   ///
   /// This is a convenience method that uses the global database instance
-  /// set via [DatabaseProvider.setInstance] or [initializeSyncedStorage].
+  /// set via [DatabaseProvider.setInstance] or [initializeSynquillStorage].
   ///
   /// - [M]: The type of the [SynquillDataModel] for which to get the repository
   ///
@@ -142,10 +142,10 @@ class SynquillRepositoryProvider {
   /// Example:
   /// ```dart
   /// // After initialization
-  /// await initializeSyncedStorage(database);
+  /// await initializeSynquillStorage(database);
   ///
   /// // Get repository anywhere without database injection
-  /// final myRepo = SyncedRepositoryProvider.getDefault<MyModel>();
+  /// final myRepo = SynquillRepositoryProvider.getDefault<MyModel>();
   /// ```
   static SynquillRepositoryBase<M> get<M extends SynquillDataModel<M>>() {
     final db = DatabaseProvider.instance; // Will throw if not initialized
@@ -197,7 +197,7 @@ class SynquillRepositoryProvider {
   ///
   /// Example:
   /// ```dart
-  /// final userRepo = SyncedRepositoryProvider.getByTypeName('User');
+  /// final userRepo = SynquillRepositoryProvider.getByTypeName('User');
   /// if (userRepo != null) {
   ///   // Use the repository
   /// }
@@ -229,7 +229,7 @@ class SynquillRepositoryProvider {
   ///
   /// Example:
   /// ```dart
-  /// final userRepo = SyncedRepositoryProvider.getByTypeNameFrom(
+  /// final userRepo = SynquillRepositoryProvider.getByTypeNameFrom(
   ///   'User',
   ///   database,
   /// );
@@ -281,7 +281,7 @@ class SynquillRepositoryProvider {
   /// Primarily used for cleaning up state in tests.
   static void reset() {
     _log.info(
-      'Resetting SyncedRepositoryProvider: clearing all factories and '
+      'Resetting SynquillRepositoryProvider: clearing all factories and '
       'instances.',
     );
     _factories.clear();

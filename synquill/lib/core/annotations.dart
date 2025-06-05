@@ -3,7 +3,7 @@ part of synquill;
 /// An annotation to mark a class as a data model for which
 /// a Drift table and repository should be generated.
 ///
-/// **IMPORTANT**: Any class annotated with `@SyncedDataRepository` MUST either:
+/// **IMPORTANT**: Any class annotated with `@SynquillRepository` MUST either:
 /// 1. Implement `toJson()` and `fromJson()` methods
 /// 2. Use `@JsonSerializable` annotation
 /// 3. Use `@freezed` annotation with appropriate JSON serialization

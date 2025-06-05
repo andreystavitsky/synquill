@@ -32,7 +32,7 @@ class CascadeDeleteRelation {
 
 /// Global provider for model metadata including cascade delete relationships
 ///
-/// This class follows the same pattern as SyncedRepositoryProvider to provide
+/// This class follows the same pattern as SynquillRepositoryProvider to provide
 /// runtime access to generated model metadata.
 class ModelInfoRegistryProvider {
   ModelInfoRegistryProvider._(); // Private constructor to prevent instantiation
@@ -45,7 +45,7 @@ class ModelInfoRegistryProvider {
     try {
       return SynquillStorage.logger;
     } catch (_) {
-      // Fallback to a local logger if SyncedStorage is not initialized
+      // Fallback to a local logger if SynquillStorage is not initialized
       return Logger('ModelInfoRegistryProvider');
     }
   }();
