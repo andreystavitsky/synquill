@@ -121,10 +121,8 @@ class DaoGenerator {
 
     buffer.writeln('  /// Get ${model.className.toLowerCase()} data by ID');
     buffer.writeln('  Future<${model.className}?> getDataById(String id) =>');
-    buffer.writeln(
-      '      (select($tableVariableName)..where((t) =>'
-      ' t.id.equals(id))).getSingleOrNull();',
-    );
+    buffer.writeln('      (select($tableVariableName)..where((t) =>');
+    buffer.writeln('        t.id.equals(id))).getSingleOrNull();');
     buffer.writeln();
 
     // High-level methods that work with model classes
@@ -175,9 +173,8 @@ class DaoGenerator {
       '  Future<${model.className}> saveModel(${model.className} model) '
       'async {',
     );
-    buffer.writeln(
-      '    final companion = ${_generateCompanionCreation(model)};',
-    );
+    buffer.writeln('    final companion = ');
+    buffer.writeln('     ${_generateCompanionCreation(model)};');
     buffer.writeln('    await insertOrUpdate(companion);');
     buffer.writeln('    return model;');
     buffer.writeln('  }');
@@ -258,11 +255,15 @@ class DaoGenerator {
 
       // Special handling for timestamp fields
       if (field.name == 'updatedAt') {
-        buffer.write('${field.name}: Value(model.${field.name} ?? '
-            'DateTime.now())');
+        buffer.write(
+          '${field.name}: Value(model.${field.name} ?? '
+          'DateTime.now())',
+        );
       } else if (field.name == 'createdAt') {
-        buffer.write('${field.name}: Value(model.${field.name} ?? '
-            'DateTime.now())');
+        buffer.write(
+          '${field.name}: Value(model.${field.name} ?? '
+          'DateTime.now())',
+        );
       } else {
         // Handle nullable fields properly
         if (field.dartType.nullabilitySuffix != NullabilitySuffix.none) {
@@ -283,7 +284,7 @@ class DaoGenerator {
       buffer.write('createdAt: Value(DateTime.now())');
       hasFields = true;
     }
-    
+
     // Set updatedAt only if it doesn't exist in model
     if (!existingFieldNames.contains('updatedAt')) {
       if (hasFields) buffer.write(', ');
@@ -447,10 +448,8 @@ class DaoGenerator {
   ) {
     buffer.writeln('  // Implementation of BaseDaoMixin methods');
     buffer.writeln('  @override');
-    buffer.writeln(
-      '  Future<${model.className}?> getByIdTyped(String id, '
-      '{QueryParams? queryParams}) async {',
-    );
+    buffer.writeln('  Future<${model.className}?> getByIdTyped(String id, ');
+    buffer.writeln('   {QueryParams? queryParams}) async {');
     buffer.writeln('    return await getById(id, queryParams: queryParams);');
     buffer.writeln('  }');
     buffer.writeln();
@@ -498,7 +497,8 @@ class DaoGenerator {
     // First, generate the DaoHelpersMixin
     buffer.writeln("""
 /// Helper mixin for DAO classes to provide filtering and query operations
-mixin DaoHelpersMixin<Tbl extends Table, D> on DatabaseAccessor<SynquillDatabase> {
+mixin DaoHelpersMixin<Tbl extends Table, D> 
+  on DatabaseAccessor<SynquillDatabase> {
   /// Apply query parameters (filters, sorting, pagination) to a query
   void applyQueryParams(
     SimpleSelectStatement<Tbl, D> query,

@@ -95,10 +95,8 @@ class TableGenerator {
     }
     if (!existingFields.contains('syncStatus')) {
       buffer.writeln('  /// Current synchronization status');
-      buffer.writeln(
-        '  TextColumn get syncStatus => '
-        'textEnum<SyncStatus>().withDefault(const Constant(\'pending\'))();',
-      );
+      buffer.writeln('  TextColumn get syncStatus => textEnum<SyncStatus>()');
+      buffer.writeln('    .withDefault(const Constant(\'pending\'))();');
     }
 
     // Add primary key override if the table has an 'id' field
