@@ -153,7 +153,8 @@ class BackgroundSyncManager {
     }
   }
 
-  /// Checks if SynquillStorage is properly initialized for background operations.
+  /// Checks if SynquillStorage is properly initialized
+  /// for background operations.
   ///
   /// This is useful for ensuring that background isolates have access
   /// to the necessary components before attempting sync operations.

@@ -431,6 +431,10 @@ class RequestQueue {
       'Waiting for all tasks to complete (join). '
       'Remaining: $activeAndPendingTasks',
     );
+    if (activeAndPendingTasks == 0) {
+      _log.fine('No tasks to wait for (join).');
+      return; // Nothing to wait for
+    }
     await _queue.onComplete;
     _log.fine('All tasks completed (join).');
   }
