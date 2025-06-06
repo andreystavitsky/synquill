@@ -8,6 +8,7 @@ This comprehensive guide covers all core concepts and features of Synquill, a po
   - [Data Save Policies](#data-save-policies)
   - [Data Load Policies](#data-load-policies)
   - [Dependency-Based Sync Ordering](#dependency-based-sync-ordering)
+  - [Synchronization Behavior](#synchronization-behavior)
 - [Querying Data](#querying-data)
   - [Repository-Level Queries](#repository-level-queries)
   - [Model-Level Relationship Queries](#model-level-relationship-queries)
@@ -65,6 +66,53 @@ Synquill automatically ensures sync operations respect model relationships:
 // This prevents foreign key constraint violations during sync operations
 // See the "Dependency-Based Sync Ordering" section for detailed information
 ```
+
+### Synchronization Behavior
+
+#### Data Overwriting Rules
+
+When loading data from the API, Synquill follows specific rules to determine whether remote data should overwrite local data:
+
+```dart
+// Remote data overwrites local data by default
+final users = await repository.findAll(
+  loadPolicy: DataLoadPolicy.remoteFirst,
+);
+```
+
+**Exception**: Local items with pending sync operations are **never overwritten** by remote data:
+
+```dart
+// Example scenario:
+// 1. User updates a todo locally
+final todo = await todoRepository.findOne('todo-123');
+await todo.save(savePolicy: DataSavePolicy.localFirst); // API fails, queued for sync
+
+// 2. Later, a full refresh is triggered
+final allTodos = await todoRepository.findAll(
+  loadPolicy: DataLoadPolicy.remoteFirst,
+);
+// The locally modified todo retains its pending changes
+// even if the remote API has older data for the same todo
+```
+
+This protection ensures that user changes are never lost during background sync operations, maintaining data integrity in offline-first scenarios.
+
+#### HTTP Gone (410) Status Handling
+
+When the API returns an HTTP 410 Gone status for a specific item, Synquill automatically removes it from the local database:
+
+```dart
+// If API returns 410 Gone for a todo:
+try {
+  final todo = await todoRepository.findOne('deleted-todo-id');
+  // todo will be null - automatically removed from local DB
+} catch (e) {
+  // Item was deleted both remotely and locally
+}
+```
+
+This behavior ensures that items deleted on the server are properly cleaned up locally, maintaining consistency between remote and local data stores.
 
 ## Querying Data
 
