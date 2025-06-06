@@ -170,13 +170,24 @@ mixin TodoApiAdapter on BasicApiAdapter<Todo> {
 ### 3. Initialize the Storage System
 
 ```dart
+import 'package:path_provider/path_provider.dart';
 import 'package:synquill/synquill.generated.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
   // Initialize database
-  final database = SynquillDatabase(NativeDatabase.memory());
+  final database = SynquillDatabase(
+      LazyDatabase(
+        () => driftDatabase(
+          name: 'synquill.db',
+          native: DriftNativeOptions(
+            shareAcrossIsolates: true, // to sync between main thread and background isolate
+            databaseDirectory: getApplicationSupportDirectory,
+          ),
+        ),
+      ),
+    );
   
   // Configure and initialize Synquill
   await SynquillStorage.init(
@@ -189,7 +200,12 @@ void main() async {
     ),
     logger: Logger('MyApp'),
     initializeFn: initializeSynquillStorage,
-    enableInternetMonitoring: true,
+    // provide your own connectivity stream and check function
+    connectivityChecker: () async =>
+        await InternetConnection().hasInternetAccess,
+    connectivityStream: InternetConnection()
+        .onStatusChange
+        .map((status) => status == InternetStatus.connected),
   );
 
   runApp(MyApp());
@@ -359,8 +375,8 @@ TODO: describe update
 // Delete
 await savedUser.delete();
 
-// Refresh from remote
-final refreshedUser = await savedUser.refresh();
+// Refresh from remote - not implemented yet
+//final refreshedUser = await savedUser.refresh();
 ```
 
 ### Bulk Operations
@@ -527,7 +543,73 @@ const config = SynquillStorageConfig(
 Configure automatic background synchronization:
 
 ```dart
-TODO: describe
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  Workmanager().initialize(
+      callbackDispatcher, // The top level function, aka callbackDispatcher
+      isInDebugMode: true // If enabled it will post a notification
+      // whenever the task is running. Handy for debugging tasks
+      );
+  Workmanager().registerPeriodicTask(
+    'synquill_periodic_sync_task',
+    'sync_task',
+    frequency: const Duration(minutes: 15), // Adjust as needed
+    initialDelay: const Duration(seconds: 10), // Optional initial delay
+    constraints: Constraints(
+      networkType: NetworkType.connected, // Only run when connected to network
+      requiresBatteryNotLow: true, // Avoid running on low battery
+      requiresCharging: false, // Can run on battery power
+    ),
+  );
+  // ... 
+}
+
+/// Background task dispatcher for WorkManager
+///
+/// This function demonstrates proper usage of SyncedStorage background sync
+/// methods with required pragma annotation for isolate accessibility.
+@pragma('vm:entry-point')
+void callbackDispatcher() {
+  Workmanager().executeTask((task, inputData) async {
+    try {
+      // Create database instance for background isolate
+      final database = SynquillDatabase(
+        LazyDatabase(
+          () => driftDatabase(
+            name: 'synquill.db', // same database file
+            native: DriftNativeOptions(
+              shareAcrossIsolates: true, // same sync option
+              databaseDirectory: getApplicationSupportDirectory,
+            ),
+          ),
+        ),
+      );
+
+      // Initialize SyncedStorage in background isolate
+      await SynquillStorage.initForBackgroundIsolate(
+        database: database,
+        config: SynquillStorageConfig(
+          defaultSavePolicy: DataSavePolicy.localFirst,
+          defaultLoadPolicy: DataLoadPolicy.localThenRemote,
+          backgroundQueueConcurrency: 1,
+        ),
+        initializeFn: initializeSynquillStorage,
+      );
+
+      // Process background sync tasks
+      await SynquillStorage.processBackgroundSync();
+
+      // close the SynquillStorage instance to avoid resource leaks
+      await SynquillStorage.close();
+      return true;
+    } catch (e, stackTrace) {
+      //print("Background sync failed: $e");
+      //print("Stack trace: $stackTrace");
+      return false;
+    }
+  });
+}
 ```
 
 ## 🛠️ Advanced Features
@@ -568,8 +650,9 @@ try {
 
 ```dart
 // Get queue status
-final queueStatus = await SynquillStorage.instance.queueManager.getQueueStats();
-print('Pending operations: ${queueStatus.pendingCount}');
+final stats = SynquillStorage.queueManager.getQueueStats();
+print('Foreground pending tasks: '
+    '${stats[QueueType.foreground]?.pendingTasks}');
 
 ```
 
