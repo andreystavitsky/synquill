@@ -5,7 +5,7 @@ import 'index.dart';
 
 part 'post.g.dart';
 
-/// Example Todo model ApiAdapter
+/// Example Post model ApiAdapter
 // Now extends BaseJsonApiAdapter to inherit global header overrides and baseUrl.
 mixin PostApiAdapter on BasicApiAdapter<Post> {
   // baseUrl is inherited from BaseJsonApiAdapter.
@@ -13,7 +13,7 @@ mixin PostApiAdapter on BasicApiAdapter<Post> {
 
   // Model-specific endpoint path component.
   // @override
-  // String get type => 'todo';
+  // String get type => pluralType;
 
   @override
   Logger get logger => Logger('PostApiAdapter');
@@ -34,7 +34,7 @@ mixin PostApiAdapter on BasicApiAdapter<Post> {
     return baseUrl.resolve('users/$userId/$pluralType');
   }
 
-  // Example: Override specific headers for Todo model if needed
+  // Example: Override specific headers for Post model if needed
   @override
   FutureOr<Map<String, String>> get baseHeaders async {
     final headers = await super.baseHeaders;
@@ -44,8 +44,9 @@ mixin PostApiAdapter on BasicApiAdapter<Post> {
 }
 
 @JsonSerializable()
-// BaseJsonApiAdapter provides global settings, PostApiAdapter provides specifics.
-// The SyncedStorage system will merge configurations from these adapters.
+// BaseJsonApiAdapter provides global settings, PostApiAdapter
+// provides specifics.
+// The SynqillStorage system will merge configurations from these adapters.
 @SynquillRepository(
   adapters: [JsonApiAdapter, PostApiAdapter],
   relations: [

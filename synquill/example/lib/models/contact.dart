@@ -10,11 +10,13 @@ mixin ContactApiAdapter on BasicApiAdapter<Contact> {
 }
 
 @JsonSerializable()
-@SynquillRepository(adapters: [JsonApiAdapter, ContactApiAdapter])
+@SynquillRepository(
+  adapters: [JsonApiAdapter, ContactApiAdapter],
+  relations: [ManyToOne(target: User, foreignKeyColumn: 'userId')],
+)
 class Contact extends ContactBase<Contact> {
   final String? importedContactId;
 
-  @ManyToOne(target: AppUser, foreignKeyColumn: 'userId')
   final String userId;
 
   Contact({

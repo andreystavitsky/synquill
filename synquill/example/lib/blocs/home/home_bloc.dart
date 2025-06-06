@@ -103,18 +103,7 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
         _todosSubscription?.cancel();
         _postsSubscription?.cancel();
 
-        /*_todosSubscription = currentUser.watchTodos().listen((todos) {
-          if (!isClosed) {
-            add(HomeTodosChanged(todos));
-          }
-        });
-
-        _postsSubscription = currentUser.watchPosts().listen((posts) {
-          if (!isClosed) {
-            add(HomePostsChanged(posts));
-          }
-        });*/
-
+        // Watch todos changes for the current user (via repository)
         _todosSubscription = SynquillStorage.instance.todos
             .watchAll(
           queryParams: QueryParams(
@@ -134,11 +123,10 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
           }
         });
 
-        // Watch posts changes
-        _postsSubscription = SynquillStorage.instance.posts
-            .watchAll(
+        // Watch posts changes (via user model)
+        _postsSubscription = currentUser
+            .watchPosts(
           queryParams: QueryParams(
-            filters: [PostFields.userId.equals(currentUser.id)],
             sorts: [
               SortCondition(
                   field: PostFields.updatedAt,

@@ -52,16 +52,12 @@ mixin TodoApiAdapter on BasicApiAdapter<Todo> {
 // The SyncedStorage system will merge configurations from these adapters.
 @SynquillRepository(
   adapters: [JsonApiAdapter, TodoApiAdapter],
-  relations: [
-    ManyToOne(target: User, foreignKeyColumn: 'userId'),
-  ],
+  relations: [ManyToOne(target: User, foreignKeyColumn: 'userId')],
 )
 class Todo extends ContactBase<Todo> {
   final String title;
-  @JsonKey(name: 'completed')
   final bool isCompleted;
 
-  @JsonKey(readValue: idMapper)
   final String userId;
 
   Todo({

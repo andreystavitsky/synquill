@@ -30,24 +30,21 @@ mixin UserApiAdapter on BasicApiAdapter<User> {
 
 @JsonSerializable()
 // BaseJsonApiAdapter provides global settings, UserApiAdapter provides specifics.
-// The SyncedStorage system will merge configurations from these adapters.
+// The SynquillStorage system will merge configurations from these adapters.
 @SynquillRepository(
   adapters: [JsonApiAdapter, UserApiAdapter],
   relations: [
     OneToMany(target: Todo, mappedBy: 'userId'),
     OneToMany(target: Post, mappedBy: 'userId'),
+    OneToMany(target: Project, mappedBy: 'ownerId'),
   ],
 )
 class User extends SynquillDataModel<User> {
   @override
-  @JsonKey(readValue: idMapper)
   final String id;
   final String name;
 
-  User({
-    String? id,
-    required this.name,
-  }) : id = id ?? generateCuid();
+  User({String? id, required this.name}) : id = id ?? generateCuid();
 
   User.fromDb({
     required this.id,
@@ -65,11 +62,4 @@ class User extends SynquillDataModel<User> {
 
   @override
   Map<String, dynamic> toJson() => _$UserToJson(this);
-
-  // The SyncedDataModel<T> already has a `T fromJson(Map<String, dynamic> json)`
-  // and `Map<String, dynamic> toJson()` that will be implemented by the code generator
-  // or should be implemented by the class itself if not using a generator.
-  // Since User.fromJson and toJson() are factory/instance methods for JsonSerializable,
-  // they are distinct from the ones BaseApiAdapter<User> would call directly on an instance of User.
-  // The UserApiAdapter's fromJson/toJson will correctly use User.fromJson and model.toJson().
 }
