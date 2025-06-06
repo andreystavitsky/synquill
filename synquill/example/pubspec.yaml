@@ -15,6 +15,8 @@ dependencies:
     sdk: flutter
 
   internet_connection_checker_plus: ^2.7.2
+
+  json_annotation: ^4.9.0
   
   path_provider: any
   
@@ -23,9 +25,6 @@ dependencies:
   
   # Required for generated database logging
   logging: ^1.2.0
-  
-  # Required for JSON serialization
-  json_annotation: ^4.9.0
 
   workmanager: ^0.6.0
   
@@ -39,7 +38,7 @@ dev_dependencies:
     sdk: flutter
   
   # Code generation tools - required for synquill
-  build_runner: ^2.4.15
+  build_runner: ^2.4.14
 
   synquill_gen:
     path: ../../synquill_gen

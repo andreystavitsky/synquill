@@ -45,15 +45,12 @@ Add to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
+  json_annotation: ^4.9.0
   synquill: ^1.0.0
-  drift: ^2.14.0
-  json_annotation: ^4.8.1
 
 dev_dependencies:
   synquill_gen: ^1.0.0
-  build_runner: ^2.4.6
-  drift_dev: ^2.14.0
-  json_serializable: ^6.7.0
+  build_runner: ^2.4.14
 ```
 
 ## 🏁 Quick Start
