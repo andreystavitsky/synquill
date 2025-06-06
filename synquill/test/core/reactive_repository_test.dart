@@ -90,9 +90,10 @@ class TestReactiveRepository extends SynquillRepositoryBase<TestModel> {
   @override
   Future<TestModel> save(
     TestModel model, {
-    Object? savePolicy,
+    DataSavePolicy? savePolicy,
     Map<String, String>? headers,
     Map<String, dynamic>? extra,
+    bool updateTimestamps = true,
   }) async {
     return model;
   }

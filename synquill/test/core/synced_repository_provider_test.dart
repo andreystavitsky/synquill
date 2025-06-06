@@ -84,6 +84,7 @@ class TestRepository extends SynquillRepositoryBase<TestModel> {
     DataSavePolicy? savePolicy,
     Map<String, String>? headers,
     Map<String, dynamic>? extra,
+    bool updateTimestamps = true,
   }) async {
     await saveToLocal(model);
     return model;

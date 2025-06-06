@@ -22,11 +22,15 @@ mixin RepositorySaveOperations<T extends SynquillDataModel<T>>
   /// [item] The item to save.
   /// [savePolicy] Controls whether to save to local storage, remote API,
   /// or both.
+  /// [updateTimestamps] Whether to automatically update createdAt/updatedAt
+  /// timestamps. Defaults to true. Set to false if you want to manually
+  /// control timestamp values.
   Future<T> save(
     T item, {
     DataSavePolicy? savePolicy,
     Map<String, dynamic>? extra,
     Map<String, String>? headers,
+    bool updateTimestamps = true,
   }) async {
     savePolicy ??= defaultSavePolicy;
     log.info('Saving $T with ID ${item.id} using policy ${savePolicy.name}');
@@ -34,14 +38,27 @@ mixin RepositorySaveOperations<T extends SynquillDataModel<T>>
     // Ensure the item has a repository reference.
     item.$setRepository(this as SynquillRepositoryBase<T>);
 
+    // Determine if this is a create or update operation before modifying
+    final isExisting = await isExistingItem(item);
+
+    // Automatically update timestamps when saving (if enabled)
+    if (updateTimestamps) {
+      final now = DateTime.now();
+      if (!isExisting && item.createdAt == null) {
+        // For new items, set createdAt if not already set
+        item.createdAt = now;
+      }
+      // Always update updatedAt when saving (for both new and existing items)
+      item.updatedAt = now;
+    }
+
     T resultItem;
 
     switch (savePolicy) {
       case DataSavePolicy.localFirst:
         log.info('Policy: localFirst. Saving $T to local database first.');
 
-        // Determine if this is a create or update operation
-        final isExisting = await isExistingItem(item);
+        // Use the existing check result
         var operation =
             isExisting ? SyncOperation.update : SyncOperation.create;
 
@@ -158,7 +175,6 @@ mixin RepositorySaveOperations<T extends SynquillDataModel<T>>
         log.info('Policy: remoteFirst. Saving $T to remote API first.');
         try {
           // Create a NetworkTask for remoteFirst save operation
-          final isExisting = await isExistingItem(item);
           final operation =
               isExisting ? SyncOperation.update : SyncOperation.create;
           final idempotencyKey =

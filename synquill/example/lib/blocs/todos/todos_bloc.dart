@@ -77,7 +77,7 @@ class TodosBloc extends Bloc<TodosEvent, TodosState> {
         userId: user.id,
       );
 
-      await SynquillStorage.instance.todos.save(newTodo);
+      await newTodo.save();
 
       // The stream listener will automatically emit the updated state
     } catch (e) {
@@ -90,22 +90,17 @@ class TodosBloc extends Bloc<TodosEvent, TodosState> {
     Emitter<TodosState> emit,
   ) async {
     try {
-      final users = await SynquillStorage.instance.users.findAll();
-      if (users.isEmpty) {
-        emit(TodosError('No user found.'));
-        return;
-      }
+      // Load the todo to update from LOCAL storage
+      // This ensures we updating the actual object in the database
+      // if localThenRemote is used, unexpected behavior may occur because
+      // the remote data may not be in sync with the local data
+      final todo = await SynquillStorage.instance.todos
+          .findOneOrFail(event.todoId, loadPolicy: DataLoadPolicy.localOnly);
 
-      final user = users.first;
+      todo.title = event.title;
+      todo.isCompleted = event.completed;
 
-      final updatedTodo = Todo.fromDb(
-        id: event.todoId,
-        title: event.title,
-        isCompleted: event.completed,
-        userId: user.id,
-      );
-
-      await SynquillStorage.instance.todos.save(updatedTodo);
+      await todo.save();
 
       // The stream listener will automatically emit the updated state
     } catch (e) {

@@ -17,6 +17,9 @@ extension SynquillDataModelExtensions<T extends SynquillDataModel<T>>
   /// [savePolicy] determines whether to save to local storage first
   /// ([DataSavePolicy.localFirst]) or to the remote API first
   /// ([DataSavePolicy.remoteFirst]).
+  /// [updateTimestamps] Whether to automatically update createdAt/updatedAt
+  /// timestamps. Defaults to true. Set to false if you want to manually
+  /// control timestamp values.
   ///
   /// Returns the saved instance, which may be updated with data from the
   /// remote API (such as server-generated timestamps).
@@ -29,9 +32,17 @@ extension SynquillDataModelExtensions<T extends SynquillDataModel<T>>
   /// final user = User(id: generateCuid(), name: 'John Doe');
   /// final savedUser = await user.save();
   /// ```
+  ///
+  /// Example with custom timestamp:
+  /// ```dart
+  /// final user = User(id: generateCuid(), name: 'John Doe');
+  /// user.updatedAt = DateTime.parse('2024-12-25T10:00:00Z');
+  /// final savedUser = await user.save(updateTimestamps: false);
+  /// ```
   Future<T> save({
     DataSavePolicy savePolicy = DataSavePolicy.localFirst,
     Map<String, dynamic>? extra,
+    bool updateTimestamps = true,
   }) async {
     _log.fine('save() called on ${T.toString()} instance with ID $id');
 
@@ -47,6 +58,7 @@ extension SynquillDataModelExtensions<T extends SynquillDataModel<T>>
         this as T,
         savePolicy: savePolicy,
         extra: extra,
+        updateTimestamps: updateTimestamps,
       );
 
       _log.fine('Successfully saved ${T.toString()} with ID $id');

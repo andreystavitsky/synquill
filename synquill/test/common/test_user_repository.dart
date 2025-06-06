@@ -34,9 +34,14 @@ class TestUserRepository extends SynquillRepositoryBase<TestUser> {
     DataSavePolicy? savePolicy,
     Map<String, String>? headers,
     Map<String, dynamic>? extra,
+    bool updateTimestamps = true,
   }) async {
     // Use the base class implementation which includes queue integration
-    return await super.save(model, savePolicy: savePolicy);
+    return await super.save(
+      model,
+      savePolicy: savePolicy,
+      updateTimestamps: updateTimestamps,
+    );
   }
 
   @override

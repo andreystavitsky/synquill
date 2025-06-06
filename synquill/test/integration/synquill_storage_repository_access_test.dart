@@ -103,9 +103,10 @@ class TestUserRepository extends SynquillRepositoryBase<TestUser> {
   @override
   Future<TestUser> save(
     TestUser model, {
-    Object? savePolicy,
+    DataSavePolicy? savePolicy,
     Map<String, String>? headers,
     Map<String, dynamic>? extra,
+    bool updateTimestamps = true,
   }) async {
     return model;
   }
