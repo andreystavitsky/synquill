@@ -47,7 +47,8 @@ abstract class ApiAdapterBase<TModel extends SynquillDataModel<TModel>> {
   /// Override in subclasses for custom entity names.
   ///
   /// Example: `categories`, `todos`, `users`, `plainModelJsons`
-  String get pluralType => PluralizationUtils.pluralize(type);
+  String get pluralType =>
+      PluralizationUtils.pluralize(TModel.toString().toLowerCase());
 
   // HTTP Method Configuration
   // These provide defaults but can be overridden per model

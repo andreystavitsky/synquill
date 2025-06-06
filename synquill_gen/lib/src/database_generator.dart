@@ -171,7 +171,7 @@ class DatabaseGenerator {
     // Find the last '/*' before our position
     int lastBlockStart = -1;
     int searchPos = 0;
-    
+
     while (true) {
       final nextStart = content.indexOf('/*', searchPos);
       if (nextStart == -1 || nextStart >= position) {
@@ -180,15 +180,15 @@ class DatabaseGenerator {
       lastBlockStart = nextStart;
       searchPos = nextStart + 2;
     }
-    
+
     // If no block comment start found before our position, we're not in one
     if (lastBlockStart == -1) {
       return false;
     }
-    
+
     // Find the next '*/' after the last '/*'
     final blockEnd = content.indexOf('*/', lastBlockStart + 2);
-    
+
     // If no closing found, or closing is after our position, we're inside
     return blockEnd == -1 || blockEnd >= position;
   }
@@ -297,7 +297,7 @@ class DatabaseGenerator {
     buffer.writeln('        _log.info(\'Creating database schema\');');
     buffer.writeln('        await m.createAll();');
     buffer.writeln('        if (_onDatabaseCreated != null) {');
-    buffer.writeln('          await _onDatabaseCreated(m);');
+    buffer.writeln('          await _onDatabaseCreated!(m);');
     buffer.writeln('        } else {');
     buffer.writeln('          await onDatabaseCreated(m);');
     buffer.writeln('        }');
@@ -307,7 +307,7 @@ class DatabaseGenerator {
       '        _log.info(\'Upgrading database from version \$from to \$to\');',
     );
     buffer.writeln('        if (_onCustomMigration != null) {');
-    buffer.writeln('          await _onCustomMigration(m, from, to);');
+    buffer.writeln('          await _onCustomMigration!(m, from, to);');
     buffer.writeln('        } else {');
     buffer.writeln('          await onCustomMigration(m, from, to);');
     buffer.writeln('        }');

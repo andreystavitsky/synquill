@@ -12,8 +12,8 @@ mixin TodoApiAdapter on BasicApiAdapter<Todo> {
   // baseHeaders are inherited and extended from BaseJsonApiAdapter.
 
   // Model-specific endpoint path component.
-  // @override
-  // String get type => 'todo';
+  @override
+  String get type => pluralType;
 
   @override
   Logger get logger => Logger('TodoApiAdapter');
@@ -55,9 +55,12 @@ mixin TodoApiAdapter on BasicApiAdapter<Todo> {
   relations: [ManyToOne(target: User, foreignKeyColumn: 'userId')],
 )
 class Todo extends ContactBase<Todo> {
-  final String title;
-  final bool isCompleted;
+  String title;
 
+  @JsonKey(name: 'completed')
+  bool isCompleted;
+
+  @JsonKey(readValue: idMapper)
   final String userId;
 
   Todo({

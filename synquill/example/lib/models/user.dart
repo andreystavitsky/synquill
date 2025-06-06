@@ -41,7 +41,9 @@ mixin UserApiAdapter on BasicApiAdapter<User> {
 )
 class User extends SynquillDataModel<User> {
   @override
+  @JsonKey(readValue: idMapper)
   final String id;
+
   final String name;
 
   User({String? id, required this.name}) : id = id ?? generateCuid();
