@@ -28,8 +28,8 @@ void main() async {
     ),
   );
 
-  // Create the database using the configuration
-  // In the future, this could be generated to use the config automatically
+  // Initialize the SynquillStorage system
+  @SynqillDatabaseVersion(1)
   final database = SynquillDatabase(
     LazyDatabase(
       () => driftDatabase(
@@ -44,6 +44,10 @@ void main() async {
     onDatabaseCreated: _setupInitialData,
   );
 
+  // If uncommented, this should cause a build error due to conflicting versions
+  // @SynqillDatabaseVersion(2)
+  // final conflictingVersion = 'test';
+
   // Initialize the synced storage system
   await SynquillStorage.init(
     connectivityChecker: () async =>
@@ -57,7 +61,6 @@ void main() async {
       defaultSavePolicy: DataSavePolicy.localFirst,
       defaultLoadPolicy: DataLoadPolicy.localThenRemote,
       foregroundQueueConcurrency: 1,
-      keepConnectionAlive: true,
     ),
     initializeFn: initializeSynquillStorage,
   );

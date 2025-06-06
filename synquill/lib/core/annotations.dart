@@ -109,3 +109,24 @@ class Indexed {
   /// Creates a new [Indexed] annotation.
   const Indexed({this.name, this.unique = false});
 }
+
+/// Annotation to specify the database schema version.
+/// This annotation can be placed anywhere in the application code where
+/// SynquillStorage is initialized. If no annotation is present, the default
+/// version is 1.
+///
+/// Example:
+/// ```dart
+/// @SynqillDatabaseVersion(2)
+/// void main() {
+///   // Your app initialization
+/// }
+/// ```
+class SynqillDatabaseVersion {
+  /// The database schema version number.
+  /// Must be a positive integer.
+  final int version;
+
+  /// Creates a new [SynqillDatabaseVersion] annotation.
+  const SynqillDatabaseVersion(this.version);
+}

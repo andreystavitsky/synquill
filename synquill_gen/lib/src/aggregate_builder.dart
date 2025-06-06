@@ -106,7 +106,7 @@ class AggregateBuilder implements Builder {
       buildStep.inputId.package,
       'lib/generated/database.g.dart',
     );
-    final databaseContent = _generateDatabaseFile(models);
+    final databaseContent = await _generateDatabaseFile(models, buildStep);
     await buildStep.writeAsString(databaseAssetId, databaseContent);
 
     // Generate repositories file
@@ -175,7 +175,10 @@ class AggregateBuilder implements Builder {
   }
 
   /// Generate database.g.dart file
-  String _generateDatabaseFile(List<ModelInfo> models) {
+  Future<String> _generateDatabaseFile(
+    List<ModelInfo> models,
+    BuildStep buildStep,
+  ) async {
     final buffer = StringBuffer();
 
     // File header
@@ -187,7 +190,10 @@ class AggregateBuilder implements Builder {
 
     // Generate database
     buffer.writeln(TableGenerator.generateSyncQueueItemsTable());
-    final databaseCode = DatabaseGenerator.generateDatabaseClass(models);
+    final databaseCode = await DatabaseGenerator.generateDatabaseClass(
+      models,
+      buildStep,
+    );
     buffer.writeln(databaseCode);
 
     return buffer.toString();
