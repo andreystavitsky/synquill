@@ -29,11 +29,14 @@ const config = SynquillStorageConfig(
   initialRetryDelay: Duration(seconds: 1),
   maxRetryDelay: Duration(minutes: 5),
   
-  // Connectivity
-  enableInternetMonitoring: true,
-  connectivityCheckInterval: Duration(seconds: 30),
+  // Connectivity related options are provided when calling
+  // `SynquillStorage.init` (see below)
 );
 ```
+
+When initializing `SynquillStorage`, you can pass
+`enableInternetMonitoring`, `connectivityStream`, or
+`connectivityChecker` to control how connectivity is tracked.
 
 ## Background Sync
 
