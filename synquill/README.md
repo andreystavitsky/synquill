@@ -295,8 +295,8 @@ final userTodos = await user.loadTodos(
   queryParams: QueryParams(
     filters: [TodoFields.isCompleted.equals(false)],
     sorts: [SortCondition(
-      field: TodoFields.createdAt, d
-      irection: SortDirection.descending
+      field: TodoFields.createdAt,
+      direction: SortDirection.descending
     )],
   ),
 );
