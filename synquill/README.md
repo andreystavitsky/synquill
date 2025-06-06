@@ -2,21 +2,95 @@
 
 A powerful Flutter package for offline-first data management with automatic REST API synchronization. Built on top of Drift for robust local storage and featuring intelligent sync queues for seamless online/offline operation.
 
+> **Note**: This package is inspired by [flutter_data](https://pub.dev/packages/flutter_data), a fantastic data layer solution for Flutter applications.
+
 [![pub package](https://img.shields.io/pub/v/synquill.svg)](https://pub.dev/packages/synquill)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+## 📋 Table of Contents
+
+- [🚀 Key Features](#-key-features)
+  - [📱 Offline-First Architecture](#-offline-first-architecture)
+  - [🔄 Intelligent Synchronization](#-intelligent-synchronization)
+  - [🏗️ Model-Driven Development](#️-model-driven-development)
+  - [🌐 Flexible API Integration](#-flexible-api-integration)
+  - [⚡ Reactive Data Streams](#-reactive-data-streams)
+- [📦 Installation](#-installation)
+- [🏁 Quick Start](#-quick-start)
+  - [1. Define Your Models](#1-define-your-models)
+  - [2. Create Custom API Adapters](#2-create-custom-api-adapters)
+  - [3. Initialize the Storage System](#3-initialize-the-storage-system)
+- [📚 Core Concepts](#-core-concepts)
+  - [Data Save Policies](#data-save-policies)
+  - [Data Load Policies](#data-load-policies)
+  - [Dependency-Based Sync Ordering](#dependency-based-sync-ordering)
+- [🔍 Querying Data](#-querying-data)
+  - [Repository-Level Queries](#repository-level-queries)
+  - [Model-Level Relationship Queries](#model-level-relationship-queries)
+- [📡 Reactive Data Streams](#-reactive-data-streams)
+  - [Watch for Real-time Updates](#watch-for-real-time-updates)
+  - [Repository Change Events](#repository-change-events)
+- [🔄 Model Operations](#-model-operations)
+  - [Instance Methods](#instance-methods)
+  - [Bulk Operations](#bulk-operations)
+- [🔗 Relationships](#-relationships)
+  - [OneToMany Relationships](#onetomany-relationships)
+  - [ManyToOne Relationships](#manytoone-relationships)
+- [🔗 Dependency-Based Sync Ordering](#-dependency-based-sync-ordering-1)
+  - [How It Works](#how-it-works)
+  - [Dependency Levels](#dependency-levels)
+  - [Automatic Sync Task Ordering](#automatic-sync-task-ordering)
+  - [Circular Dependency Detection](#circular-dependency-detection)
+  - [Complex Dependency Patterns](#complex-dependency-patterns)
+  - [Debug Information](#debug-information)
+- [🌐 API Adapter Customization](#-api-adapter-customization)
+  - [HTTP Methods and URLs](#http-methods-and-urls)
+  - [Custom Headers and Authentication](#custom-headers-and-authentication)
+  - [Response Parsing](#response-parsing)
+- [⚙️ Configuration](#️-configuration)
+  - [Storage Configuration](#storage-configuration)
+  - [Background Sync](#background-sync)
+  - [Background Sync Manager Controls](#background-sync-manager-controls)
+    - [App Lifecycle Integration](#app-lifecycle-integration)
+    - [Manual Sync Mode Control](#manual-sync-mode-control)
+    - [Sync Mode Behavior](#sync-mode-behavior)
+    - [Background Isolate Support](#background-isolate-support)
+- [🛠️ Advanced Features](#️-advanced-features)
+  - [Custom Field Indexing](#custom-field-indexing)
+  - [Database Migrations](#database-migrations)
+  - [Error Handling](#error-handling)
+  - [Queue Management](#queue-management)
+    - [Queue Types](#queue-types)
+    - [Queue Statistics and Monitoring](#queue-statistics-and-monitoring)
+    - [Capacity Management](#capacity-management)
+    - [Connectivity-Responsive Queue Management](#connectivity-responsive-queue-management)
+    - [Idempotency and Duplicate Prevention](#idempotency-and-duplicate-prevention)
+    - [Queue Integration with RetryExecutor](#queue-integration-with-retryexecutor)
+- [🔄 Offline Retry Mechanism](#-offline-retry-mechanism)
+- [⚠️ Current Limitations](#️-current-limitations)
+- [📖 API Reference](#-api-reference)
+  - [Core Classes](#core-classes)
+  - [Queue System Classes](#queue-system-classes)
+  - [Data Policies](#data-policies)
+  - [Relationship Annotations](#relationship-annotations)
+  - [Repository Methods](#repository-methods)
+- [🤝 Contributing](#-contributing)
+- [📄 License](#-license)
+- [🔗 Related Packages](#-related-packages)
 
 ## 🚀 Key Features
 
 ### 📱 Offline-First Architecture
 - **Local-first operations** with Drift-powered SQLite database
 - **Automatic background sync** with configurable retry mechanisms
-- **Smart conflict resolution** and queue management
+- **Smart queue management** for operations with related data dependencies
 - **Works completely offline** - sync when connectivity returns
 
 ### 🔄 Intelligent Synchronization
 - **Bidirectional sync** between local storage and REST APIs
 - **Configurable sync policies**: `localFirst`, `remoteFirst`, `localThenRemote`
-- **Background processing** with WorkManager integration
+- **Dependency-based sync ordering** with hierarchical task resolution
+- **Background processing** capabilities, enabling integration with tools like WorkManager
 - **Retry logic** with exponential backoff for failed operations
 
 ### 🏗️ Model-Driven Development
@@ -247,6 +321,16 @@ final users = await repository.findAll(
 );
 ```
 
+### Dependency-Based Sync Ordering
+
+Synquill automatically ensures sync operations respect model relationships:
+
+```dart
+// Parent models (Users) are always synced before child models (Todos)
+// This prevents foreign key constraint violations during sync operations
+// See the "Dependency-Based Sync Ordering" section for detailed information
+```
+
 ## 🔍 Querying Data
 
 ### Repository-Level Queries
@@ -281,6 +365,13 @@ final user = await userRepository.findOne('user-id');
 // Find or throw exception
 final user = await userRepository.findOneOrFail('user-id');
 ```
+
+> **Note**: When using `DataLoadPolicy.localThenRemote` or `DataLoadPolicy.remoteFirst`, `QueryParams` are automatically translated to HTTP querystring parameters for API calls. The default format is:
+> - Filters: `filter[field][operator]=value` (e.g., `filter[isCompleted][equals]=true`)
+> - Sorts: `sort=field:direction,field2:direction` (e.g., `sort=createdAt:desc,name:asc`)
+> - Pagination: `limit=X&offset=Y`
+> 
+> This behavior can be customized by overriding the `queryParamsToHttpParams` method in your API adapter mixins.
 
 ### Model-Level Relationship Queries
 
@@ -320,6 +411,7 @@ StreamSubscription? subscription = todoRepository.watchAll(
   // UI automatically updates when data changes
   setState(() => _todos = todos);
 });
+// Remember to cancel the subscription when it is no longer needed to avoid memory leaks.
 
 // Watch single item
 todoRepository.watchOne('todo-id').listen((todo) {
@@ -376,7 +468,7 @@ TODO: describe update
 await savedUser.delete();
 
 // Refresh from remote - not implemented yet
-//final refreshedUser = await savedUser.refresh();
+// final refreshedUser = await savedUser.refresh();
 ```
 
 ### Bulk Operations
@@ -443,6 +535,108 @@ todo.watchUser().listen((user) => updateUI(user));
 // Delete with cascade (automatically deletes related todos)
 await userRepository.delete('user-id', savePolicy: DataSavePolicy.localFirst);
 ```
+
+## 🔗 Dependency-Based Sync Ordering
+
+Synquill automatically manages sync task ordering based on model relationships to ensure data integrity during synchronization. The `DependencyResolver` class analyzes `@ManyToOne` relationships to create a hierarchical sync order where parent models are always synced before their dependent children.
+
+### How It Works
+
+When models have `@ManyToOne` relationships, Synquill automatically registers dependencies during initialization:
+
+```dart
+// Generated during build - registers Todo's dependency on User
+DependencyResolver.registerDependency('Todo', 'User');
+DependencyResolver.registerDependency('Project', 'User');
+DependencyResolver.registerDependency('Task', 'Project');
+```
+
+### Dependency Levels
+
+The system assigns dependency levels to ensure proper ordering:
+
+```dart
+// Level 0: Root models (no dependencies)
+DependencyResolver.getDependencyLevel('User');      // Returns 0
+
+// Level 1: Models depending on level 0
+DependencyResolver.getDependencyLevel('Project');   // Returns 1  
+DependencyResolver.getDependencyLevel('Todo');      // Returns 1
+
+// Level 2: Models depending on level 1 
+DependencyResolver.getDependencyLevel('Task');      // Returns 2
+```
+
+### Automatic Sync Task Ordering
+
+During sync operations, tasks are automatically ordered by dependency level:
+
+```dart
+// Sync queue tasks are processed in dependency order:
+// 1. All User operations (level 0)
+// 2. All Project and Todo operations (level 1) 
+// 3. All Task operations (level 2)
+
+// Within the same level, tasks maintain FIFO order by creation time
+```
+
+### Circular Dependency Detection
+
+The system detects and prevents circular dependencies:
+
+```dart
+// This would be detected as a circular dependency:
+DependencyResolver.registerDependency('A', 'B');
+DependencyResolver.registerDependency('B', 'C'); 
+DependencyResolver.registerDependency('C', 'A');
+
+// Check for circular dependencies
+if (DependencyResolver.hasCircularDependencies()) {
+  // Handle circular dependency error
+}
+```
+
+### Complex Dependency Patterns
+
+Supports complex patterns like diamond dependencies:
+
+```dart
+@SynquillRepository(
+  relations: [
+    ManyToOne(target: User, foreignKeyColumn: 'userId'),
+    ManyToOne(target: Category, foreignKeyColumn: 'categoryId'),
+  ],
+)
+class Task extends SynquillDataModel<Task> {
+  final String userId;
+  final String categoryId;
+  // ... model definition
+}
+
+// Results in dependency ordering:
+// Level 0: User, Category (independent)
+// Level 1: Task (depends on both User and Category)
+```
+
+### Debug Information
+
+Access dependency information for debugging:
+
+```dart
+// Get dependency map
+final dependencyResolver = SynquillStorage.dependencyResolver;
+final dependencies = dependencyResolver.getDebugDependencyMap();
+print('Task dependencies: ${dependencies['Task']}'); // [User, Category]
+
+// Get dependency levels  
+final levels = dependencyResolver.getDebugDependencyLevels();
+print('All levels: $levels'); // {User: 0, Category: 0, Task: 1}
+
+// Get comprehensive debug info
+final debugInfo = dependencyResolver.getDebugInfo();
+```
+
+This ensures that during background sync operations, parent records (like Users) are always created or updated before child records (like Todos) that reference them, preventing foreign key constraint violations and maintaining data integrity.
 
 ## 🌐 API Adapter Customization
 
@@ -612,6 +806,101 @@ void callbackDispatcher() {
 }
 ```
 
+**Note**: During background sync processing, Synquill automatically applies dependency-based task ordering to ensure parent records are synchronized before their dependent children. This prevents foreign key constraint violations and maintains data integrity across sync operations.
+
+### Background Sync Manager Controls
+
+Synquill provides runtime controls to adjust sync behavior based on your app's lifecycle state. These methods allow you to optimize battery usage and responsiveness by switching between foreground and background sync modes.
+
+#### App Lifecycle Integration
+
+The most common use case is integrating with Flutter's app lifecycle to automatically adjust sync behavior:
+
+```dart
+class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    switch (state) {
+      case AppLifecycleState.resumed:
+        // App is active - enable foreground mode for faster sync
+        SynquillStorage.enableForegroundMode(forceSync: true);
+        break;
+      case AppLifecycleState.paused:
+      case AppLifecycleState.inactive:
+        // App is in background - switch to background mode to save battery
+        SynquillStorage.enableBackgroundMode();
+        break;
+      default:
+        break;
+    }
+  }
+}
+```
+
+#### Manual Sync Mode Control
+
+You can also manually control sync modes based on your app's specific needs:
+
+```dart
+// Switch to foreground mode for immediate responsiveness
+// Optional forceSync parameter triggers immediate sync processing
+SynquillStorage.enableForegroundMode(forceSync: true);
+
+// Switch to background mode for battery optimization
+SynquillStorage.enableBackgroundMode();
+
+// Check if background sync manager is ready
+final isReady = SynquillStorage.backgroundSyncManager.isReadyForBackgroundSync;
+if (isReady) {
+  // Manually trigger background sync processing
+  await SynquillStorage.instance.processBackgroundSyncTasks();
+}
+```
+
+#### Sync Mode Behavior
+
+**Foreground Mode**:
+- Higher polling frequency for immediate sync operations
+- Shorter retry intervals for failed operations
+- Optimized for responsiveness when app is active
+- Optional immediate sync trigger with `forceSync: true`
+
+**Background Mode**:
+- Lower polling frequency to conserve battery
+- Longer retry intervals to reduce CPU usage
+- Optimized for battery life when app is inactive
+- Automatic timeout (20 seconds) for background tasks
+
+#### Background Isolate Support
+
+These methods are also available in background isolates with proper pragma annotations:
+
+```dart
+@pragma('vm:entry-point')
+void backgroundTaskHandler() {
+  // Switch modes even in background isolates
+  SynquillStorage.enableBackgroundMode();
+  SynquillStorage.enableForegroundMode();
+  
+  // Process background sync tasks
+  await SynquillStorage.processBackgroundSync();
+}
+```
+
+The background sync manager automatically handles mode transitions and ensures optimal performance regardless of your app's state.
+
 ## 🛠️ Advanced Features
 
 ### Custom Field Indexing
@@ -648,13 +937,179 @@ try {
 
 ### Queue Management
 
-```dart
-// Get queue status
-final stats = SynquillStorage.queueManager.getQueueStats();
-print('Foreground pending tasks: '
-    '${stats[QueueType.foreground]?.pendingTasks}');
+Synquill uses a sophisticated multi-queue system to handle different types of operations with optimized concurrency and reliability. The `RequestQueueManager` manages three specialized queues:
 
+#### Queue Types
+
+**Foreground Queue** (`QueueType.foreground`)
+- **Purpose**: Immediate user operations (remoteFirst writes)
+- **Concurrency**: 1 (sequential for data consistency)
+- **Delay**: 50ms between tasks
+- **Use Cases**: User-initiated saves, updates, deletes
+- **Timeout**: 10 seconds when waiting for capacity
+
+**Load Queue** (`QueueType.load`)
+- **Purpose**: Background data fetching (localThenRemote reads)
+- **Concurrency**: 2 (parallel for faster loading)
+- **Delay**: 50ms between tasks
+- **Use Cases**: UI refresh, background data synchronization
+- **Timeout**: 5 seconds when waiting for capacity
+
+**Background Queue** (`QueueType.background`)
+- **Purpose**: Offline sync operations (localFirst writes)
+- **Concurrency**: 1 (sequential for dependency ordering)
+- **Delay**: 100ms between tasks
+- **Use Cases**: Retry failed operations, offline-to-online sync
+- **Timeout**: 2 seconds when waiting for capacity
+
+#### Queue Statistics and Monitoring
+
+```dart
+// Get comprehensive queue statistics
+final stats = SynquillStorage.queueManager.getQueueStats();
+
+// Check each queue type
+for (final queueType in QueueType.values) {
+  final queueStats = stats[queueType]!;
+  print('${queueType.name} Queue:');
+  print('  Active + Pending: ${queueStats.activeAndPendingTasks}');
+  print('  Pending: ${queueStats.pendingTasks}');
+}
+
+// Monitor specific queue
+final foregroundStats = stats[QueueType.foreground]!;
+if (foregroundStats.activeAndPendingTasks > 10) {
+  print('Foreground queue is busy - consider deferring non-critical operations');
+}
 ```
+
+#### Capacity Management
+
+Each queue has configurable capacity limits to prevent memory issues:
+
+```dart
+await SynquillStorage.init(
+  database: database,
+  config: const SynquillStorageConfig(
+    // Queue capacity limits (default: 50 each)
+    maxForegroundQueueCapacity: 30,
+    maxLoadQueueCapacity: 40,
+    maxBackgroundQueueCapacity: 100,
+    
+    // Capacity wait timeouts
+    foregroundQueueCapacityTimeout: Duration(seconds: 15),
+    loadQueueCapacityTimeout: Duration(seconds: 8),
+    backgroundQueueCapacityTimeout: Duration(seconds: 5),
+    
+    // Capacity polling interval
+    queueCapacityCheckInterval: Duration(milliseconds: 50),
+  ),
+);
+```
+
+#### Connectivity-Responsive Queue Management
+
+The queue system automatically responds to connectivity changes:
+
+```dart
+// When connectivity is lost - queues are cleared to prevent timeouts
+// Tasks remain in sync_queue database for later processing
+await SynquillStorage.queueManager.clearQueuesOnDisconnect();
+
+// When connectivity returns - processing resumes immediately
+await SynquillStorage.queueManager.restoreQueuesOnConnect();
+
+// Manual queue operations
+await SynquillStorage.queueManager.joinAll(); // Wait for all tasks to complete
+await SynquillStorage.queueManager.dispose(); // Clean shutdown
+```
+
+#### Idempotency and Duplicate Prevention
+
+The queue system prevents duplicate operations using idempotency keys:
+
+```dart
+// Create a network task with idempotency key
+final task = NetworkTask<User>(
+  exec: () => apiAdapter.createUser(user),
+  idempotencyKey: 'create-user-${user.id}-${cuid()}',
+  operation: SyncOperation.create,
+  modelType: 'User',
+  modelId: user.id,
+  taskName: 'Create User ${user.name}',
+);
+
+// Enqueue to specific queue type
+try {
+  final result = await SynquillStorage.queueManager.enqueueTask(
+    task,
+    queueType: QueueType.foreground,
+  );
+  print('User created: ${result.id}');
+} catch (e) {
+  if (e.toString().contains('Duplicate task')) {
+    print('Task already in progress');
+  } else if (e.toString().contains('capacity')) {
+    print('Queue is full - try again later');
+  }
+}
+```
+
+#### Queue Integration with RetryExecutor
+
+The queue system works seamlessly with the RetryExecutor for background sync:
+
+```dart
+// RetryExecutor processes sync queue and uses appropriate queues
+final retryExecutor = SynquillStorage.retryExecutor;
+
+// Start with adaptive polling (foreground/background modes)
+retryExecutor.start(backgroundMode: false);
+
+// Switch modes based on app state
+retryExecutor.setBackgroundMode(true);  // Longer poll intervals
+
+// Manual processing trigger
+await retryExecutor.processDueTasksNow(forceSync: true);
+
+// Network error tasks get priority in queue processing
+// Dependency ordering ensures related tasks execute in correct sequence
+```
+
+## 🔄 Offline Retry Mechanism
+
+**TBD** - Detailed explanation of the offline retry mechanism will be provided in a future update.
+
+## ⚠️ Current Limitations
+
+While Synquill provides a robust foundation for offline-first data management, there are several limitations to be aware of in the current version:
+
+### Conflict Resolution
+- **No automated conflict resolution yet:** Synquill currently lacks built-in mechanisms to resolve conflicts when data is modified simultaneously on the local device and the remote server. Developers are responsible for implementing their own conflict resolution strategies. If remote data differs from local data after a sync, local updates will not be automatically triggered.
+- Future versions will include configurable conflict resolution strategies (last-write-wins, manual resolution, custom merge functions)
+
+### Framework Support
+- **Freezed support is not tested yet** - While the package may work with `freezed` models, compatibility has not been thoroughly tested
+- **Desktop and web platform support not tested yet** - Development has focused on mobile platforms (iOS/Android), desktop and web compatibility needs validation
+
+### Relationship Support
+- **Relations support is currently limited**:
+  - **No self-to-self relations** - Models cannot reference themselves (e.g., User with manager/subordinate relationships)
+  - **No one-to-one relations** - Only `@OneToMany` and `@ManyToOne` relationships are currently supported
+  - **No many-to-many relations** - Complex relationships requiring junction tables are not supported yet
+
+### Database Indexing
+- **Indexing support is limited**:
+  - **No combined indexes yet** - Only single-field indexes are supported via `@Indexed` annotation
+  - Composite indexes spanning multiple fields will be added in future versions
+
+### Reactive Streams
+- **Reactive streams are local-only**:
+  - **`watchOne()` and `watchAll()` methods currently only watch local database changes** - These streams do not automatically react to remote data changes or sync operations
+  - Remote data changes are only reflected in the streams after they have been synced to the local database
+  - Future versions will include options to trigger remote data fetching when streams are subscribed to
+
+These limitations are actively being addressed in the development roadmap. Contributions and feedback are welcome to help prioritize these features.
 
 ## 📖 API Reference
 
@@ -664,6 +1119,16 @@ print('Foreground pending tasks: '
 - **`SynquillRepository<T>`** - Generated repository for each model
 - **`SynquillStorage`** - Main storage manager and entry point
 - **`QueryParams`** - Query configuration for filtering, sorting, pagination
+- **`DependencyResolver`** - Manages hierarchical sync ordering based on model relationships
+- **`RequestQueueManager`** - Multi-queue system for network operation management
+- **`NetworkTask<T>`** - Encapsulates network operations with idempotency and error handling
+- **`RetryExecutor`** - Background processor for failed sync operations
+
+### Queue System Classes
+
+- **`QueueType`** - Enum defining queue types (foreground, load, background)
+- **`QueueStats`** - Queue statistics (active tasks, pending tasks)
+- **`RequestQueue`** - Individual queue with configurable concurrency and delays
 
 ### Data Policies
 
@@ -698,7 +1163,7 @@ Stream<RepositoryChange<T>> get changes;
 
 ## 🤝 Contributing
 
-We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
+Contributions are welcome! Please feel free to submit pull requests, open issues, or ask questions on GitHub.
 
 ## 📄 License
 

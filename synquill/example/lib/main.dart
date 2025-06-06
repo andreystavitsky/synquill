@@ -173,6 +173,7 @@ void callbackDispatcher() {
       // Process background sync tasks
       await SynquillStorage.processBackgroundSync();
 
+      // close the SynquillStorage instance to avoid resource leaks
       await SynquillStorage.close();
 
       print("Background sync completed successfully");
