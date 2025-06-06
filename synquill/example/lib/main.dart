@@ -33,7 +33,7 @@ void main() async {
   final database = SynquillDatabase(
     LazyDatabase(
       () => driftDatabase(
-        name: 'synced_storage.db',
+        name: 'synquill_storage.db',
         native: DriftNativeOptions(
           shareAcrossIsolates: true,
           databaseDirectory: getApplicationSupportDirectory,
@@ -48,7 +48,7 @@ void main() async {
   // @SynqillDatabaseVersion(2)
   // final conflictingVersion = 'test';
 
-  // Initialize the synced storage system
+  // Initialize the SynquillStorage system
   await SynquillStorage.init(
     connectivityChecker: () async =>
         await InternetConnection().hasInternetAccess,
@@ -87,14 +87,14 @@ Future<void> _setupInitialData(Migrator migrator) async {
     await migrator.database.customStatement('''
       INSERT INTO todos (id, title, user_id, is_completed, created_at, updated_at) 
       VALUES 
-        ('welcome-todo', 'Welcome to Synced Storage!', '1', 0, strftime('%s', 'now'), strftime('%s', 'now')),
+        ('welcome-todo', 'Welcome to SynquillStorage!', '1', 0, strftime('%s', 'now'), strftime('%s', 'now')),
         ('getting-started', 'Try adding your own todos', '1', 0, strftime('%s', 'now'), strftime('%s', 'now'))
     ''');
 
     await migrator.database.customStatement('''
       INSERT INTO posts (id, title, body, user_id, created_at, updated_at) 
       VALUES 
-        ('welcome-post', 'Welcome to Synced Storage!', 'This is your first post. You can create, edit, and delete posts to test the synced storage functionality.', '1', strftime('%s', 'now'), strftime('%s', 'now')),
+        ('welcome-post', 'Welcome to SynquillStorage!', 'This is your first post. You can create, edit, and delete posts to test the SynquillStorage functionality.', '1', strftime('%s', 'now'), strftime('%s', 'now')),
         ('getting-started-post', 'Getting Started with Posts', 'Try creating your own posts using the floating action button. Posts are automatically synced with the backend when connected to the internet.', '1', strftime('%s', 'now'), strftime('%s', 'now'))
     ''');
 
@@ -124,7 +124,7 @@ class TodoApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Synced Data Storage Example',
+      title: 'SynquillStorage Storage Example',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
         useMaterial3: true,
@@ -136,7 +136,7 @@ class TodoApp extends StatelessWidget {
 
 /// Background task dispatcher for WorkManager
 ///
-/// This function demonstrates proper usage of SyncedStorage background sync
+/// This function demonstrates proper usage of SynquillStorage background sync
 /// methods with required pragma annotation for isolate accessibility.
 @pragma('vm:entry-point')
 void callbackDispatcher() {
@@ -148,7 +148,7 @@ void callbackDispatcher() {
       final database = SynquillDatabase(
         LazyDatabase(
           () => driftDatabase(
-            name: 'synced_storage.db',
+            name: 'synquill_storage.db',
             native: DriftNativeOptions(
               shareAcrossIsolates: true,
               databaseDirectory: getApplicationSupportDirectory,
@@ -157,7 +157,7 @@ void callbackDispatcher() {
         ),
       );
 
-      // Initialize SyncedStorage in background isolate
+      // Initialize SynquillStorage in background isolate
       await SynquillStorage.initForBackgroundIsolate(
         database: database,
         config: SynquillStorageConfig(
