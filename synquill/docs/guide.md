@@ -162,6 +162,7 @@ user.watchTodos().listen((todos) {
   print('User now has ${todos.length} todos');
 });
 ```
+> **Note**: Reactive streams currently only watch local database changes. Remote data changes are reflected in streams only after they've been synced to the local database. See [Current Limitations](advanced-features.md#current-limitations) for more details.
 
 ### Repository Change Events
 

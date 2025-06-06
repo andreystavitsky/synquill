@@ -172,33 +172,31 @@ Future<List<T>> findAll({QueryParams? queryParams, DataLoadPolicy? loadPolicy})
 Stream<T?> watchOne(String id, {bool fireImmediately = true})
 Stream<List<T>> watchAll({QueryParams? queryParams, bool fireImmediately = true})
 ```
+> **Note**: Reactive streams currently only watch local database changes. Remote data changes are reflected in streams only after they've been synced to the local database. See [Current Limitations](advanced-features.md#current-limitations) for more details.
 
 **Save Operations:**
 ```dart
 Future<T> save(T model, {DataSavePolicy? savePolicy})
-Future<List<T>> saveAll(List<T> models, {DataSavePolicy? savePolicy})
 ```
 
 **Delete Operations:**
 ```dart
 Future<void> delete(String id, {DataSavePolicy? savePolicy})
-Future<void> deleteAll(List<String> ids, {DataSavePolicy? savePolicy})
 ```
 
 **Relationship Operations:**
+> **Note**: The method name identifies the relationship to load or watch. Generated model extensions provide type-safe methods for defined relationships (e.g., `todo.loadUser()`, `user.watchTodos()`).
 ```dart
-Future<List<R>> findRelated<R extends SynquillDataModel<R>>(
-  String id,
-  String relationName, {
+Future<List<R>> loadUser<R extends SynquillDataModel<R>>(
+  String id, {
   QueryParams? queryParams,
   DataLoadPolicy? loadPolicy,
+  Map<String, dynamic>? extra
 })
 
-Stream<List<R>> watchRelated<R extends SynquillDataModel<R>>(
-  String id,
-  String relationName, {
+Stream<List<R>> watchTodos<R extends SynquillDataModel<R>>(
+  String id, {
   QueryParams? queryParams,
-  bool fireImmediately = true,
 })
 ```
 
@@ -226,6 +224,18 @@ Converts the model instance to a JSON map.
 T fromJson(Map<String, dynamic> json)
 ```
 Creates a model instance from a JSON map.
+
+```dart
+T.fromDb({
+  required String id,
+  // ... other required fields
+  DateTime? createdAt,
+  DateTime? updatedAt,
+  DateTime? lastSyncedAt,
+})
+```
+**Required named constructor** for deserializing from the database format. This constructor is used by Drift ORM to create model instances from database records.
+
 
 #### Instance Methods
 

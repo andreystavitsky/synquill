@@ -86,6 +86,19 @@ class User extends SynquillDataModel<User> {
     required this.email,
   }) : id = id ?? generateCuid();
 
+  User.fromDb({
+    required this.id,
+    required this.name,
+    required this.email,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    DateTime? lastSyncedAt,
+  }) {
+    this.createdAt = createdAt;
+    this.updatedAt = updatedAt;
+    this.lastSyncedAt = lastSyncedAt;
+  }
+
   factory User.fromJson(Map<String, dynamic> json) => _$UserFromJson(json);
   
   @override
@@ -112,6 +125,20 @@ class Todo extends SynquillDataModel<Todo> {
     this.isCompleted = false,
     required this.userId,
   }) : id = id ?? generateCuid();
+
+  Todo.fromDb({
+    required this.id,
+    required this.title,
+    required this.isCompleted,
+    required this.userId,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    DateTime? lastSyncedAt,
+  }) {
+    this.createdAt = createdAt;
+    this.updatedAt = updatedAt;
+    this.lastSyncedAt = lastSyncedAt;
+  }
 
   factory Todo.fromJson(Map<String, dynamic> json) => _$TodoFromJson(json);
   
@@ -222,7 +249,7 @@ For comprehensive documentation, guides, and advanced features, please visit the
 - **[Getting Started Guide](./docs/guide.md)** - Core concepts, querying, operations, and relationships
 - **[API Adapters](./docs/api-adapters.md)** - Customizing HTTP methods, headers, and response parsing
 - **[Configuration](./docs/configuration.md)** - Storage configuration and background sync setup
-- **[Advanced Features](./docs/advanced/)** - Queue management, dependency resolution, and more
+- **[Advanced Features](./docs/advanced-features.md)** - Queue management, dependency resolution, and more
 - **[API Reference](./docs/api-reference.md)** - Complete API documentation
 
 ## 🤝 Contributing

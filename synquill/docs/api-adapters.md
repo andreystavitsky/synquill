@@ -26,6 +26,8 @@ mixin CustomApiAdapter on BasicApiAdapter<MyModel> {
     return baseUrl.resolve('api/v2/models');
   }
 
+  // Other methods for defining URLs and HTTP methods can also be overridden.
+
   @override
   FutureOr<Uri> urlForUpdate(String id, {Map<String, dynamic>? extra}) async {
     return baseUrl.resolve('api/v2/models/$id');

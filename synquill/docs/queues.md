@@ -65,7 +65,7 @@ await repository.save(
 
 ```dart
 await SynquillStorage.init(
-  database: database,
+  // ...
   config: const SynquillStorageConfig(
     // Queue concurrency settings
     foregroundQueueConcurrency: 1,
@@ -185,13 +185,20 @@ try {
 ### Offline Behavior
 
 ```dart
-// Remote operations are blocked when offline
+// Example: Remote operations are blocked when offline
 try {
   await repository.save(user, savePolicy: DataSavePolicy.remoteFirst);
 } on SynquillStorageException catch (e) {
   if (e.message.contains('offline')) {
-    // Handle offline state
-    await repository.save(user, savePolicy: DataSavePolicy.localFirst);
+    // Show user-friendly offline message
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('You are offline. Please try again when connectivity is restored.'),
+              behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 }
 ```
@@ -221,6 +228,7 @@ await queueManager.restoreQueuesOnConnect();
 ### Real-time Statistics
 
 ```dart
+// Example queue monitoring class
 class QueueMonitor {
   void startMonitoring() {
     Timer.periodic(Duration(seconds: 5), (timer) {
@@ -302,26 +310,6 @@ try {
 
 ## Background Processing
 
-### Integration with WorkManager
-
-```dart
-@pragma('vm:entry-point')
-void callbackDispatcher() {
-  Workmanager().executeTask((task, inputData) async {
-    // Initialize SynquillStorage for background isolate
-    await SynquillStorage.initForBackgroundIsolate(
-      database: database,
-      config: config,
-    );
-    
-    // Process background sync tasks
-    await BackgroundSyncManager.instance.processBackgroundSyncTasks();
-    
-    return Future.value(true);
-  });
-}
-```
-
 ### Background Queue Priority
 
 The background queue processes tasks based on dependency levels:
@@ -339,7 +327,7 @@ await SynquillStorage.retryExecutor.processDueTasksNow();
 ### Queue Coordination
 
 ```dart
-// Background processing coordinates with foreground queues
+// Example background processing coordinates with foreground queues
 class BackgroundProcessor {
   Future<void> processWhenQuiet() async {
     final stats = SynquillStorage.queueManager.getQueueStats();
