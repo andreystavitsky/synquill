@@ -252,6 +252,10 @@ For comprehensive documentation, guides, and advanced features, please visit the
 - **[Advanced Features](./docs/advanced-features.md)** - Queue management, dependency resolution, and more
 - **[API Reference](./docs/api-reference.md)** - Complete API documentation
 
+- **[Advanced Topics]** - Deep dive into complex features
+  - [Queue Management](queues.md) - Sync queue system and task processing
+  - [Dependency Resolution](dependency-resolver.md) - Hierarchical task dependencies
+
 ## 🤝 Contributing
 
 Contributions are welcome! Please feel free to submit pull requests, open issues, or ask questions on GitHub.

@@ -33,10 +33,6 @@ This documentation is organized into several sections to help you get started qu
   - Error handling strategies
   - Performance considerations and limitations
 
-- **[Advanced Topics]** - Deep dive into complex features
-  - [Queue Management](queues.md) - Sync queue system and task processing
-  - [Dependency Resolution](dependency-resolver.md) - Hierarchical task dependencies
-
 ### Reference
 - **[API Reference](api-reference.md)** - Complete API documentation
   - All classes, methods, and properties
