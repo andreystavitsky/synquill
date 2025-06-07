@@ -135,10 +135,9 @@ mixin RepositoryDeleteOperations<T extends SynquillDataModel<T>> {
 
     final itemToDelete = await fetchFromLocal(id, queryParams: null);
 
-    final payload =
-        itemToDelete != null
-            ? convert.jsonEncode(itemToDelete.toJson())
-            : convert.jsonEncode({'id': id}); // Fallback with just ID
+    final payload = itemToDelete != null
+        ? convert.jsonEncode(itemToDelete.toJson())
+        : convert.jsonEncode({'id': id}); // Fallback with just ID
 
     switch (savePolicy) {
       case DataSavePolicy.localFirst:
@@ -163,10 +162,9 @@ mixin RepositoryDeleteOperations<T extends SynquillDataModel<T>> {
           // Create a NetworkTask for remoteFirst delete operation
           // and route through foreground queue for immediate execution
           final remoteFirstDeleteTask = NetworkTask<void>(
-            exec:
-                () => apiAdapter.deleteOne(id, extra: extra, headers: headers),
-            idempotencyKey:
-                '$id-remoteFirst-delete-'
+            exec: () =>
+                apiAdapter.deleteOne(id, extra: extra, headers: headers),
+            idempotencyKey: '$id-remoteFirst-delete-'
                 '${cuid()}',
             operation: SyncOperation.delete,
             modelType: T.toString(),
@@ -432,6 +430,71 @@ mixin RepositoryDeleteOperations<T extends SynquillDataModel<T>> {
         stackTrace,
       );
       // Don't rethrow - we want to continue with other cascade relations
+    }
+  }
+
+  /// Handles cascade delete operations when a parent model is gone (HTTP 410).
+  ///
+  /// This method is specifically designed for scenarios where the server
+  /// reports that a parent model is gone (HTTP 410 Gone). It performs:
+  /// 1. Local cascade delete to clean up child relationships
+  /// 2. Remote cleanup attempts for children using remoteFirst policy
+  /// 3. Proper sync queue management (doesn't schedule parent delete)
+  ///
+  /// The API is expected to handle delete attempts on already-deleted children
+  /// gracefully by returning HTTP 204 (No Content). The existing delete()
+  /// method already handles HTTP 410 responses appropriately.
+  ///
+  /// Unlike regular delete operations, this assumes the parent is already
+  /// gone from the server and focuses on cleaning up children that might
+  /// be orphaned.
+  ///
+  /// [id] The ID of the parent model that is gone
+  /// [extra] Optional extra data for delete operations
+  /// [headers] Optional headers for API requests
+  Future<void> handleCascadeDeleteAfterGone(
+    String id, {
+    Map<String, dynamic>? extra,
+    Map<String, String>? headers,
+  }) async {
+    log.info(
+      'Handling cascade delete after parent $T $id reported as gone (410)',
+    );
+
+    try {
+      // Use remoteFirst policy for children to ensure API cleanup
+      // API will return 204 for already-deleted children, or 410 if gone
+      // Both cases are handled appropriately by the delete() method
+      await _handleCascadeDelete(
+        id: id,
+        savePolicy: DataSavePolicy.remoteFirst,
+        deletionContext: {id}, // Parent is already being handled
+        extra: extra,
+        headers: headers,
+      );
+
+      // Remove the parent from local storage and clean up sync queue
+      await _handleSmartDelete(
+        modelId: id,
+        payload: convert.jsonEncode({'id': id}),
+        scheduleDelete: false, // Don't schedule delete - it's already gone
+        headers: headers,
+        extra: extra,
+      );
+
+      await removeFromLocalIfExists(id);
+      changeController.add(RepositoryChange.deleted(id));
+
+      log.fine('Cascade delete after gone completed for $T $id');
+    } catch (e, stackTrace) {
+      log.warning(
+        'Error during cascade delete after gone for $T $id',
+        e,
+        stackTrace,
+      );
+      // Still try to remove the local copy even if cascade delete fails
+      await removeFromLocalIfExists(id);
+      changeController.add(RepositoryChange.deleted(id));
     }
   }
 }

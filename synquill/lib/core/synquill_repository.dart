@@ -8,9 +8,9 @@ abstract class SynquillRepositoryBase<T extends SynquillDataModel<T>>
     with
         RepositoryLocalOperations<T>,
         RepositoryRemoteOperations<T>,
+        RepositoryDeleteOperations<T>,
         RepositoryQueryOperations<T>,
         RepositorySaveOperations<T>,
-        RepositoryDeleteOperations<T>,
         RepositorySyncOperations<T> {
   /// The database connection.
   final GeneratedDatabase db;

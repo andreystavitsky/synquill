@@ -2,7 +2,10 @@ part of synquill;
 
 /// Mixin providing query operations for repositories.
 mixin RepositoryQueryOperations<T extends SynquillDataModel<T>>
-    on RepositoryLocalOperations<T>, RepositoryRemoteOperations<T> {
+    on
+        RepositoryLocalOperations<T>,
+        RepositoryRemoteOperations<T>,
+        RepositoryDeleteOperations<T> {
   /// Gets the default load policy from global configuration.
   @protected
   DataLoadPolicy get defaultLoadPolicy;
@@ -46,13 +49,12 @@ mixin RepositoryQueryOperations<T extends SynquillDataModel<T>>
           // Create a NetworkTask for remoteFirst query operation
           // and route through foreground queue for immediate execution
           final remoteFirstFetchTask = NetworkTask<T?>(
-            exec:
-                () => fetchFromRemote(
-                  id,
-                  extra: extra,
-                  queryParams: queryParams,
-                  headers: headers,
-                ),
+            exec: () => fetchFromRemote(
+              id,
+              extra: extra,
+              queryParams: queryParams,
+              headers: headers,
+            ),
             idempotencyKey: '$id-remoteFirst-fetch-${cuid()}',
             operation: SyncOperation.read,
             modelType: T.toString(),
@@ -82,11 +84,16 @@ mixin RepositoryQueryOperations<T extends SynquillDataModel<T>>
           }
         } on ApiExceptionGone catch (e, stackTrace) {
           log.fine(
-            'No content for $id in remote API (410). Removing local copy.',
+            'No content for $id in remote API (410). Triggering cascade '
+            'delete and removing local copy.',
             e,
             stackTrace,
           );
-          await removeFromLocalIfExists(id);
+          await handleCascadeDeleteAfterGone(
+            id,
+            extra: extra,
+            headers: headers,
+          );
           result = null;
         } catch (e, stackTrace) {
           // Other ApiErrors or network issues.
@@ -150,7 +157,12 @@ mixin RepositoryQueryOperations<T extends SynquillDataModel<T>>
               e,
               stackTrace,
             );
-            // Don't remove from local if local access failed
+            // Item is gone from server - trigger cascade delete
+            await handleCascadeDeleteAfterGone(
+              id,
+              extra: extra,
+              headers: headers,
+            );
             result = null;
           } catch (remoteError, remoteStackTrace) {
             log.warning(
@@ -262,14 +274,12 @@ mixin RepositoryQueryOperations<T extends SynquillDataModel<T>>
           // Create a NetworkTask for remoteFirst findAll operation
           // and route through foreground queue for immediate execution
           final remoteFirstFetchAllTask = NetworkTask<List<T>>(
-            exec:
-                () => fetchAllFromRemote(
-                  queryParams: queryParams,
-                  extra: extra,
-                  headers: headers,
-                ),
-            idempotencyKey:
-                'all-remoteFirst-fetch-'
+            exec: () => fetchAllFromRemote(
+              queryParams: queryParams,
+              extra: extra,
+              headers: headers,
+            ),
+            idempotencyKey: 'all-remoteFirst-fetch-'
                 '${cuid()}',
             operation: SyncOperation.read,
             modelType: T.toString(),
@@ -443,11 +453,16 @@ mixin RepositoryQueryOperations<T extends SynquillDataModel<T>>
         } on ApiExceptionGone catch (fetchError, fetchStackTrace) {
           log.fine(
             'Async remote fetch for $id (localThenRemote) '
-            'found no content. Removing local copy.',
+            'found no content. Triggering cascade delete and '
+            'removing local copy.',
             fetchError,
             fetchStackTrace,
           );
-          await removeFromLocalIfExists(id);
+          await handleCascadeDeleteAfterGone(
+            id,
+            extra: extra,
+            headers: headers,
+          );
         } catch (fetchError, fetchStackTrace) {
           log.fine(
             'Async remote fetch for $id (localThenRemote) failed, '
