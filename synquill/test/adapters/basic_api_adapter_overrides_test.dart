@@ -548,9 +548,11 @@ void main() {
             ),
           );
 
-          // 404 should return null, not throw
-          final result = await adapter.findOne('nonexistent');
-          expect(result, equals(null));
+          // 404 should throw ApiExceptionNotFound for proper deletion handling
+          expect(
+            () async => await adapter.findOne('nonexistent'),
+            throwsA(isA<ApiExceptionNotFound>()),
+          );
         },
       );
 
@@ -577,9 +579,11 @@ void main() {
             ),
           );
 
-          // 410 should return null, not throw
-          final result = await adapter.findOne('gone');
-          expect(result, equals(null));
+          // 410 should throw ApiExceptionGone for proper deletion handling
+          expect(
+            () async => await adapter.findOne('gone'),
+            throwsA(isA<ApiExceptionGone>()),
+          );
         },
       );
 

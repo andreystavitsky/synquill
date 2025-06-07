@@ -62,27 +62,19 @@ mixin HttpExecutionMixin<TModel extends SynquillDataModel<TModel>>
     QueryParams? queryParams,
     Map<String, dynamic>? extra,
   }) async {
-    try {
-      final mergedHeaders = await mergeHeaders(headers, extra: extra);
-      final httpQueryParams = queryParamsToHttpParams(queryParams);
-      final uri = await urlForFindOne(id, extra: extra);
+    final mergedHeaders = await mergeHeaders(headers, extra: extra);
+    final httpQueryParams = queryParamsToHttpParams(queryParams);
+    final uri = await urlForFindOne(id, extra: extra);
 
-      final response = await executeRequest<dynamic>(
-        method: methodForFind(extra: extra),
-        uri: uri,
-        headers: mergedHeaders,
-        queryParameters: httpQueryParams.isNotEmpty ? httpQueryParams : null,
-        extra: extra,
-      );
+    final response = await executeRequest<dynamic>(
+      method: methodForFind(extra: extra),
+      uri: uri,
+      headers: mergedHeaders,
+      queryParameters: httpQueryParams.isNotEmpty ? httpQueryParams : null,
+      extra: extra,
+    );
 
-      return parseFindOneResponse(response.data, response);
-    } on ApiExceptionNotFound catch (_) {
-      // For findOne, 404 should return null instead of throwing
-      return null;
-    } on ApiExceptionGone catch (_) {
-      // For findOne, 410 should return null instead of throwing
-      return null;
-    }
+    return parseFindOneResponse(response.data, response);
   }
 
   /// Executes a findAll request.

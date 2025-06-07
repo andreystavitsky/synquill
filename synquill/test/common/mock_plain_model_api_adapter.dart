@@ -14,6 +14,10 @@ class MockPlainModelApiAdapter extends ApiAdapterBase<PlainModel> {
   bool _updateReturns404 = false;
   bool _createReturns404 = false;
 
+  // New fields for 410 testing
+  bool _findOneReturns410 = false;
+  final Set<String> _findOneReturns410ModelIds = <String>{};
+
   // Persistent failure for specific model IDs
   final Set<String> _persistentFailureModelIds = <String>{};
   String? _persistentFailureReason;
@@ -104,6 +108,27 @@ class MockPlainModelApiAdapter extends ApiAdapterBase<PlainModel> {
     _createReturns404 = false;
   }
 
+  /// Set findOne operations to return 410 for all models
+  void setFindOneToReturn410() {
+    _findOneReturns410 = true;
+  }
+
+  /// Set findOne operations to return 410 for specific model ID
+  void setFindOneToReturn410ForModel(String modelId) {
+    _findOneReturns410ModelIds.add(modelId);
+  }
+
+  /// Clear findOne 410 for specific model ID
+  void clearFindOne410ForModel(String modelId) {
+    _findOneReturns410ModelIds.remove(modelId);
+  }
+
+  /// Reset 410 settings
+  void reset410Settings() {
+    _findOneReturns410 = false;
+    _findOneReturns410ModelIds.clear();
+  }
+
   void _checkShouldFail([String? modelId]) {
     if (_networkError) {
       throw DioException(
@@ -145,6 +170,15 @@ class MockPlainModelApiAdapter extends ApiAdapterBase<PlainModel> {
     }
   }
 
+  void _checkFindOne410(String id) {
+    if (_findOneReturns410 || _findOneReturns410ModelIds.contains(id)) {
+      throw ApiExceptionGone(
+        'Model with id $id has been permanently deleted (Gone)',
+        stackTrace: StackTrace.current,
+      );
+    }
+  }
+
   @override
   PlainModel fromJson(Map<String, dynamic> json) {
     return PlainModel.fromJson(json);
@@ -168,6 +202,7 @@ class MockPlainModelApiAdapter extends ApiAdapterBase<PlainModel> {
       'timestamp': DateTime.now().toIso8601String(),
     });
     _checkShouldFail(id);
+    _checkFindOne410(id);
     await Future.delayed(
       const Duration(milliseconds: 10),
     ); // Simulate API delay

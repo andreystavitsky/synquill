@@ -1,7 +1,4 @@
-// ignore_for_file: avoid_relative_lib_imports
-
 import 'package:test/test.dart';
-import 'package:synquill/synquill.dart';
 
 import 'package:synquill/synquill.generated.dart';
 
