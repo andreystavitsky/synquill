@@ -146,20 +146,20 @@ class SynquillStorage {
   static RetryExecutor? _retryExecutor;
   static DependencyResolver? _dependencyResolver;
   static BackgroundSyncManager? _backgroundSyncManager;
+  static SyncQueueDao? _syncQueueDao;
 
   /// Default logger implementation that writes to developer.log.
-  static Logger get _defaultLogger =>
-      Logger('SynquillStorage')
-        ..onRecord.listen((record) {
-          developer.log(
-            record.message,
-            time: DateTime.now(),
-            name: record.loggerName,
-            level: record.level.value,
-            error: record.error,
-            stackTrace: record.stackTrace,
-          );
-        });
+  static Logger get _defaultLogger => Logger('SynquillStorage')
+    ..onRecord.listen((record) {
+      developer.log(
+        record.message,
+        time: DateTime.now(),
+        name: record.loggerName,
+        level: record.level.value,
+        error: record.error,
+        stackTrace: record.stackTrace,
+      );
+    });
 
   /// Private constructor.
   SynquillStorage._();
@@ -260,6 +260,19 @@ class SynquillStorage {
     return _backgroundSyncManager!;
   }
 
+  /// Returns the global sync queue DAO instance.
+  ///
+  /// Throws [StateError] if [init] has not been called.
+  static SyncQueueDao get syncQueueDao {
+    if (_syncQueueDao == null) {
+      throw StateError(
+        'SynquillStorage has not been initialized. '
+        'Call SynquillStorage.init() first.',
+      );
+    }
+    return _syncQueueDao!;
+  }
+
   /// Checks if the device currently has an internet connection.
   ///
   /// Returns true if internet connection is available, false otherwise.
@@ -343,6 +356,138 @@ class SynquillStorage {
     _logger!.info('SynquillStorage initialization complete');
   }
 
+  /// Completely obliterates all local storage data.
+  ///
+  /// This method is destructive and irreversible. It will:
+  /// - Clear all request queues (foreground, load, background)
+  /// - Remove all sync queue tasks and data
+  /// - Clear all cached repository instances
+  /// - Truncate all local database tables for all repositories
+  /// - Reset background sync state and timers
+  ///
+  /// This is intended for scenarios like user logout, data reset,
+  /// or when you need to completely start fresh with local storage.
+  ///
+  /// ⚠️ **WARNING**: This operation cannot be undone. All local data
+  /// will be permanently lost.
+  ///
+  /// The method preserves the SynquillStorage initialization state,
+  /// so the system remains functional after calling this method.
+  ///
+  /// Throws [StateError] if [SynquillStorage] has not been initialized.
+  ///
+  /// Example:
+  /// ```dart
+  /// // Complete data reset (e.g., user logout)
+  /// await SynquillStorage.instance.obliterateLocalStorage();
+  /// ```
+  Future<void> obliterateLocalStorage() async {
+    if (_instance == null) {
+      throw StateError(
+        'SynquillStorage has not been initialized. '
+        'Call SynquillStorage.init() first.',
+      );
+    }
+
+    _logger!.warning('Starting obliteration of all local storage data');
+
+    try {
+      // 1. Clear all request queues to prevent any pending operations
+      _logger!.info('Clearing all request queues');
+      try {
+        await _queueManager?.clearQueuesOnDisconnect();
+      } catch (e) {
+        if (e is! QueueCancelledException) {
+          _logger!.warning('Unexpected error while clearing queues: $e');
+          rethrow;
+        }
+        // QueueCancelledException is expected during queue disposal
+        _logger!.info('Request queues cleared (tasks cancelled)');
+      }
+
+      // 2. Reset background sync manager to stop any running sync operations
+      _logger!.info('Resetting background sync manager');
+      await BackgroundSyncManager.reset();
+
+      // 3. Clear all sync queue data from the database
+      _logger!.info('Clearing sync queue data');
+      await _clearSyncQueueData();
+
+      // 4. Truncate local storage in all registered repositories
+      _logger!.info('Truncating local storage for all repositories');
+      await _truncateAllRepositoryData();
+
+      // 5. Clear all cached repository instances (but preserve registrations)
+      _logger!.info('Clearing cached repository instances');
+      SynquillRepositoryProvider.clearInstances();
+
+      // 6. Re-initialize background sync manager to ensure clean state
+      _logger!.info('Re-initializing background sync manager');
+      await _initializeBackgroundSync();
+
+      _logger!.warning('Local storage obliteration completed successfully');
+    } catch (e, stackTrace) {
+      _logger!.severe(
+        'Error during local storage obliteration: $e',
+        e,
+        stackTrace,
+      );
+      rethrow;
+    }
+  }
+
+  /// Clears all sync queue data from the database.
+  static Future<void> _clearSyncQueueData() async {
+    try {
+      // Get all sync tasks
+      final allTasks = await _syncQueueDao!.getAllItems();
+
+      // Delete each task
+      for (final task in allTasks) {
+        await _syncQueueDao!.deleteTask(task['id'] as int);
+      }
+
+      _logger!.info('Cleared ${allTasks.length} sync queue tasks');
+    } catch (e) {
+      _logger!.warning('Error clearing sync queue data: $e');
+      // Continue execution - this is not critical enough to stop obliteration
+    }
+  }
+
+  /// Truncates local storage data for all registered repositories.
+  static Future<void> _truncateAllRepositoryData() async {
+    try {
+      // Get all registered repository type names using the public API
+      final repositoryTypeNames =
+          SynquillRepositoryProvider.getAllRegisteredTypeNames();
+
+      _logger!.info(
+        'Found ${repositoryTypeNames.length} registered repository types',
+      );
+
+      // Truncate local storage for each repository
+      for (final typeName in repositoryTypeNames) {
+        try {
+          final repository = SynquillRepositoryProvider.getByTypeName(typeName);
+          if (repository != null) {
+            await repository.truncateLocalStorage();
+            _logger!.fine('Truncated local storage for repository: $typeName');
+          } else {
+            _logger!.warning('Repository not found for type: $typeName');
+          }
+        } catch (e) {
+          _logger!.warning('Error truncating storage for $typeName: $e');
+          // Continue with other repositories even if one fails
+        }
+      }
+
+      _logger!.info('Completed truncation for all repositories');
+    } catch (e) {
+      _logger!.warning('Error during repository data truncation: $e');
+      // Continue execution - this is not critical enough to stop obliteration
+    }
+  }
+
   /// Resets the singleton instance and configuration.
   ///
   /// This method is primarily intended for testing purposes.
@@ -375,6 +520,7 @@ class SynquillStorage {
     _retryExecutor = null;
     _dependencyResolver = null;
     _backgroundSyncManager = null;
+    _syncQueueDao = null;
     // Clear any cached repository instances
     SynquillRepositoryProvider.reset();
   }
@@ -639,6 +785,9 @@ class SynquillStorage {
 
     _dependencyResolver ??= DependencyResolver();
     _logger!.info('Dependency resolver initialized');
+
+    _syncQueueDao ??= SyncQueueDao(_database!);
+    _logger!.info('Sync queue DAO initialized');
 
     _retryExecutor ??= RetryExecutor(_database!, _queueManager!);
     _retryExecutor!.start();

@@ -44,24 +44,21 @@ class RequestQueueManager {
 
   /// Creates a new RequestQueueManager with configured queues.
   RequestQueueManager({SynquillStorageConfig? config})
-    : _maxQueueCapacities = {
-        QueueType.foreground: config?.maxForegroundQueueCapacity ?? 50,
-        QueueType.load: config?.maxLoadQueueCapacity ?? 50,
-        QueueType.background: config?.maxBackgroundQueueCapacity ?? 50,
-      },
-      _capacityWaitTimeouts = {
-        QueueType.foreground:
-            config?.foregroundQueueCapacityTimeout ??
-            const Duration(seconds: 10),
-        QueueType.load:
-            config?.loadQueueCapacityTimeout ?? const Duration(seconds: 5),
-        QueueType.background:
-            config?.backgroundQueueCapacityTimeout ??
-            const Duration(seconds: 2),
-      },
-      _capacityCheckInterval =
-          config?.queueCapacityCheckInterval ??
-          const Duration(milliseconds: 100) {
+      : _maxQueueCapacities = {
+          QueueType.foreground: config?.maxForegroundQueueCapacity ?? 50,
+          QueueType.load: config?.maxLoadQueueCapacity ?? 50,
+          QueueType.background: config?.maxBackgroundQueueCapacity ?? 50,
+        },
+        _capacityWaitTimeouts = {
+          QueueType.foreground: config?.foregroundQueueCapacityTimeout ??
+              const Duration(seconds: 10),
+          QueueType.load:
+              config?.loadQueueCapacityTimeout ?? const Duration(seconds: 5),
+          QueueType.background: config?.backgroundQueueCapacityTimeout ??
+              const Duration(seconds: 2),
+        },
+        _capacityCheckInterval = config?.queueCapacityCheckInterval ??
+            const Duration(milliseconds: 100) {
     _log = Logger('RequestQueueManager');
 
     // Initialize the three queues with specific configurations
@@ -133,12 +130,20 @@ class RequestQueueManager {
 
       _log.fine('Enqueueing ${task} to ${queueType.name} queue');
 
+      // Track the task for cancellation purposes
+      queue._pendingTasks.add(task);
+
       final result = await queue.addTask<T>(() async {
-        // Execute the task and return the result directly
-        // The task.execute() will handle exceptions internally
-        await task.execute();
-        // task.future is now completed, await it to get the result
-        return await task.future;
+        try {
+          // Execute the task and return the result directly
+          // The task.execute() will handle exceptions internally
+          await task.execute();
+          // task.future is now completed, await it to get the result
+          return await task.future;
+        } finally {
+          // Remove from pending tasks when completed (success or failure)
+          queue._pendingTasks.remove(task);
+        }
       }, taskName: task.toString());
 
       return result;
@@ -214,8 +219,7 @@ class RequestQueueManager {
 
     // Timeout expired - throw exception
     final waitTime = DateTime.now().difference(startTime);
-    final message =
-        'Queue ${queueType.name} remained at capacity after '
+    final message = 'Queue ${queueType.name} remained at capacity after '
         '${waitTime.inMilliseconds}ms timeout';
     _log.warning(message);
     throw SynquillStorageException(message);
@@ -247,21 +251,32 @@ class RequestQueueManager {
       keys.clear();
     }
 
-    // Dispose and recreate queues
-    // Handle QueueCancelledException from disposing queues
-    await Future.wait(
-      _queues.values.map((queue) async {
-        try {
-          await queue.dispose();
-        } catch (e) {
-          if (e is! QueueCancelledException) {
-            // Only log non-cancellation exceptions as these are expected
-            _log.warning('Error disposing queue: $e');
+    // Use runZonedGuarded to catch any unhandled QueueCancelledException
+    final List<dynamic> disposalErrors = [];
+
+    await runZonedGuarded(() async {
+      // Dispose and recreate queues
+      await Future.wait(
+        _queues.values.map((queue) async {
+          try {
+            await queue.dispose();
+          } catch (e) {
+            if (e is! QueueCancelledException) {
+              // Only log non-cancellation exceptions as these are expected
+              _log.warning('Error disposing queue: $e');
+            }
+            // QueueCancelledException is expected when cancelling queues
           }
-          // QueueCancelledException is expected when cancelling queues
-        }
-      }),
-    );
+        }),
+      );
+    }, (error, stack) {
+      // Capture any unhandled QueueCancelledException
+      disposalErrors.add(error);
+      _log.fine('Caught unhandled disposal error: ${error.runtimeType}');
+    });
+
+    // Give time for any async cleanup to complete
+    await Future.delayed(const Duration(milliseconds: 20));
 
     // Recreate fresh queues
     _queues[QueueType.foreground] = RequestQueue(
@@ -282,7 +297,8 @@ class RequestQueueManager {
       name: 'BackgroundQueue',
     );
 
-    _log.info('All queues cleared and recreated');
+    _log.info('All queues cleared and recreated (${disposalErrors.length} '
+        'disposal errors captured)');
   }
 
   /// Restores queue processing when connectivity returns.
@@ -332,8 +348,7 @@ class QueueStats {
   });
 
   @override
-  String toString() =>
-      'QueueStats(active+pending: $activeAndPendingTasks, '
+  String toString() => 'QueueStats(active+pending: $activeAndPendingTasks, '
       'pending: $pendingTasks)';
 }
 
@@ -346,21 +361,23 @@ class RequestQueue {
   final Queue _queue;
   final Logger _log;
 
+  /// Set to track pending NetworkTask instances for cancellation
+  final Set<NetworkTask> _pendingTasks = <NetworkTask>{};
+
   /// Creates a new [RequestQueue].
   ///
   /// [parallelism] specifies the maximum number of concurrent operations.
   /// Defaults to 1, ensuring sequential execution.
   /// [name] is an optional name for the logger associated with this queue.
   RequestQueue({int parallelism = 1, String? name, Duration? delay})
-    : _queue = Queue(parallel: parallelism, delay: delay),
-      _log =
-          (() {
-            try {
-              return SynquillStorage.logger;
-            } catch (_) {
-              return Logger(name ?? 'RequestQueue');
-            }
-          })();
+      : _queue = Queue(parallel: parallelism, delay: delay),
+        _log = (() {
+          try {
+            return SynquillStorage.logger;
+          } catch (_) {
+            return Logger(name ?? 'RequestQueue');
+          }
+        })();
 
   /// Adds a new asynchronous [operation] to the queue.
   ///
@@ -409,10 +426,24 @@ class RequestQueue {
   /// disposing if you need to ensure all tasks complete.
   Future<void> dispose() async {
     _log.info('Disposing RequestQueue (remaining: $activeAndPendingTasks)...');
+
+    // First, cancel all pending NetworkTask instances
+    final tasksToCancel = List<NetworkTask>.from(_pendingTasks);
+    for (final task in tasksToCancel) {
+      try {
+        task.cancel();
+      } catch (e) {
+        // Ignore exceptions during individual task cancellation
+        _log.fine('Exception during task cancellation: $e');
+      }
+    }
+    _pendingTasks.clear();
+
     try {
       // The `dispose` method in `package:queue` closes the `remainingItems`
       // stream controller and cancels pending tasks with
       // QueueCancelledException.
+      await Future.delayed(Duration.zero); // Let any async exceptions settle
       _queue.dispose();
       _log.info('RequestQueue disposed.');
     } catch (e) {
@@ -423,6 +454,9 @@ class RequestQueue {
       // QueueCancelledException is expected when cancelling pending tasks
       _log.info('RequestQueue disposed (pending tasks cancelled).');
     }
+
+    // Give a small delay to allow any async cleanup to complete
+    await Future.delayed(const Duration(milliseconds: 10));
   }
 
   /// Waits for all currently enqueued tasks to complete.

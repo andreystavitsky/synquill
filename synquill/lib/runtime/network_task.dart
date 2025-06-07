@@ -49,6 +49,16 @@ class NetworkTask<T> {
   /// Returns the future that completes when this task finishes.
   Future<T> get future => completer.future;
 
+  /// Returns true if this task has been cancelled.
+  bool get isCancelled => completer.isCompleted;
+
+  /// Cancels this task with a QueueCancelledException.
+  void cancel() {
+    if (!completer.isCompleted) {
+      completer.completeError(QueueCancelledException());
+    }
+  }
+
   /// Executes the task and completes the completer.
   Future<void> execute() async {
     try {

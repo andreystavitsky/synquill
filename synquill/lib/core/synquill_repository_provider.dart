@@ -27,8 +27,8 @@ enum DataLoadPolicy {
 /// The factory takes a [SynquillDatabase] instance and returns a repository
 /// of type [SynquillRepositoryBase<M>].
 /// [M] is the model type.
-typedef RepositoryFactory<M extends SynquillDataModel<M>> =
-    SynquillRepositoryBase<M> Function(GeneratedDatabase db);
+typedef RepositoryFactory<M extends SynquillDataModel<M>>
+    = SynquillRepositoryBase<M> Function(GeneratedDatabase db);
 
 /// Provides a centralized mechanism for registering and retrieving repository
 /// instances.
@@ -38,13 +38,12 @@ class SynquillRepositoryProvider {
   SynquillRepositoryProvider._();
 
   static final Map<Type, RepositoryFactory<SynquillDataModel<dynamic>>>
-  _factories = {};
+      _factories = {};
   // Cache: Type -> SynquillDatabase instance -> Repository instance
   static final Map<
-    Type,
-    Map<GeneratedDatabase, SynquillRepositoryBase<SynquillDataModel<dynamic>>>
-  >
-  _instances = {};
+      Type,
+      Map<GeneratedDatabase,
+          SynquillRepositoryBase<SynquillDataModel<dynamic>>>> _instances = {};
   // Mapping from model type string names to Type objects for runtime lookup
   static final Map<String, Type> _typeNameMapping = {};
 
@@ -101,8 +100,7 @@ class SynquillRepositoryProvider {
     _log.fine('Getting repository for type $M for db#${db.hashCode}');
     final factory = _factories[M];
     if (factory == null) {
-      final errorMsg =
-          'No repository factory registered for type $M. '
+      final errorMsg = 'No repository factory registered for type $M. '
           'Call SynquillRepositoryProvider.register<$M>((db) => YourRepo(db)) '
           'first.';
       _log.severe(errorMsg);
@@ -277,7 +275,39 @@ class SynquillRepositoryProvider {
     return repo;
   }
 
+  /// Gets all registered model type names.
+  ///
+  /// Returns a list of all model type names that have been registered
+  /// with the repository provider. Useful for operations that need to
+  /// iterate over all registered repositories.
+  ///
+  /// Example:
+  /// ```dart
+  /// final typeNames = SynquillRepositoryProvider.getAllRegisteredTypeNames();
+  /// for (final typeName in typeNames) {
+  ///   final repo = SynquillRepositoryProvider.getByTypeName(typeName);
+  ///   // Use the repository
+  /// }
+  /// ```
+  static List<String> getAllRegisteredTypeNames() {
+    return _typeNameMapping.keys.toList();
+  }
+
+  /// Clears all cached repository instances but preserves
+  /// factory registrations.
+  ///
+  /// Used when obliterating local storage but wanting to keep repository
+  /// registrations intact.
+  static void clearInstances() {
+    _log.info(
+      'Clearing all cached repository instances while preserving factory '
+      'registrations.',
+    );
+    _instances.clear();
+  }
+
   /// Clears all registered factories and cached repository instances.
+  ///
   /// Primarily used for cleaning up state in tests.
   static void reset() {
     _log.info(
