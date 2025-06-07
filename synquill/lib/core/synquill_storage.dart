@@ -360,6 +360,7 @@ class SynquillStorage {
   ///
   /// This method is destructive and irreversible. It will:
   /// - Clear all request queues (foreground, load, background)
+  /// - Cancel any network tasks in progress
   /// - Remove all sync queue tasks and data
   /// - Clear all cached repository instances
   /// - Truncate all local database tables for all repositories

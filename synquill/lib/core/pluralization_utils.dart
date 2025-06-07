@@ -2,6 +2,17 @@ part of synquill;
 
 /// Utility class for English pluralization rules
 class PluralizationUtils {
+  /// Returns the plural form of [className] in capitalized camelCase.
+  ///
+  /// For example, "Category" becomes "Categories", "PlainModelJson"
+  /// becomes "PlainModelJsons".
+  static String capitalizedCamelCasePlural(String className) {
+    if (className.isEmpty) return className;
+
+    // Apply proper pluralization rules
+    return capitalize(toCamelCasePlural(className));
+  }
+
   /// Convert class name to proper camelCase plural form
   /// e.g., "Category" -> "categories", "PlainModelJson" -> "plainModelJsons"
   static String toCamelCasePlural(String className) {
@@ -130,5 +141,10 @@ class PluralizationUtils {
 
     // Default: just add 's'
     return '${singular}s';
+  }
+
+  /// Capitalizes the first letter of the given [target] string.
+  static String capitalize(String target) {
+    return '${target[0].toUpperCase()}${target.substring(1)}';
   }
 }

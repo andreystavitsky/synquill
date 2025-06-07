@@ -4,133 +4,6 @@ part of synquill_gen;
 
 /// Generates model extension methods for loading related objects
 class ModelExtensionGenerator {
-  /// Generate the base relation helper mixin
-  static String generateRelationHelperMixin() {
-    return '''
-/// Base mixin for relation loading operations to reduce code duplication
-mixin RelationHelperMixin {
-  /// Model ID for relation operations
-  String get id;
-  
-  /// Load related objects using OneToMany relation
-  Future<List<T>> loadOneToManyRelation<T extends SynquillDataModel<T>>({
-    required String mappedByField,
-    required String targetFieldsClass,
-    DataLoadPolicy? loadPolicy,
-    Map<String, String>? headers,
-    Map<String, dynamic>? extra,
-  }) async {
-    try {
-      final database = DatabaseProvider.instance;
-      final repository = SynquillRepositoryProvider.getFrom<T>(database);
-      
-      // Create filter dynamically using reflection or field selector
-      final queryParams = QueryParams(
-        filters: [
-          FieldFilter(
-            field: mappedByField,
-            operator: FilterOperator.equals,
-            value: SingleValue(id),
-          ),
-        ],
-      );
-      
-      return await repository.findAll(
-        loadPolicy: loadPolicy ?? DataLoadPolicy.localOnly,
-        queryParams: queryParams,
-        headers: headers,
-        extra: extra,
-      );
-    } catch (e) {
-      rethrow;
-    }
-  }
-  
-  /// Watch related objects using OneToMany relation
-  Stream<List<T>> watchOneToManyRelation<T extends SynquillDataModel<T>>({
-    required String mappedByField,
-    required String targetFieldsClass,
-  }) {
-    try {
-      final database = DatabaseProvider.instance;
-      final repository = SynquillRepositoryProvider.getFrom<T>(database);
-      
-      final queryParams = QueryParams(
-        filters: [
-          FieldFilter(
-            field: mappedByField,
-            operator: FilterOperator.equals,
-            value: SingleValue(id),
-          ),
-        ],
-      );
-      
-      return repository.watchAll(queryParams: queryParams);
-    } catch (e) {
-      rethrow;
-    }
-  }
-  
-  /// Load related object using ManyToOne relation
-  Future<T?> loadManyToOneRelation<T extends SynquillDataModel<T>>({
-    required String foreignKeyValue,
-    DataLoadPolicy? loadPolicy,
-    Map<String, String>? headers,
-    Map<String, dynamic>? extra,
-  }) async {
-    try {
-      final database = DatabaseProvider.instance;
-      final repository = SynquillRepositoryProvider.getFrom<T>(database);
-      
-      return await repository.findOne(
-        foreignKeyValue,
-        loadPolicy: loadPolicy ?? DataLoadPolicy.localOnly,
-        headers: headers,
-        extra: extra,
-      );
-    } catch (e) {
-      rethrow;
-    }
-  }
-  
-  /// Watch related object using ManyToOne relation
-  Stream<T?> watchManyToOneRelation<
-    T extends SynquillDataModel<T>, 
-    S extends SynquillDataModel<S>>
-  ({
-    required String foreignKeyField,
-  }) {
-    try {
-      final database = DatabaseProvider.instance;
-      final sourceRepository = SynquillRepositoryProvider.getFrom<S>(database);
-      final targetRepository = SynquillRepositoryProvider.getFrom<T>(database);
-      
-      return sourceRepository.watchOne(id).switchMap((sourceObject) {
-        final foreignKey = _getForeignKeyValue(sourceObject, foreignKeyField);
-        return foreignKey == null
-            ? Stream.value(null)
-            : targetRepository.watchOne(foreignKey);
-      });
-    } catch (e) {
-      rethrow;
-    }
-  }
-  
-  /// Helper method to get foreign key value using reflection
-  dynamic _getForeignKeyValue(dynamic object, String fieldName) {
-    // Simple reflection-like approach
-    // In practice, this would need proper implementation
-    try {
-      return object?.toJson()[fieldName];
-    } catch (e) {
-      return null;
-    }
-  }
-}
-
-''';
-  }
-
   /// Generate extension methods for a model
   static String generateModelExtensions(
     ModelInfo model,
@@ -140,10 +13,9 @@ mixin RelationHelperMixin {
     final className = model.className;
 
     // Find relation fields that need load methods (field-level annotations)
-    final relationFields =
-        model.fields
-            .where((field) => field.isOneToMany || field.isManyToOne)
-            .toList();
+    final relationFields = model.fields
+        .where((field) => field.isOneToMany || field.isManyToOne)
+        .toList();
 
     // Also include class-level relations
     final hasRelations =
@@ -199,7 +71,8 @@ mixin RelationHelperMixin {
     List<ModelInfo> allModels,
   ) {
     final targetClassName = relation.targetType;
-    final methodName = 'load${_pluralize(targetClassName)}';
+    final methodName =
+        'load${PluralizationUtils.capitalizedCamelCasePlural(targetClassName)}';
     final mappedBy = relation.mappedBy;
 
     if (mappedBy == null) {
@@ -208,7 +81,7 @@ mixin RelationHelperMixin {
     }
 
     buffer.writeln(
-      '  /// Load related ${_pluralize(targetClassName).toLowerCase()} objects',
+      '  /// Load related ${PluralizationUtils.capitalizedCamelCasePlural(targetClassName)} objects',
     );
     buffer.writeln(
       '  /// Uses mappedBy field \'$mappedBy\' in $targetClassName',
@@ -249,7 +122,8 @@ mixin RelationHelperMixin {
     buffer.writeln('    } catch (e, stackTrace) {');
     buffer.writeln('      _log.severe(');
     buffer.writeln(
-      '        \'Failed to load ${_pluralize(targetClassName).toLowerCase()} '
+      '        \'Failed to load '
+      '${PluralizationUtils.capitalizedCamelCasePlural(targetClassName)} '
       'for \$runtimeType[\$id]\', e, stackTrace);',
     );
     buffer.writeln('      rethrow;');
@@ -265,7 +139,8 @@ mixin RelationHelperMixin {
     List<ModelInfo> allModels,
   ) {
     final targetClassName = relation.targetType;
-    final methodName = 'watch${_pluralize(targetClassName)}';
+    final methodName = 'watch'
+        '${PluralizationUtils.capitalizedCamelCasePlural(targetClassName)}';
     final mappedBy = relation.mappedBy;
 
     if (mappedBy == null) {
@@ -275,7 +150,8 @@ mixin RelationHelperMixin {
 
     buffer.writeln(
       '  /// Watch related '
-      '${_pluralize(targetClassName).toLowerCase()} objects as a stream',
+      '${PluralizationUtils.capitalizedCamelCasePlural(targetClassName)} '
+      'objects as a stream',
     );
     buffer.writeln(
       '  /// Uses mappedBy field \'$mappedBy\' in $targetClassName',
@@ -308,7 +184,8 @@ mixin RelationHelperMixin {
     buffer.writeln('    } catch (e, stackTrace) {');
     buffer.writeln('      _log.severe(');
     buffer.writeln(
-      '        \'Failed to watch ${_pluralize(targetClassName).toLowerCase()} '
+      '        \'Failed to watch'
+      '${PluralizationUtils.capitalizedCamelCasePlural(targetClassName)} '
       'for \$runtimeType[\$id]\', e, stackTrace);',
     );
     buffer.writeln('      rethrow;');
@@ -336,7 +213,7 @@ mixin RelationHelperMixin {
     buffer.writeln('    Map<String, dynamic>? extra,');
     buffer.writeln('  }) async {');
     buffer.writeln('    try {');
-    buffer.writeln('      final foreignKey = toJson()[\'$foreignKeyColumn\'];');
+    buffer.writeln('      final foreignKey = $foreignKeyColumn;');
     buffer.writeln('      if (foreignKey == null) return null;');
     buffer.writeln('      final database = DatabaseProvider.instance;');
     buffer.writeln('      final repository = SynquillRepositoryProvider');
@@ -401,8 +278,8 @@ mixin RelationHelperMixin {
     buffer.writeln('          return Stream.value(null);');
     buffer.writeln('        }');
     buffer.writeln();
-    buffer.writeln('        final foreignKey = sourceObject.toJson()');
-    buffer.writeln('            [\'$foreignKeyColumn\'];');
+    buffer
+        .writeln('        final foreignKey = sourceObject.$foreignKeyColumn;');
     buffer.writeln('        if (foreignKey == null) {');
     buffer.writeln('          return Stream.value(null);');
     buffer.writeln('        }');
@@ -428,20 +305,5 @@ mixin RelationHelperMixin {
     buffer.writeln('    }');
     buffer.writeln('  }');
     buffer.writeln();
-  }
-
-  /// Simple pluralization helper
-  static String _pluralize(String singular) {
-    if (singular.endsWith('y')) {
-      return '${singular.substring(0, singular.length - 1)}ies';
-    } else if (singular.endsWith('s') ||
-        singular.endsWith('sh') ||
-        singular.endsWith('ch') ||
-        singular.endsWith('x') ||
-        singular.endsWith('z')) {
-      return '${singular}es';
-    } else {
-      return '${singular}s';
-    }
   }
 }
