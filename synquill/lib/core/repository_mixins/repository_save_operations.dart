@@ -64,9 +64,34 @@ mixin RepositorySaveOperations<T extends SynquillDataModel<T>>
 
         // Save to local database first
         await saveToLocal(item);
-        changeController.add(RepositoryChange.updated(item));
+        changeController.add(isExisting
+            ? RepositoryChange.updated(item)
+            : RepositoryChange.created(item));
         log.fine(
-          'Local save for ${item.id} successful. Creating sync queue entry.',
+          'Local save for ${item.id} successful.',
+        );
+
+        // Check if this is a local-only repository
+        bool isLocalOnly = false;
+        try {
+          // Try to access the apiAdapter - if it throws UnsupportedError,
+          // this is a local-only repository
+          apiAdapter;
+        } on UnsupportedError {
+          isLocalOnly = true;
+          log.fine(
+            'Repository for $T is local-only, skipping sync queue operations.',
+          );
+        }
+
+        if (isLocalOnly) {
+          // For local-only repositories, just return the item without sync
+          resultItem = item;
+          break;
+        }
+
+        log.fine(
+          'Creating sync queue entry for ${item.id}.',
         );
 
         // Create sync queue entry for persistence and retry capability
@@ -333,20 +358,19 @@ mixin RepositorySaveOperations<T extends SynquillDataModel<T>>
       queueManager
           .enqueueTask(syncTask, queueType: QueueType.background)
           .then((_) async {
-            // Success: remove from sync queue
-            await syncQueueDao.deleteTask(syncQueueId);
-            log.fine(
-              'Background immediate sync succeeded, '
-              'removed sync queue entry $syncQueueId',
-            );
-          })
-          .catchError((e) {
-            // Failure: log and leave in sync queue for RetryExecutor
-            log.fine(
-              'Background immediate sync failed for ${syncTask.modelId}, '
-              'task will be retried by RetryExecutor: $e',
-            );
-          }),
+        // Success: remove from sync queue
+        await syncQueueDao.deleteTask(syncQueueId);
+        log.fine(
+          'Background immediate sync succeeded, '
+          'removed sync queue entry $syncQueueId',
+        );
+      }).catchError((e) {
+        // Failure: log and leave in sync queue for RetryExecutor
+        log.fine(
+          'Background immediate sync failed for ${syncTask.modelId}, '
+          'task will be retried by RetryExecutor: $e',
+        );
+      }),
     );
   }
 }

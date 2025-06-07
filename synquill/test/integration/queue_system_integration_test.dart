@@ -1570,7 +1570,7 @@ void main() {
       // Save the user successfully first
       await repository.save(user);
       expect(streamEvents, hasLength(1));
-      expect(streamEvents.last.type, equals(RepositoryChangeType.updated));
+      expect(streamEvents.last.type, equals(RepositoryChangeType.created));
 
       // Force an error scenario by making the API adapter throw
       mockAdapter.shouldFailOnUpdate = true;
@@ -1650,7 +1650,7 @@ void main() {
       expect(listener3Events, hasLength(3));
 
       // Verify event types are correct
-      expect(listener1Events[0].type, equals(RepositoryChangeType.updated));
+      expect(listener1Events[0].type, equals(RepositoryChangeType.created));
       expect(listener1Events[1].type, equals(RepositoryChangeType.updated));
       expect(listener1Events[2].type, equals(RepositoryChangeType.deleted));
 

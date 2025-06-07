@@ -13,14 +13,23 @@ class FieldValidator {
       final classElement = await getClassElement(model.className);
       if (classElement == null) continue;
 
-      await validateJsonMethods(classElement);
+      await validateJsonMethods(classElement, model.localOnly);
       validateFromDbConstructor(classElement);
     }
   }
 
   /// Validates that the model has required toJson and fromJson methods
-  static Future<void> validateJsonMethods(ClassElement element) async {
+  /// For localOnly models, these methods are not required
+  static Future<void> validateJsonMethods(
+    ClassElement element, [
+    bool localOnly = false,
+  ]) async {
     final className = element.name;
+
+    // Skip JSON method validation for localOnly models
+    if (localOnly) {
+      return;
+    }
 
     // Check if model has @JsonSerializable annotation
     final hasJsonSerializable = element.metadata.any((annotation) {

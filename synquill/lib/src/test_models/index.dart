@@ -9,3 +9,4 @@ export 'department.dart';
 export 'plain_model.dart';
 export 'contact_base.dart';
 export 'contact.dart';
+export 'local_note.dart';

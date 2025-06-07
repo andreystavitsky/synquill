@@ -39,11 +39,9 @@ class ModelAnalyzer {
 
           if (annotation != null) {
             final reader = ConstantReader(annotation);
-            final tableName =
-                reader.peek('tableName')?.stringValue ??
+            final tableName = reader.peek('tableName')?.stringValue ??
                 '${element.name.toLowerCase()}s';
-            final endpoint =
-                reader.peek('endpoint')?.stringValue ??
+            final endpoint = reader.peek('endpoint')?.stringValue ??
                 '/${element.name.toLowerCase()}s';
 
             // Extract adapter information with import paths
@@ -57,6 +55,9 @@ class ModelAnalyzer {
               reader.peek('relations')?.listValue ?? [],
             );
 
+            // Extract localOnly parameter
+            final localOnly = reader.peek('localOnly')?.boolValue ?? false;
+
             final fields = extractFields(element);
 
             annotatedModels.add(
@@ -68,6 +69,7 @@ class ModelAnalyzer {
                 fields: fields,
                 adapters: adapters,
                 relations: relations,
+                localOnly: localOnly,
               ),
             );
           }
@@ -297,7 +299,7 @@ class ModelAnalyzer {
       // Check if the adapter is generic (has type parameters)
       final isGeneric =
           (element is ClassElement && element.typeParameters.isNotEmpty) ||
-          (element is MixinElement && element.typeParameters.isNotEmpty);
+              (element is MixinElement && element.typeParameters.isNotEmpty);
 
       adapterInfoList.add(
         AdapterInfo(
@@ -455,8 +457,7 @@ class ModelAnalyzer {
       final List<String> relativeParts = [];
 
       // Add '..' for each directory we need to go up from the 'from' file
-      final upLevels =
-          fromPath.length -
+      final upLevels = fromPath.length -
           commonLength -
           1; // -1 because last segment is filename
       for (int i = 0; i < upLevels; i++) {

@@ -49,18 +49,17 @@ class $adapterClassName extends BasicApiAdapter<$className> {
     // Model-specific adapters (e.g., TodoApiAdapter) don't need type parameters
     // because they're already defined for a specific type
     // Generic adapters (e.g., BaseJsonApiAdapter<T>) need type parameters
-    final mixinParts =
-        adapterNames.map((name) {
-          // Check if this is a generic adapter by looking at the isGeneric flag
-          final adapter = adapters.firstWhere((a) => a.adapterName == name);
-          if (adapter.isGeneric) {
-            // Generic adapters need type parameters
-            return '$name<$className>';
-          } else {
-            // Model-specific adapters already have their type constraint
-            return name;
-          }
-        }).toList();
+    final mixinParts = adapterNames.map((name) {
+      // Check if this is a generic adapter by looking at the isGeneric flag
+      final adapter = adapters.firstWhere((a) => a.adapterName == name);
+      if (adapter.isGeneric) {
+        // Generic adapters need type parameters
+        return '$name<$className>';
+      } else {
+        // Model-specific adapters already have their type constraint
+        return name;
+      }
+    }).toList();
 
     final mixinClause =
         mixinParts.isNotEmpty ? ' with ${mixinParts.join(', ')}' : '';
@@ -98,14 +97,93 @@ class $adapterClassName extends BasicApiAdapter<$className>
     final repositoryName = '${className}Repository';
     final daoName = '${className}Dao';
 
+    // Generate different implementations based on localOnly flag
+    if (model.localOnly) {
+      return _generateLocalOnlyRepositoryClass(
+          model, className, repositoryName, daoName);
+    } else {
+      return _generateSyncRepositoryClass(
+          model, className, repositoryName, daoName);
+    }
+  }
+
+  /// Generates a local-only repository class that doesn't sync with remote API
+  static String _generateLocalOnlyRepositoryClass(ModelInfo model,
+      String className, String repositoryName, String daoName) {
+    return '''
+/// Local-only repository implementation for $className
+/// This repository only works with local database and does not sync with remote API
+class $repositoryName extends SynquillRepositoryBase<$className> 
+    with RepositoryHelpersMixin<$className> {
+  late final $daoName _dao;
+  static Logger get _log {
+    try {
+      return SynquillStorage.logger;
+    } catch (_) {
+      return Logger('$repositoryName');
+    }
+  }
+
+  /// Creates a new $className repository instance (local-only mode)
+  /// 
+  /// [db] The database instance to use for data operations
+  $repositoryName(super.db) {
+    _dao = $daoName(db as SynquillDatabase);
+  }
+
+  @override
+  DatabaseAccessor get dao => _dao;
+
+  @override
+  ApiAdapterBase<$className> get apiAdapter {
+    throw UnsupportedError(
+      'API adapter not available for local-only repository $className. '
+      'This repository was configured with localOnly=true and does not '
+      'support remote operations.'
+    );
+  }
+
+  @override
+  Future<$className?> fetchFromRemote(
+    String id, {
+    QueryParams? queryParams, 
+    Map<String, String>? headers, 
+    Map<String, dynamic>? extra
+  }) async {
+    _log.fine(
+      'fetchFromRemote() called on local-only repository for $className, '
+      'returning null'
+    );
+    return null;
+  }
+
+  @override
+  Future<List<$className>> fetchAllFromRemote({
+    QueryParams? queryParams, 
+    Map<String, String>? headers, 
+    Map<String, dynamic>? extra
+  }) async {
+    _log.fine(
+      'fetchAllFromRemote() called on local-only repository for $className, '
+      'returning empty list'
+    );
+    return [];
+  }
+}
+''';
+  }
+
+  /// Generates a sync-enabled repository class that communicates
+  ///  with remote API
+  static String _generateSyncRepositoryClass(ModelInfo model, String className,
+      String repositoryName, String daoName) {
     // Generate apiAdapter getter based on whether adapters are defined
-    final apiAdapterGetter =
-        (model.adapters == null || model.adapters!.isEmpty)
-            ? '''  @override
+    final apiAdapterGetter = (model.adapters == null || model.adapters!.isEmpty)
+        ? '''  @override
   ApiAdapterBase<$className> get apiAdapter {
     throw UnimplementedError('No adapters specified for $className');
   }'''
-            : '''  @override
+        : '''  @override
   ApiAdapterBase<$className> get apiAdapter {
     return _${className}Adapter();
   }''';
@@ -136,51 +214,70 @@ class $repositoryName extends SynquillRepositoryBase<$className>
 $apiAdapterGetter
 
   @override
-  Future<$className?> fetchFromRemote(String id, {
-      QueryParams? queryParams, 
-      Map<String, String>? headers, 
-      Map<String, dynamic>? extra
-    }) async {
+  Future<$className?> fetchFromRemote(
+    String id, {
+    QueryParams? queryParams, 
+    Map<String, String>? headers, 
+    Map<String, dynamic>? extra
+  }) async {
     try {
-      final result = await apiAdapter.findOne(id, queryParams: queryParams,
-        extra: extra);
-      _log.fine('fetchFromRemote() for $className successful: '
-        'found item with id \$id');
+      final result = await apiAdapter.findOne(
+        id, 
+        queryParams: queryParams,
+        extra: extra
+      );
+      _log.fine(
+        'fetchFromRemote() for $className successful: found item with id \$id'
+      );
       return result;
     } on ApiExceptionNotFound {
-      _log.fine('fetchFromRemote() for $className: item with id \$id '
-        'not found in remote API');
+      _log.fine(
+        'fetchFromRemote() for $className: item with id \$id not found in '
+        'remote API'
+      );
       // Rethrow the exception so SynquillRepositoryBase can remove the 
       // item from local storage
       rethrow;
     } on ApiExceptionGone {
-      _log.fine('fetchFromRemote() for $className: item with id \$id '
-        'is gone from remote API');
+      _log.fine(
+        'fetchFromRemote() for $className: item with id \$id is gone from '
+        'remote API'
+      );
       // Rethrow the exception so SynquillRepositoryBase can remove the 
       // item from local storage
       rethrow;
     } catch (e, stackTrace) {
-      _log.warning('fetchFromRemote() for $className failed '
-        'for id \$id', e, stackTrace);
+      _log.warning(
+        'fetchFromRemote() for $className failed for id \$id', 
+        e, 
+        stackTrace
+      );
       rethrow;
     }
   }
 
   @override
   Future<List<$className>> fetchAllFromRemote({
-      QueryParams? queryParams, 
-      Map<String, String>? headers, 
-      Map<String, dynamic>? extra
-    }) async {
+    QueryParams? queryParams, 
+    Map<String, String>? headers, 
+    Map<String, dynamic>? extra
+  }) async {
     try {
       final result = await apiAdapter.findAll(
-        queryParams: queryParams, extra: extra
+        queryParams: queryParams, 
+        extra: extra
       );
-      _log.fine('fetchAllFromRemote() for $className successful: '
-        'found \${result.length} items');
+      _log.fine(
+        'fetchAllFromRemote() for $className successful: '
+        'found \${result.length} items'
+      );
       return result;
     } catch (e, stackTrace) {
-      _log.warning('fetchAllFromRemote() for $className failed', e, stackTrace);
+      _log.warning(
+        'fetchAllFromRemote() for $className failed', 
+        e, 
+        stackTrace
+      );
       rethrow;
     }
   }

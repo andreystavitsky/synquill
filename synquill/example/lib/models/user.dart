@@ -37,6 +37,7 @@ mixin UserApiAdapter on BasicApiAdapter<User> {
     OneToMany(target: Todo, mappedBy: 'userId'),
     OneToMany(target: Post, mappedBy: 'userId'),
     OneToMany(target: Project, mappedBy: 'ownerId'),
+    OneToMany(target: LocalNote, mappedBy: 'ownerId'),
   ],
 )
 class User extends SynquillDataModel<User> {

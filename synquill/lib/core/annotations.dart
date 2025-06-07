@@ -23,8 +23,19 @@ class SynquillRepository {
   /// Each element should be either OneToMany or ManyToOne annotation.
   final List<Object>? relations;
 
+  /// Whether this repository should work in local-only mode.
+  /// When set to `true`, the repository will not attempt to sync
+  /// with remote API and will only work with local Drift database storage.
+  /// Defaults to `false` for backward compatibility.
+  final bool localOnly;
+
   /// Creates a new [SynquillRepository] annotation.
-  const SynquillRepository({this.adapters, this.tableFile, this.relations});
+  const SynquillRepository({
+    this.adapters,
+    this.tableFile,
+    this.relations,
+    this.localOnly = false,
+  });
 }
 
 /// Annotation to mark a field as a relation to another model.

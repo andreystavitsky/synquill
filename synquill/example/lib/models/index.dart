@@ -9,5 +9,6 @@ export 'plain_model.dart';
 export 'contact_base.dart';
 export 'contact.dart';
 export 'app_user.dart';
+export 'local_note.dart';
 export '../adapters/json_api_adapter.dart';
 export '../synquill.generated.dart';

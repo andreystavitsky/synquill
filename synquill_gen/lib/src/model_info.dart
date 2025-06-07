@@ -26,6 +26,10 @@ class ModelInfo {
   /// @SynquillRepository.
   final List<RelationInfo> relations;
 
+  /// Whether this repository should work in local-only mode.
+  /// When true, the repository will not attempt to sync with remote API.
+  final bool localOnly;
+
   /// Creates a new instance of [ModelInfo].
   const ModelInfo({
     required this.className,
@@ -35,6 +39,7 @@ class ModelInfo {
     required this.fields,
     this.adapters,
     this.relations = const [],
+    this.localOnly = false,
   });
 }
 
