@@ -13,14 +13,13 @@ class ModelInfoRegistryGenerator {
       final className = model.className;
 
       // Find class-level relations with cascade delete enabled
-      final cascadeDeleteRelations =
-          model.relations
-              .where(
-                (relation) =>
-                    relation.relationType == RelationType.oneToMany &&
-                    relation.cascadeDelete,
-              )
-              .toList();
+      final cascadeDeleteRelations = model.relations
+          .where(
+            (relation) =>
+                relation.relationType == RelationType.oneToMany &&
+                relation.cascadeDelete,
+          )
+          .toList();
 
       if (cascadeDeleteRelations.isNotEmpty) {
         buffer.writeln('  // Register cascade delete relations for $className');
@@ -31,7 +30,7 @@ class ModelInfoRegistryGenerator {
         buffer.writeln('    [');
 
         for (final relation in cascadeDeleteRelations) {
-          buffer.writeln('      CascadeDeleteRelation(');
+          buffer.writeln('      const CascadeDeleteRelation(');
           buffer.writeln(
             '        fieldName: \'${relation.targetType.toLowerCase()}s\',',
           );

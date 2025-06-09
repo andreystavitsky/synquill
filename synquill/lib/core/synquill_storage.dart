@@ -560,35 +560,6 @@ class SynquillStorage {
     }
   }
 
-  /// Retrieves a repository instance for the given model type.
-  ///
-  /// This method provides a convenient way to get repository instances
-  /// using the global [SynquillRepositoryProvider]. The method returns the
-  /// concrete repository type (e.g., UserRepository) rather than the base type.
-  ///
-  /// Type parameter [T] must extend [SynquillDataModel] and represents the
-  /// model type for which to retrieve the repository.
-  ///
-  /// Throws [StateError] if [SynquillStorage] has not been initialized.
-  /// Throws [Exception] if no factory is registered for the given model type.
-  ///
-  /// Example:
-  /// ```dart
-  /// // Get repository for a specific model type - returns UserRepository
-  /// final userRepo = SynquillStorage.instance.getRepository<User>();
-  /// final user = await userRepo.findOne('user_id');
-  /// ```
-  dynamic getRepository<T extends SynquillDataModel<T>>() {
-    if (_instance == null) {
-      throw StateError(
-        'SynquillStorage has not been initialized. '
-        'Call SynquillStorage.init() first.',
-      );
-    }
-
-    return SynquillRepositoryProvider.get<T>();
-  }
-
   /// Retrieves a repository instance by model type string name.
   ///
   /// This method allows lookup of repositories when only the string model type
@@ -621,6 +592,45 @@ class SynquillStorage {
     }
 
     return SynquillRepositoryProvider.getByTypeName(modelTypeName);
+  }
+
+  /// Gets a strongly-typed repository for the specified model type.
+  ///
+  /// This method provides compile-time type safety by returning the
+  /// concrete repository type (e.g., UserRepository) rather than the
+  /// base type. The method will return the correct repository type
+  /// based on the model type provided.
+  ///
+  /// Type parameter [T] must extend [SynquillDataModel] and represents
+  /// the model type for which to retrieve the repository.
+  ///
+  /// Example:
+  /// ```dart
+  /// // Get strongly-typed repository - returns UserRepository
+  /// final userRepo = storage.getRepository<User>();
+  /// final user = await userRepo.findOne("user_id");
+  /// ```
+  SynquillRepositoryBase<T> getRepository<T extends SynquillDataModel<T>>() {
+    // Check initialization through static getter
+    try {
+      SynquillStorage.instance;
+    } catch (e) {
+      throw StateError(
+        'SynquillStorage has not been initialized. '
+        'Call SynquillStorage.init() first.',
+      );
+    }
+
+    // Get repository - may throw if not registered
+    try {
+      return SynquillRepositoryProvider.get<T>();
+    } catch (e) {
+      throw StateError(
+        'No repository registered for type '
+        '${T.toString()}. Make sure '
+        'initializeSynquillStorage() was called.',
+      );
+    }
   }
 
   /// Triggers background sync tasks to be processed immediately.

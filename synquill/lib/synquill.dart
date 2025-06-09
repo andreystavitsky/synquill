@@ -15,6 +15,7 @@ export 'package:drift/native.dart';
 
 export 'package:stream_transform/stream_transform.dart' show Switch;
 export 'package:logging/logging.dart';
+export 'package:dio/dio.dart';
 
 part 'adapters/api_adapter.dart';
 part 'adapters/basic_api_adapter.dart';

@@ -30,8 +30,12 @@ void main() {
         initializeFn: initializeSynquillStorage,
         enableInternetMonitoring: false, // Disable for testing
       );
-      userRepository = SynquillStorage.instance.getRepository<User>();
-      todoRepository = SynquillStorage.instance.getRepository<Todo>();
+      userRepository =
+          SynquillStorage.instance.getRepository<User>() as UserRepository;
+      todoRepository =
+          SynquillStorage.instance.getRepository<Todo>() as TodoRepository;
+      ;
+      ;
       // Call the original _insertTestData as the group for multiple relations
       // has its own specific setup.
       await _insertTestData(userRepository, todoRepository);
@@ -1211,14 +1215,12 @@ void main() {
         final hobbyCategoryId =
             allCategories.firstWhere((category) => category.name == 'Hobby').id;
 
-        final workProjectsRemaining =
-            remainingProjects
-                .where((project) => project.categoryId == workCategoryId)
-                .length;
-        final hobbyProjectsRemaining =
-            remainingProjects
-                .where((project) => project.categoryId == hobbyCategoryId)
-                .length;
+        final workProjectsRemaining = remainingProjects
+            .where((project) => project.categoryId == workCategoryId)
+            .length;
+        final hobbyProjectsRemaining = remainingProjects
+            .where((project) => project.categoryId == hobbyCategoryId)
+            .length;
 
         expect(workProjectsRemaining, equals(2));
         expect(hobbyProjectsRemaining, equals(2));
@@ -1600,7 +1602,8 @@ void main() {
         initializeFn: initializeSynquillStorage,
         enableInternetMonitoring: false,
       );
-      userRepository = SynquillStorage.instance.getRepository<User>();
+      userRepository =
+          SynquillStorage.instance.getRepository<User>() as UserRepository;
 
       // Create minimal test data
       final user = User(id: 'user1', name: 'Test User');
@@ -1646,8 +1649,12 @@ void main() {
         initializeFn: initializeSynquillStorage,
         enableInternetMonitoring: false,
       );
-      userRepository = SynquillStorage.instance.getRepository<User>();
-      todoRepository = SynquillStorage.instance.getRepository<Todo>();
+      userRepository =
+          SynquillStorage.instance.getRepository<User>() as UserRepository;
+      todoRepository =
+          SynquillStorage.instance.getRepository<Todo>() as TodoRepository;
+      ;
+      ;
 
       // Create minimal test data
       final user = User(id: 'user1', name: 'Test User');

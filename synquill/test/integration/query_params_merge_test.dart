@@ -25,8 +25,10 @@ void main() {
         initializeFn: initializeSynquillStorage,
         enableInternetMonitoring: false,
       );
-      userRepository = SynquillStorage.instance.getRepository<User>();
-      todoRepository = SynquillStorage.instance.getRepository<Todo>();
+      userRepository =
+          SynquillStorage.instance.getRepository<User>() as UserRepository;
+      todoRepository =
+          SynquillStorage.instance.getRepository<Todo>() as TodoRepository;
 
       // Create test data
       final testUser = User(id: 'user123', name: 'Test User');

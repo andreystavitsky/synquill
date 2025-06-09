@@ -112,7 +112,8 @@ class $adapterClassName extends BasicApiAdapter<$className>
       String className, String repositoryName, String daoName) {
     return '''
 /// Local-only repository implementation for $className
-/// This repository only works with local database and does not sync with remote API
+/// This repository only works with local database and does not sync with
+/// remote API
 class $repositoryName extends SynquillRepositoryBase<$className> 
     with RepositoryHelpersMixin<$className> {
   late final $daoName _dao;
