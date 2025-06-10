@@ -8,6 +8,7 @@ This guide covers how to customize API adapters for different REST API patterns,
 - [Custom Headers and Authentication](#custom-headers-and-authentication)
 - [Response Parsing](#response-parsing)
 - [HTTP Status Code Handling](#http-status-code-handling)
+- [Example: Overriding findAll for Full Synchronization](#example-overriding-findall-for-full-synchronization)
 
 ## HTTP Methods and URLs
 
@@ -129,6 +130,143 @@ mixin CustomErrorHandlingAdapter on BasicApiAdapter<MyModel> {
           rethrow;
       }
     }
+  }
+}
+```
+
+## Example: Overriding findAll for Full Synchronization
+
+```dart
+import 'dart:math';
+import 'package:dio/dio.dart';
+import 'package:synquill/synquill.dart';
+
+class BasicLoadAllApiAdapter extends BasicApiAdapter<TModel> {
+  /// Maximum batch size for data loading
+  static const int maxBatchSize = 1000;
+
+  @override
+  Uri get baseUrl => Uri.parse('https://api.example.com/v1/');
+
+  /// This adapter assumes the API provides the total count in the X-TOTAL-COUNT header.
+  /// Override findAll for full synchronization with x-total-count
+  @override
+  Future<List<TModel>> findAll({
+    Map<String, String>? headers,
+    QueryParams? queryParams,
+    Map<String, dynamic>? extra,
+  }) async {
+
+    final mergedHeaders = await mergeHeaders(headers, extra: extra);
+    final baseHttpParams = queryParamsToHttpParams(queryParams);
+    
+    // Add limit=1 to save traffic when getting the count
+    final countHttpParams = {
+      ...baseHttpParams,
+      'limit': '1',
+      'offset': '0',
+    };
+    
+    final uri = await urlForFindAll(extra: extra);
+    final firstResponse = await executeRequest<dynamic>(
+      method: methodForFind(extra: extra),
+      uri: uri,
+      headers: mergedHeaders,
+      queryParameters: countHttpParams.isNotEmpty ? countHttpParams : null,
+      extra: extra,
+    );
+
+    final totalCount = _extractTotalCountFromHeaders(firstResponse.headers);
+
+    // If the total count is 0, return an empty list
+    if (totalCount == 0) {
+      return [];
+    }
+
+    // Load all data from the API
+    final allItems = await _loadAllItemsFromApi(
+      totalCount: totalCount,
+      baseHttpParams: baseHttpParams,
+      headers: mergedHeaders,
+      extra: extra,
+    );
+
+    // Return the data loaded from the API
+    return allItems;
+  }
+
+  /// Extracts the x-total-count value from response headers
+  int _extractTotalCountFromHeaders(Headers headers) {
+    final totalCountHeader = headers.value('x-total-count');
+    if (totalCountHeader == null) {
+      throw ApiException(
+        'API response missing required x-total-count header',
+        statusCode: null,
+      );
+    }
+
+    final totalCount = int.tryParse(totalCountHeader);
+    if (totalCount == null) {
+      throw ApiException(
+        'Invalid x-total-count header value: $totalCountHeader',
+        statusCode: null,
+      );
+    }
+
+    return totalCount;
+  }
+
+  /// Loads all items from the API, using pagination if necessary
+  Future<List<TModel>> _loadAllItemsFromApi({
+    required int totalCount,
+    required Map<String, String> baseHttpParams,
+    required Map<String, String> headers,
+    Map<String, dynamic>? extra,
+  }) async {
+    final List<TModel> allItems = [];
+    final uri = await urlForFindAll(extra: extra);
+
+    if (totalCount <= maxBatchSize) {
+      // Load all in one request
+      final httpParams = {
+        ...baseHttpParams,
+        'limit': totalCount.toString(),
+        'offset': '0',
+      };
+
+      final response = await executeRequest<dynamic>(
+        method: methodForFind(extra: extra),
+        uri: uri,
+        headers: headers,
+        queryParameters: httpParams.isNotEmpty ? httpParams : null,
+        extra: extra,
+      );
+
+      allItems.addAll(parseFindAllResponse(response.data, response));
+    } else {
+      // Load with pagination
+      for (int offset = 0; offset < totalCount; offset += maxBatchSize) {
+        final batchSize = min(maxBatchSize, totalCount - offset);
+        final httpParams = {
+          ...baseHttpParams,
+          'limit': batchSize.toString(),
+          'offset': offset.toString(),
+        };
+
+        final response = await executeRequest<dynamic>(
+          method: methodForFind(extra: extra),
+          uri: uri,
+          headers: headers,
+          queryParameters: httpParams.isNotEmpty ? httpParams : null,
+          extra: extra,
+        );
+
+        final batchItems = parseFindAllResponse(response.data, response);
+        allItems.addAll(batchItems);
+      }
+    }
+
+    return allItems;
   }
 }
 ```
