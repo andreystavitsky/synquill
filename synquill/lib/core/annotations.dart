@@ -38,29 +38,6 @@ class SynquillRepository {
   });
 }
 
-/// Annotation to mark a field as a relation to another model.
-/// This creates a foreign key constraint in the database.
-class Relation {
-  /// The target model class for this relation.
-  /// Can be a Type or a String to avoid circular imports.
-  final dynamic target;
-
-  /// Whether to cascade delete when the parent is deleted.
-  /// Default is false for safety.
-  final bool cascadeDelete;
-
-  /// The name of the foreign key column in the database.
-  /// If not specified, defaults to '${fieldName}_id'.
-  final String? foreignKeyColumn;
-
-  /// Creates a new [Relation] annotation.
-  const Relation({
-    required this.target,
-    this.cascadeDelete = false,
-    this.foreignKeyColumn,
-  });
-}
-
 /// Annotation to mark a field as a one-to-many relation.
 /// This field should be of type List\<T\> where T is the related model.
 class OneToMany {
