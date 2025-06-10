@@ -43,7 +43,7 @@ class PluralizationUtils {
 
     // Insert underscores before uppercase letters (except the first character)
     final result = input.replaceAllMapped(
-      RegExp(r'[A-Z]'),
+      RegExp(r'[A-Z]+(?=[A-Z][a-z]|$)|[A-Z]'),
       (match) {
         final index = match.start;
         // Don't add underscore before the first character
