@@ -111,6 +111,67 @@ extension SynquillDataModelExtensions<T extends SynquillDataModel<T>>
     }
   }
 
+  /// Gets detailed synchronization information for this model instance.
+  ///
+  /// This getter provides comprehensive sync status information including
+  /// error details, retry scheduling, and operation types from the sync queue.
+  ///
+  /// Returns a [SyncDetails] object containing:
+  /// - lastError: The most recent error message (if any)
+  /// - nextRetryAt: When the next retry is scheduled (if any)
+  /// - attemptCount: Number of sync attempts made
+  /// - status: Current sync status
+  /// - operation: Type of pending operation (create, update, delete)
+  ///
+  /// If there are no sync queue entries for this model, returns
+  /// [SyncDetails.synced()].
+  Future<SyncDetails> get getSyncDetails async {
+    try {
+      final database = SynquillStorage.database;
+
+      // Get ALL tasks for this model, including dead ones for getSyncDetails
+      final results = await database.customSelect(
+        'SELECT * FROM sync_queue_items WHERE model_type = ? AND model_id = ?',
+        variables: [
+          Variable.withString(T.toString()),
+          Variable.withString(id),
+        ],
+      ).get();
+
+      final tasks = results.map((row) => row.data).toList();
+
+      if (tasks.isEmpty) {
+        return const SyncDetails.synced();
+      }
+
+      // Get the most recent task (highest ID or latest created_at)
+      tasks.sort((a, b) {
+        final aCreatedAt = a['created_at'] as int?;
+        final bCreatedAt = b['created_at'] as int?;
+
+        if (aCreatedAt != null && bCreatedAt != null) {
+          return bCreatedAt.compareTo(aCreatedAt);
+        }
+
+        // Fallback to ID comparison
+        final aId = a['id'] as int?;
+        final bId = b['id'] as int?;
+
+        if (aId != null && bId != null) {
+          return bId.compareTo(aId);
+        }
+
+        return 0;
+      });
+
+      final mostRecentTask = tasks.first;
+      return SyncDetails.fromSyncQueueTask(mostRecentTask);
+    } catch (e) {
+      // If we can't access the sync queue, return synced status
+      return const SyncDetails.synced();
+    }
+  }
+
   /// Refreshes this model instance by fetching the latest data.
   ///
   /// Returns the refreshed instance if found, or null if the instance

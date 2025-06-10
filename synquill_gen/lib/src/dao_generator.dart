@@ -249,6 +249,9 @@ class DaoGenerator {
       // Skip internal fields that start with $
       if (field.name.startsWith('\$')) continue;
 
+      // Skip computed fields that shouldn't be stored in DB
+      if (field.name == 'getSyncDetails') continue;
+
       existingFieldNames.add(field.name);
 
       if (hasFields) buffer.write(',\n        ');
@@ -264,6 +267,9 @@ class DaoGenerator {
           '${field.name}: Value(model.${field.name} ?? '
           'DateTime.now())',
         );
+      } else if (field.name == 'syncStatus') {
+        // syncStatus needs to be serialized to String
+        buffer.write('${field.name}: Value(model.${field.name}.toJson())');
       } else {
         // Handle nullable fields properly
         if (field.dartType.nullabilitySuffix != NullabilitySuffix.none) {
@@ -289,6 +295,20 @@ class DaoGenerator {
     if (!existingFieldNames.contains('updatedAt')) {
       if (hasFields) buffer.write(', ');
       buffer.write('updatedAt: Value(DateTime.now())');
+      hasFields = true;
+    }
+
+    // Set lastSyncedAt only if it doesn't exist in model
+    if (!existingFieldNames.contains('lastSyncedAt')) {
+      if (hasFields) buffer.write(', ');
+      buffer.write('lastSyncedAt: Value(model.lastSyncedAt)');
+      hasFields = true;
+    }
+
+    // Set syncStatus only if it doesn't exist in model
+    if (!existingFieldNames.contains('syncStatus')) {
+      if (hasFields) buffer.write(', ');
+      buffer.write('syncStatus: Value(model.syncStatus.toJson())');
       hasFields = true;
     }
 
@@ -377,8 +397,7 @@ class DaoGenerator {
 
     // Add sync metadata field types only if they don't already exist
     // as model fields
-    final hasDateTimeFields =
-        !existingFieldNames.contains('createdAt') ||
+    final hasDateTimeFields = !existingFieldNames.contains('createdAt') ||
         !existingFieldNames.contains('updatedAt') ||
         !existingFieldNames.contains('lastSyncedAt');
 
