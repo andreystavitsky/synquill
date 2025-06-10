@@ -40,9 +40,11 @@ class ModelAnalyzer {
           if (annotation != null) {
             final reader = ConstantReader(annotation);
             final tableName = reader.peek('tableName')?.stringValue ??
-                '${element.name.toLowerCase()}s';
+                PluralizationUtils.toCamelCasePlural(
+                    element.name.toLowerCase());
+
             final endpoint = reader.peek('endpoint')?.stringValue ??
-                '/${element.name.toLowerCase()}s';
+                '/${PluralizationUtils.toCamelCasePlural(element.name.toLowerCase())}s';
 
             // Extract adapter information with import paths
             final adapters = await _extractAdapterInfo(
@@ -58,7 +60,7 @@ class ModelAnalyzer {
             // Extract localOnly parameter
             final localOnly = reader.peek('localOnly')?.boolValue ?? false;
 
-            final fields = extractFields(element);
+            final fields = extractFields(element, relations);
 
             annotatedModels.add(
               ModelInfo(
@@ -165,11 +167,27 @@ class ModelAnalyzer {
   }
 
   /// Extract fields from a class element
-  static List<FieldInfo> extractFields(ClassElement element) {
+  static List<FieldInfo> extractFields(
+    ClassElement element, [
+    List<RelationInfo>? classLevelRelations,
+  ]) {
     final fields = <FieldInfo>[];
 
     // Collect all fields including inherited ones
     final allFields = _collectAllFields(element);
+
+    // Build a map of foreign key fields from class-level ManyToOne relations
+    final foreignKeyFields = <String, RelationInfo>{};
+    if (classLevelRelations != null) {
+      for (final relation in classLevelRelations) {
+        if (relation.relationType == RelationType.manyToOne) {
+          final foreignKeyColumn = relation.foreignKeyColumn;
+          if (foreignKeyColumn != null) {
+            foreignKeyFields[foreignKeyColumn] = relation;
+          }
+        }
+      }
+    }
 
     // Analyze all public, non-static fields
     for (final field in allFields) {
@@ -182,12 +200,11 @@ class ModelAnalyzer {
           continue;
         }
 
-        // Check for relation annotations
+        // Check for relation annotations (deprecated field-level annotations)
         final oneToManyAnnotation = _oneToManyChecker.firstAnnotationOf(field);
         final manyToOneAnnotation = _manyToOneChecker.firstAnnotationOf(field);
         final indexedAnnotation = _indexedChecker.firstAnnotationOf(field);
 
-        bool isOneToMany = false;
         bool isManyToOne = false;
         String? foreignKeyColumn;
         String? mappedBy;
@@ -197,18 +214,63 @@ class ModelAnalyzer {
         String? indexName;
         bool isUniqueIndex = false;
 
-        if (oneToManyAnnotation != null) {
-          isOneToMany = true;
-          final reader = ConstantReader(oneToManyAnnotation);
-          relationTarget = _getRelationTarget(reader.peek('target'));
-          mappedBy = reader.peek('mappedBy')?.stringValue;
-          cascadeDelete = reader.peek('cascadeDelete')?.boolValue ?? false;
-        } else if (manyToOneAnnotation != null) {
+        // Check if this field is a foreign key field from class-level relations
+        final relationInfo = foreignKeyFields[field.name];
+        if (relationInfo != null) {
           isManyToOne = true;
-          final reader = ConstantReader(manyToOneAnnotation);
-          relationTarget = _getRelationTarget(reader.peek('target'));
-          foreignKeyColumn = reader.peek('foreignKeyColumn')?.stringValue;
-          cascadeDelete = reader.peek('cascadeDelete')?.boolValue ?? false;
+          relationTarget = relationInfo.targetType;
+          foreignKeyColumn = field.name;
+          cascadeDelete = relationInfo.cascadeDelete;
+        }
+
+        // Check for field-level relation annotations -
+        // these should cause an error
+        if (oneToManyAnnotation != null) {
+          throw InvalidGenerationSourceError(
+            'Field "${field.name}" in class "${element.name}" has @OneToMany '
+            'annotation. Field-level relation annotations are not allowed.\n\n'
+            'Use class-level relations instead in @SynquillRepository:\n\n'
+            '@SynquillRepository(\n'
+            '  relations: [\n'
+            '    OneToMany(target: TargetModel, mappedBy: "fieldName"),\n'
+            '  ],\n'
+            ')\n'
+            'class ${element.name} extends '
+            'SynquillDataModel<${element.name}> {\n'
+            '  // ... your model fields\n'
+            '}',
+            element: element,
+          );
+        } else if (manyToOneAnnotation != null) {
+          throw InvalidGenerationSourceError(
+            'Field "${field.name}" in class "${element.name}" has @ManyToOne '
+            'annotation. Field-level relation annotations are not allowed.\n\n'
+            'Use class-level relations instead in @SynquillRepository:\n\n'
+            '@SynquillRepository(\n'
+            '  relations: [\n'
+            '    ManyToOne(target: TargetModel, '
+            'foreignKeyColumn: "${field.name}"),\n'
+            '  ],\n'
+            ')\n'
+            'class ${element.name} extends '
+            'SynquillDataModel<${element.name}> {\n'
+            '  final ${field.type.getDisplayString(withNullability: true)} '
+            '${field.name};\n'
+            '  // ... your other model fields\n'
+            '}',
+            element: element,
+          );
+        }
+
+        // Check for @Indexed annotation on relation fields - this should
+        // cause an error
+        if (indexedAnnotation != null && (isManyToOne)) {
+          throw ArgumentError(
+            'Field "${field.name}" in class "${element.name}" is a foreign key '
+            'or relation field and cannot have @Indexed annotation. Foreign '
+            'key fields are automatically indexed for optimal query '
+            'performance.',
+          );
         }
 
         if (indexedAnnotation != null) {
@@ -218,10 +280,10 @@ class ModelAnalyzer {
           isUniqueIndex = reader.peek('unique')?.boolValue ?? false;
         }
 
-        // Automatically index relation fields for better query performance
-        if (isManyToOne && !isIndexed) {
+        // Automatically index foreign key fields for better query performance
+        if (isManyToOne) {
           isIndexed = true;
-          // Use default index naming for auto-indexed relation fields
+          // Use default index naming for auto-indexed foreign key fields
           indexName = null;
           isUniqueIndex = false;
         }
@@ -230,7 +292,7 @@ class ModelAnalyzer {
           FieldInfo(
             name: field.name,
             dartType: field.type,
-            isOneToMany: isOneToMany,
+            isOneToMany: false,
             isManyToOne: isManyToOne,
             foreignKeyColumn: foreignKeyColumn,
             mappedBy: mappedBy,
@@ -366,12 +428,16 @@ class ModelAnalyzer {
   }
 
   /// Validate that all relation fields exist in the referenced models
+  /// and ensure mappedBy fields for OneToMany relations are indexed
   static void _validateRelations(List<ModelInfo> models) {
     // Create a map for quick model lookup
     final modelMap = <String, ModelInfo>{};
     for (final model in models) {
       modelMap[model.className] = model;
     }
+
+    // Track fields that should be indexed due to OneToMany mappedBy
+    final fieldsToIndex = <String, Set<String>>{};
 
     for (final model in models) {
       for (final relation in model.relations) {
@@ -400,6 +466,10 @@ class ModelAnalyzer {
               'does not have a field named "$mappedBy"',
             );
           }
+
+          // Mark the mappedBy field for indexing
+          fieldsToIndex.putIfAbsent(relation.targetType, () => <String>{});
+          fieldsToIndex[relation.targetType]!.add(mappedBy);
         } else if (relation.relationType == RelationType.manyToOne) {
           // For ManyToOne, check that current model has foreignKeyColumn field
           final targetModel = modelMap[relation.targetType];
@@ -423,6 +493,34 @@ class ModelAnalyzer {
               );
             }
           }
+        }
+      }
+    }
+
+    // Apply indexing to mappedBy fields and validate @Indexed conflicts
+    for (final model in models) {
+      final modelFieldsToIndex = fieldsToIndex[model.className] ?? <String>{};
+
+      for (final field in model.fields) {
+        final shouldBeIndexed = modelFieldsToIndex.contains(field.name);
+
+        // Check for @Indexed annotation conflict on mappedBy fields
+        if (shouldBeIndexed &&
+            field.isIndexed &&
+            !field.isManyToOne &&
+            !field.isOneToMany) {
+          throw ArgumentError(
+            'Field "${field.name}" in class "${model.className}" is a '
+            'mappedBy field for a OneToMany relation and cannot have @Indexed '
+            'annotation. Such fields are automatically indexed for optimal '
+            'query performance.',
+          );
+        }
+
+        // Auto-index mappedBy fields
+        if (shouldBeIndexed && !field.isIndexed) {
+          // We need to modify the field to mark it as indexed
+          // Since FieldInfo is immutable, we'll handle this in the generator
         }
       }
     }

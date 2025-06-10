@@ -19,13 +19,28 @@ class TableGenerator {
     );
 
     // Collect indexed fields for @TableIndex annotations
-    final indexedFields =
-        model.fields
-            .where((field) => field.isIndexed && !field.isOneToMany)
-            .toList();
+    final indexedFields = model.fields
+        .where((field) => field.isIndexed && !field.isOneToMany)
+        .toList();
+
+    // Add automatic indexes for relation fields
+    final relationFields = model.fields
+        .where((field) => field.isManyToOne && !field.isOneToMany)
+        .toList();
+
+    // Combine all indexed fields
+    final allIndexedFields = <FieldInfo>[...indexedFields, ...relationFields];
+
+    // Remove duplicates based on field name
+    final uniqueIndexedFields = <String, FieldInfo>{};
+    for (final field in allIndexedFields) {
+      if (!uniqueIndexedFields.containsKey(field.name)) {
+        uniqueIndexedFields[field.name] = field;
+      }
+    }
 
     // Add @TableIndex annotations for indexed fields
-    for (final field in indexedFields) {
+    for (final field in uniqueIndexedFields.values) {
       final indexName =
           field.indexName ?? 'idx_${model.tableName}_${field.name}';
       buffer.write('@TableIndex(name: \'$indexName\', ');
