@@ -12,17 +12,24 @@ enum SyncStatus {
   dead,
 }
 
-/// Extension providing JSON serialization utilities for [SyncStatus].
-extension SyncStatusExtension on SyncStatus {
-  /// Convert the enum to a string representation
-  String toJson() => name;
+/// Drift type converter for SyncStatus enum
+///
+/// Converts between database String representation and SyncStatus enum
+class SyncStatusConverter extends TypeConverter<SyncStatus?, String?> {
+  const SyncStatusConverter();
 
-  /// Create SyncStatus from string representation
-  static SyncStatus fromJson(String value) {
+  @override
+  SyncStatus? fromSql(String? fromDb) {
+    if (fromDb == null) return null;
     return SyncStatus.values.firstWhere(
-      (status) => status.name == value,
+      (status) => status.name == fromDb,
       orElse: () => SyncStatus.pending,
     );
+  }
+
+  @override
+  String? toSql(SyncStatus? value) {
+    return value?.name;
   }
 }
 

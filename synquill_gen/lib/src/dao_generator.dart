@@ -269,7 +269,8 @@ class DaoGenerator {
         );
       } else if (field.name == 'syncStatus') {
         // syncStatus needs to be serialized to String
-        buffer.write('${field.name}: Value(model.${field.name}.toJson())');
+        buffer.write('${field.name}: Value(model.${field.name} ?? '
+            'SyncStatus.synced)');
       } else {
         // Handle nullable fields properly
         if (field.dartType.nullabilitySuffix != NullabilitySuffix.none) {
@@ -308,7 +309,8 @@ class DaoGenerator {
     // Set syncStatus only if it doesn't exist in model
     if (!existingFieldNames.contains('syncStatus')) {
       if (hasFields) buffer.write(', ');
-      buffer.write('syncStatus: Value(model.syncStatus.toJson())');
+      buffer.write('syncStatus: Value(model.syncStatus ?? '
+          'SyncStatus.synced)');
       hasFields = true;
     }
 

@@ -206,5 +206,5 @@ abstract class SynquillDataModel<T extends SynquillDataModel<T>> {
   /// when sync queue operations occur. This getter returns a default value;
   /// concrete implementations should override this to return the real
   /// database value.
-  SyncStatus get syncStatus => SyncStatus.pending;
+  SyncStatus? syncStatus;
 }

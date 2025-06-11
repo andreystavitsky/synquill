@@ -110,8 +110,9 @@ class TableGenerator {
     }
     if (!existingFields.contains('syncStatus')) {
       buffer.writeln('  /// Current synchronization status');
-      buffer.writeln('  TextColumn get syncStatus => textEnum<SyncStatus>()');
-      buffer.writeln('    .withDefault(const Constant(\'pending\'))();');
+      buffer.writeln('  TextColumn get syncStatus => text()');
+      buffer.writeln('    .withDefault(const Constant(\'synced\'))');
+      buffer.writeln('    .map(const SyncStatusConverter())();');
     }
 
     // Add primary key override if the table has an 'id' field
@@ -179,8 +180,8 @@ class SyncQueueItems extends Table {
   TextColumn get idempotencyKey =>
       text().named('idempotency_key').nullable().unique()();
 
-  /// Status of the sync queue item (pending, processing, completed, failed).
-  TextColumn get status => text().withDefault(const Constant('pending'))();
+  /// Status of the sync queue item (pending, synced, dead).
+  TextColumn get status => text().withDefault(const Constant('synced'))();
 
   /// JSON string representation of HTTP headers for the sync operation.
   /// Stored as nullable text to preserve headers for retry operations.
@@ -204,6 +205,14 @@ class SyncQueueItems extends Table {
     final typeStr = field.dartType.getDisplayString(withNullability: false);
     final isNullable =
         field.dartType.nullabilitySuffix != NullabilitySuffix.none;
+
+    // Special handling for SyncStatus enum
+    if (typeStr == 'SyncStatus') {
+      return 'TextColumn get ${field.name} => text()'
+          '${isNullable ? '.nullable()' : ''}'
+          '.withDefault(const Constant(\'synced\'))'
+          '.map(const SyncStatusConverter())();';
+    }
 
     // Handle ManyToOne relations - they create foreign key columns
     if (field.isManyToOne) {
