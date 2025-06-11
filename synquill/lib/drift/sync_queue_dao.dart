@@ -12,19 +12,74 @@ class SyncQueueDao {
   /// The database instance.
   final GeneratedDatabase _db;
 
+  /// Cache for table name to table mapping for performance optimization.
+  /// Maps table name (e.g., 'users') to the corresponding Drift table.
+  final Map<String, TableInfo<Table, dynamic>> _tableCache = {};
+
+  /// Whether the table cache has been initialized.
+  bool _cacheInitialized = false;
+
+  /// Logger instance for this DAO
+  static Logger get _log {
+    try {
+      return SynquillStorage.logger;
+    } catch (_) {
+      return Logger('SyncQueueDao');
+    }
+  }
+
   /// Creates a new [SyncQueueDao] instance.
   SyncQueueDao(this._db);
+
+  /// Initializes the table cache by mapping table names to their tables.
+  ///
+  /// This method builds a cache of table names to Drift table instances
+  /// for efficient table lookups during sync status updates.
+  void _initializeTableCache() {
+    if (_cacheInitialized) return;
+
+    try {
+      _tableCache.clear();
+
+      for (final table in _db.allTables) {
+        final tableName = table.actualTableName;
+
+        // Skip sync_queue_items table as it's not a model table
+        if (tableName == 'sync_queue_items') continue;
+
+        // Cache table directly by its name
+        _tableCache[tableName] = table;
+      }
+
+      _cacheInitialized = true;
+      _log.fine(
+        'Table cache initialized with ${_tableCache.length} model tables',
+      );
+    } catch (e, stack) {
+      _log.warning('Failed to initialize table cache', e, stack);
+      // Don't prevent DAO from working if cache initialization fails
+    }
+  }
+
+  /// Gets a cached table for the given table name.
+  ///
+  /// Returns null if the table is not found or not cached.
+  TableInfo<Table, dynamic>? _getCachedTable(String tableName) {
+    if (!_cacheInitialized) {
+      _initializeTableCache();
+    }
+    return _tableCache[tableName];
+  }
 
   /// Retrieves all items from the sync queue.
   /// Returns raw data as `Map<String, dynamic>` since generated types
   /// are not available in the library.
   Future<List<Map<String, dynamic>>> getAllItems() async {
-    final results =
-        await _db
-            .customSelect(
-              'SELECT * FROM sync_queue_items ORDER BY created_at ASC',
-            )
-            .get();
+    final results = await _db
+        .customSelect(
+          'SELECT * FROM sync_queue_items ORDER BY created_at ASC',
+        )
+        .get();
     return results.map((row) => row.data).toList();
   }
 
@@ -32,13 +87,10 @@ class SyncQueueDao {
   Future<List<Map<String, dynamic>>> getItemsByModelType(
     String modelType,
   ) async {
-    final results =
-        await _db
-            .customSelect(
-              'SELECT * FROM sync_queue_items WHERE model_type = ?',
-              variables: [Variable.withString(modelType)],
-            )
-            .get();
+    final results = await _db.customSelect(
+      'SELECT * FROM sync_queue_items WHERE model_type = ?',
+      variables: [Variable.withString(modelType)],
+    ).get();
     return results.map((row) => row.data).toList();
   }
 
@@ -48,32 +100,26 @@ class SyncQueueDao {
   /// and it has not been marked as dead.
   /// Items are ordered by their `created_at` timestamp.
   Future<List<Map<String, dynamic>>> getDueTasks() async {
-    final results =
-        await _db
-            .customSelect(
-              'SELECT * FROM sync_queue_items WHERE (next_retry_at IS NULL OR '
-              'next_retry_at <= ?) AND status != ? ORDER BY created_at ASC',
-              variables: [
-                Variable.withDateTime(DateTime.now()),
-                Variable.withString(
-                  'dead',
-                ), // Assuming 'dead' is the status for dead tasks
-              ],
-            )
-            .get();
+    final results = await _db.customSelect(
+      'SELECT * FROM sync_queue_items WHERE (next_retry_at IS NULL OR '
+      'next_retry_at <= ?) AND status != ? ORDER BY created_at ASC',
+      variables: [
+        Variable.withDateTime(DateTime.now()),
+        Variable.withString(
+          'dead',
+        ), // Assuming 'dead' is the status for dead tasks
+      ],
+    ).get();
     return results.map((row) => row.data).toList();
   }
 
   /// Retrieves a specific sync queue item by its [id].
   /// Returns `null` if no item with the given [id] is found.
   Future<Map<String, dynamic>?> getItemById(int id) async {
-    final results =
-        await _db
-            .customSelect(
-              'SELECT * FROM sync_queue_items WHERE id = ?',
-              variables: [Variable.withInt(id)],
-            )
-            .get();
+    final results = await _db.customSelect(
+      'SELECT * FROM sync_queue_items WHERE id = ?',
+      variables: [Variable.withInt(id)],
+    ).get();
     return results.isNotEmpty ? results.first.data : null;
   }
 
@@ -92,7 +138,7 @@ class SyncQueueDao {
     String? headers, // JSON string of headers
     String? extra, // JSON string of extra parameters
   }) async {
-    return await _db.customInsert(
+    final itemId = await _db.customInsert(
       'INSERT INTO sync_queue_items '
       '(model_type, model_id, payload, op, attempt_count, last_error, '
       'next_retry_at, idempotency_key, status, created_at, headers, extra) '
@@ -118,10 +164,19 @@ class SyncQueueDao {
         extra != null ? Variable.withString(extra) : const Variable(null),
       ],
     );
+
+    // Update the model's syncStatus to reflect the new sync queue entry
+    await updateModelSyncStatus(modelType, modelId, status);
+
+    return itemId;
   }
 
   /// Updates an existing item in the sync queue.
   /// Returns the number of rows affected (usually 1 if successful).
+  ///
+  /// Note: This method only updates the sync queue item. To update the
+  /// model's syncStatus, use specific methods like markTaskAsDead() or
+  /// updateTaskRetry().
   Future<int> updateItem({
     required int id,
     String? modelType,
@@ -189,30 +244,57 @@ class SyncQueueDao {
 
     variables.add(Variable.withInt(id)); // For the WHERE clause
 
-    return await _db.customUpdate(
+    final result = await _db.customUpdate(
       'UPDATE sync_queue_items SET ${updates.join(', ')} WHERE id = ?',
       variables: variables,
     );
+
+    return result;
   }
 
   /// Deletes a specific sync queue item by its [id].
   /// Returns the number of rows affected (usually 1 if successful).
   Future<int> deleteTask(int id) async {
-    return await _db.customUpdate(
+    // Get task info before deletion to update model's syncStatus
+    final task = await getItemById(id);
+
+    final result = await _db.customUpdate(
       'DELETE FROM sync_queue_items WHERE id = ?',
       variables: [Variable.withInt(id)],
     );
+
+    // Update the model's syncStatus after deletion
+    // Since we deleted the only task for this model, status becomes 'synced'
+    if (task != null && result > 0) {
+      final modelType = task['model_type'] as String;
+      final modelId = task['model_id'] as String;
+      await updateModelSyncStatus(modelType, modelId, 'synced');
+    }
+
+    return result;
   }
 
   /// Marks a task as 'dead' and records the final error.
   /// This prevents the task from being retried indefinitely.
   Future<int> markTaskAsDead(int id, String error) async {
-    return updateItem(
+    // Get task info to update model's syncStatus
+    final task = await getItemById(id);
+
+    final result = await updateItem(
       id: id,
       status: 'dead',
       lastError: error,
       // nextRetryAt could be set to null or a far future date if desired
     );
+
+    // Update the model's syncStatus to 'dead'
+    if (task != null && result > 0) {
+      final modelType = task['model_type'] as String;
+      final modelId = task['model_id'] as String;
+      await updateModelSyncStatus(modelType, modelId, 'dead');
+    }
+
+    return result;
   }
 
   /// Updates a task's retry information.
@@ -222,13 +304,25 @@ class SyncQueueDao {
     int attemptCount,
     String lastError,
   ) async {
-    return updateItem(
+    // Get task info to update model's syncStatus
+    final task = await getItemById(id);
+
+    final result = await updateItem(
       id: id,
       nextRetryAt: nextRetryAt,
       attemptCount: attemptCount,
       lastError: lastError,
       status: 'pending', // Ensure status is pending for retry
     );
+
+    // Update the model's syncStatus to 'pending'
+    if (task != null && result > 0) {
+      final modelType = task['model_type'] as String;
+      final modelId = task['model_id'] as String;
+      await updateModelSyncStatus(modelType, modelId, 'pending');
+    }
+
+    return result;
   }
 
   /// Finds sync queue tasks for a specific model type and model ID.
@@ -239,18 +333,15 @@ class SyncQueueDao {
     String modelType,
     String modelId,
   ) async {
-    final results =
-        await _db
-            .customSelect(
-              'SELECT * FROM sync_queue_items WHERE model_type = ? AND '
-              'model_id = ? AND status != ?',
-              variables: [
-                Variable.withString(modelType),
-                Variable.withString(modelId),
-                Variable.withString('dead'),
-              ],
-            )
-            .get();
+    final results = await _db.customSelect(
+      'SELECT * FROM sync_queue_items WHERE model_type = ? AND '
+      'model_id = ? AND status != ?',
+      variables: [
+        Variable.withString(modelType),
+        Variable.withString(modelId),
+        Variable.withString('dead'),
+      ],
+    ).get();
     return results.map((row) => row.data).toList();
   }
 
@@ -260,7 +351,7 @@ class SyncQueueDao {
   /// any pending CREATE/UPDATE operations for that item.
   /// Returns the number of tasks deleted.
   Future<int> deleteTasksForModelId(String modelType, String modelId) async {
-    return await _db.customUpdate(
+    final result = await _db.customUpdate(
       'DELETE FROM sync_queue_items WHERE model_type = ? AND '
       'model_id = ? AND status != ?',
       variables: [
@@ -269,6 +360,27 @@ class SyncQueueDao {
         Variable.withString('dead'),
       ],
     );
+
+    // Update model's syncStatus after deletion
+    // Since we deleted all non-dead tasks, status is either 'synced' or 'dead'
+    if (result > 0) {
+      // Check if there are any dead tasks left
+      final deadTasks = await _db.customSelect(
+        'SELECT COUNT(*) as count FROM sync_queue_items '
+        'WHERE model_type = ? AND model_id = ? AND status = ?',
+        variables: [
+          Variable.withString(modelType),
+          Variable.withString(modelId),
+          Variable.withString('dead'),
+        ],
+      ).get();
+
+      final hasDeadTasks = (deadTasks.first.data['count'] as int) > 0;
+      final syncStatus = hasDeadTasks ? 'dead' : 'synced';
+      await updateModelSyncStatus(modelType, modelId, syncStatus);
+    }
+
+    return result;
   }
 
   /// Deletes specific types of operations for a model ID.
@@ -290,39 +402,45 @@ class SyncQueueDao {
       ...operations.map((op) => Variable.withString(op)),
     ];
 
-    return await _db.customUpdate(
-      'DELETE FROM sync_queue_items WHERE model_type = ? AND '
-      'model_id = ? AND status != ? AND '
+    final result = await _db.customUpdate(
+      'DELETE FROM sync_queue_items '
+      'WHERE model_type = ? AND model_id = ? AND status != ? AND '
       'op IN ($placeholders)',
       variables: variables,
     );
+
+    // Update model's syncStatus after deletion
+    // Since there's only one task per model, if we deleted it,
+    // status becomes 'synced'
+    if (result > 0) {
+      await updateModelSyncStatus(modelType, modelId, 'synced');
+    }
+
+    return result;
   }
 
   /// Find the latest pending sync queue item for a specific model operation.
   ///
-  /// This is useful when we want to update an existing sync queue item instead
-  /// of creating a new one, for example when the same item is updated multiple
-  /// times while offline.
+  /// This is useful when we want to update an existing sync queue item
+  /// instead of creating a new one, for example when the same item is
+  /// updated multiple times while offline.
   /// Returns the queue item ID if found, null otherwise.
   Future<int?> findPendingSyncTask(
     String modelType,
     String modelId,
     String operation,
   ) async {
-    final results =
-        await _db
-            .customSelect(
-              'SELECT id FROM sync_queue_items WHERE model_type = ? AND '
-              'model_id = ? AND op = ? AND status != ? '
-              'ORDER BY created_at DESC LIMIT 1',
-              variables: [
-                Variable.withString(modelType),
-                Variable.withString(modelId),
-                Variable.withString(operation),
-                Variable.withString('dead'),
-              ],
-            )
-            .get();
+    final results = await _db.customSelect(
+      'SELECT id FROM sync_queue_items WHERE model_type = ? AND '
+      'model_id = ? AND op = ? AND status != ? '
+      'ORDER BY created_at DESC LIMIT 1',
+      variables: [
+        Variable.withString(modelType),
+        Variable.withString(modelId),
+        Variable.withString(operation),
+        Variable.withString('dead'),
+      ],
+    ).get();
 
     return results.isNotEmpty ? results.first.data['id'] as int : null;
   }
@@ -336,19 +454,16 @@ class SyncQueueDao {
     String modelId,
     String operation,
   ) async {
-    final results =
-        await _db
-            .customSelect(
-              'SELECT 1 FROM sync_queue_items WHERE model_type = ? AND '
-              'model_id = ? AND op = ? AND status != ? LIMIT 1',
-              variables: [
-                Variable.withString(modelType),
-                Variable.withString(modelId),
-                Variable.withString(operation),
-                Variable.withString('dead'),
-              ],
-            )
-            .get();
+    final results = await _db.customSelect(
+      'SELECT 1 FROM sync_queue_items WHERE model_type = ? AND '
+      'model_id = ? AND op = ? AND status != ? LIMIT 1',
+      variables: [
+        Variable.withString(modelType),
+        Variable.withString(modelId),
+        Variable.withString(operation),
+        Variable.withString('dead'),
+      ],
+    ).get();
 
     return results.isNotEmpty;
   }
@@ -482,5 +597,68 @@ class SyncQueueDao {
       'deleted_records': 0,
       'created_delete_id': null,
     };
+  }
+
+  /// Converts model type to table name using naming convention.
+  ///
+  /// Converts CamelCase model names to snake_case table names with plural form.
+  /// Example: User -> users, TodoItem -> todo_items, Category -> categories
+  String modelTypeToTableName(String modelType) {
+    // Use proper pluralization first
+    final pluralSnakeCase = PluralizationUtils.toSnakeCasePlural(modelType);
+
+    // Remove leading underscore if present
+    return pluralSnakeCase.startsWith('_')
+        ? pluralSnakeCase.substring(1)
+        : pluralSnakeCase;
+  }
+
+  /// Updates the syncStatus field in the model table.
+  ///
+  /// This method directly updates the model's syncStatus field in its table
+  /// with the provided status value and manually notifies Drift about the
+  /// table changes to trigger reactive streams.
+  ///
+  /// [modelType] The type of the model (e.g., 'User', 'Post')
+  /// [modelId] The ID of the model instance
+  /// [syncStatus] The sync status to set ('pending', 'synced', 'dead')
+  Future<void> updateModelSyncStatus(
+    String modelType,
+    String modelId,
+    String syncStatus,
+  ) async {
+    // Convert model type to table name and use cached table lookup
+    final tableName = modelTypeToTableName(modelType);
+    try {
+      // Use cached table lookup for better performance
+      final modelTable = _getCachedTable(tableName);
+
+      // Use cached table for reactive updates
+      await _db.customUpdate(
+        'UPDATE $tableName SET sync_status = ? WHERE id = ?',
+        variables: [
+          Variable.withString(syncStatus),
+          Variable.withString(modelId),
+        ],
+        updates: modelTable != null ? {modelTable} : null,
+        updateKind: modelTable != null ? UpdateKind.update : null,
+      );
+
+      if (modelTable == null) {
+        // Fallback: update without reactive notifications
+        // This happens in tests or when tables are not properly registered
+        _log.fine(
+          'Table $tableName not found in cache, using fallback update for '
+          '$modelType with ID $modelId',
+        );
+      }
+    } catch (e, stack) {
+      _log.severe(
+        'Failed to update syncStatus for $modelType with ID $modelId '
+        'to $syncStatus',
+        e,
+        stack,
+      );
+    }
   }
 }

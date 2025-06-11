@@ -29,7 +29,9 @@ class IndexingTestProduct extends SynquillDataModel<IndexingTestProduct> {
     DateTime? createdAt,
     DateTime? updatedAt,
     DateTime? lastSyncedAt,
+    SyncStatus? syncStatus,
   }) {
+    this.syncStatus = syncStatus ?? SyncStatus.synced;
     this.createdAt = createdAt;
     this.updatedAt = updatedAt;
     this.lastSyncedAt = lastSyncedAt;

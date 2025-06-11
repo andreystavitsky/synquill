@@ -25,6 +25,36 @@ class PluralizationUtils {
     return pluralize(camelCase);
   }
 
+  /// Convert class name to proper snake_case plural form
+  /// e.g., "Category" -> "categories", "PlainModelJson" -> "plain_model_jsons"
+  static String toSnakeCasePlural(String className) {
+    if (className.isEmpty) return className;
+
+    // Convert to snake_case first
+    final snakeCase = _toSnakeCase(className);
+
+    // Apply proper pluralization rules
+    return pluralize(snakeCase);
+  }
+
+  /// Converts a camelCase or PascalCase string to snake_case
+  static String _toSnakeCase(String input) {
+    if (input.isEmpty) return input;
+
+    // Insert underscores before uppercase letters (except the first character)
+    final result = input.replaceAllMapped(
+      RegExp(r'[A-Z]+(?=[A-Z][a-z]|$)|[A-Z]'),
+      (match) {
+        final index = match.start;
+        // Don't add underscore before the first character
+        if (index == 0) return match.group(0)!.toLowerCase();
+        return '_${match.group(0)!.toLowerCase()}';
+      },
+    );
+
+    return result;
+  }
+
   /// Pluralize a string with proper English rules
   static String pluralize(String singular) {
     if (singular.isEmpty) return singular;

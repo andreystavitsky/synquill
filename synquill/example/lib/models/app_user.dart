@@ -9,7 +9,12 @@ mixin AppUserApiAdapter on BasicApiAdapter<AppUser> {
 }
 
 @JsonSerializable()
-@SynquillRepository(adapters: [JsonApiAdapter, AppUserApiAdapter])
+@SynquillRepository(
+  adapters: [JsonApiAdapter, AppUserApiAdapter],
+  relations: [
+    OneToMany(target: Contact, mappedBy: 'userId'),
+  ],
+)
 class AppUser extends ContactBase<AppUser> {
   final int timeZone;
   final int utcNotificationHour;
@@ -17,9 +22,6 @@ class AppUser extends ContactBase<AppUser> {
   final bool notifyThreeDays;
   final bool notifyOneDay;
   final bool notifyEmail;
-
-  @OneToMany(target: Contact, mappedBy: 'userId')
-  final List<String> contactIds;
 
   AppUser({
     super.id,
@@ -29,7 +31,6 @@ class AppUser extends ContactBase<AppUser> {
     super.email,
     super.phoneNumber,
     this.timeZone = 0,
-    this.contactIds = const [],
     this.utcNotificationHour = 0,
     this.notifyTenDays = true,
     this.notifyThreeDays = true,
@@ -52,7 +53,6 @@ class AppUser extends ContactBase<AppUser> {
     required super.email,
     required super.phoneNumber,
     required this.timeZone,
-    this.contactIds = const [],
     required this.utcNotificationHour,
     required this.notifyTenDays,
     required this.notifyThreeDays,
