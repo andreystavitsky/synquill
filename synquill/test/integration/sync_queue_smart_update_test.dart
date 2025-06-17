@@ -60,7 +60,7 @@ void main() {
     });
 
     tearDown(() async {
-      await SynquillStorage.reset();
+      await SynquillStorage.close();
       SynquillRepositoryProvider.reset();
     });
 
@@ -116,7 +116,8 @@ void main() {
       },
     );
 
-    test('Scenario 2: Create model with API failure, then update - '
+    test(
+        'Scenario 2: Create model with API failure, then update - '
         'should merge payloads', () async {
       // Set up API to fail on create
       mockApiAdapter.setNextOperationToFail('API create failure');
@@ -367,8 +368,7 @@ void main() {
         expect(
           modelAfterRefresh,
           isNull,
-          reason:
-              'Model should not be restored to local cache due to '
+          reason: 'Model should not be restored to local cache due to '
               'pending delete operation',
         );
 
@@ -399,7 +399,8 @@ void main() {
       },
     );
 
-    test('Control test: Successful operations should not create '
+    test(
+        'Control test: Successful operations should not create '
         'sync queue entries', () async {
       // Don't set up API failure - operations should succeed
 
@@ -426,7 +427,8 @@ void main() {
       );
     });
 
-    test('Local update pending in sync_queue while full refresh downloads '
+    test(
+        'Local update pending in sync_queue while full refresh downloads '
         'older remote copy - local update should take precedence', () async {
       // Step 1: Create and sync a model successfully
       final originalModel = PlainModel(
@@ -497,15 +499,13 @@ void main() {
       expect(
         localModel!.name,
         'Updated Name',
-        reason:
-            'Local updated data should take precedence over older '
+        reason: 'Local updated data should take precedence over older '
             'remote data when update is pending in sync queue',
       );
       expect(
         localModel.value,
         200,
-        reason:
-            'Local updated data should take precedence over older '
+        reason: 'Local updated data should take precedence over older '
             'remote data when update is pending in sync queue',
       );
 
@@ -562,8 +562,7 @@ void main() {
           modelId: 'model-b',
           operation: SyncOperation.update.name,
           payload: json.encode(updatedModelB.toJson()),
-          idempotencyKey:
-              'model-b-update-'
+          idempotencyKey: 'model-b-update-'
               '${DateTime.now().millisecondsSinceEpoch}',
         );
 
@@ -574,8 +573,7 @@ void main() {
           modelId: 'model-c',
           operation: SyncOperation.create.name,
           payload: json.encode(modelC.toJson()),
-          idempotencyKey:
-              'model-c-create-'
+          idempotencyKey: 'model-c-create-'
               '${DateTime.now().millisecondsSinceEpoch}',
         );
 
@@ -645,8 +643,7 @@ void main() {
         expect(
           localModelB!.name,
           equals('Model B'),
-          reason:
-              'Model B should not be updated due to pending sync '
+          reason: 'Model B should not be updated due to pending sync '
               'operation',
         );
         expect(localModelB.value, equals(200));
@@ -656,8 +653,7 @@ void main() {
         expect(
           localModelC!.name,
           equals('Model C'),
-          reason:
-              'Model C should not be updated due to pending sync '
+          reason: 'Model C should not be updated due to pending sync '
               'operation',
         );
         expect(localModelC.value, equals(300));
@@ -667,8 +663,7 @@ void main() {
         expect(
           remainingTasks.length,
           equals(2),
-          reason:
-              'Sync queue should still contain pending operations for '
+          reason: 'Sync queue should still contain pending operations for '
               'B and C',
         );
         final taskIds = remainingTasks.map((task) => task['model_id']).toSet();
@@ -677,7 +672,8 @@ void main() {
       },
     );
 
-    test('TST-FINDALL-02: findAll with localThenRemote should schedule '
+    test(
+        'TST-FINDALL-02: findAll with localThenRemote should schedule '
         'background sync and merge respecting pending ops', () async {
       // Step 1: Arrange local DB with rows A, B, C
       final modelA = PlainModel(id: 'model-a', name: 'Model A', value: 100);
@@ -888,8 +884,7 @@ void main() {
       expect(
         pendingTasks.length,
         0,
-        reason:
-            'Fallback from update to create should have succeeded, '
+        reason: 'Fallback from update to create should have succeeded, '
             'leaving no pending sync tasks',
       );
 
@@ -964,8 +959,7 @@ void main() {
         expect(
           pendingTasks.length,
           1,
-          reason:
-              'When both update and create fail with 404, '
+          reason: 'When both update and create fail with 404, '
               'task should remain in sync queue for retry',
         );
 
@@ -1035,8 +1029,7 @@ void main() {
         mockApiAdapter.setUpdateToReturn404();
 
         // Step 4: Force an update operation by directly adding to sync queue
-        final idempotencyKey =
-            'test-operation-change-'
+        final idempotencyKey = 'test-operation-change-'
             '${DateTime.now().millisecondsSinceEpoch}';
         await syncQueueDao.insertItem(
           modelType: 'PlainModel',

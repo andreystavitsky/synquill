@@ -137,7 +137,7 @@ void main() {
             contains('already exists'),
           ),
         );
-        await SynquillStorage.reset();
+        await SynquillStorage.close();
       },
     );
   });

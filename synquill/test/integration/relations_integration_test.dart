@@ -42,7 +42,7 @@ void main() {
     });
 
     tearDownAll(() async {
-      await SynquillStorage.reset();
+      await SynquillStorage.close();
     });
 
     group('Basic Relationship Tests', () {
@@ -329,7 +329,7 @@ void main() {
     });
 
     tearDownAll(() async {
-      await SynquillStorage.reset();
+      await SynquillStorage.close();
     });
 
     test('should filter projects by owner', () async {
@@ -490,7 +490,7 @@ void main() {
     });
 
     tearDownAll(() async {
-      await SynquillStorage.reset();
+      await SynquillStorage.close();
     });
 
     group('OneToMany Extension Methods', () {
@@ -1101,7 +1101,7 @@ void main() {
     });
 
     tearDown(() async {
-      await SynquillStorage.reset();
+      await SynquillStorage.close();
     });
 
     test('should cascade delete projects when category is deleted', () async {
@@ -1353,7 +1353,7 @@ void main() {
     });
 
     tearDown(() async {
-      await SynquillStorage.reset();
+      await SynquillStorage.close();
     });
 
     test(
@@ -1611,7 +1611,7 @@ void main() {
     });
 
     tearDown(() async {
-      await SynquillStorage.reset();
+      await SynquillStorage.close();
     });
 
     test(
@@ -1621,7 +1621,7 @@ void main() {
         final user = users.first;
 
         // Close the database to simulate an error
-        await SynquillStorage.reset();
+        await SynquillStorage.close();
 
         // Test that extension methods handle database errors gracefully
         expect(() => user.loadTodos(), throwsA(isA<StateError>()));
@@ -1670,7 +1670,7 @@ void main() {
     });
 
     tearDown(() async {
-      await SynquillStorage.reset();
+      await SynquillStorage.close();
     });
 
     test('Watch methods should handle database errors gracefully', () async {
@@ -1696,7 +1696,7 @@ void main() {
       await Future.delayed(const Duration(milliseconds: 100));
 
       // Close the database to simulate an error
-      await SynquillStorage.reset();
+      await SynquillStorage.close();
 
       // Give the stream time to emit the error
       await Future.delayed(const Duration(milliseconds: 100));
@@ -1729,7 +1729,7 @@ void main() {
         await Future.delayed(const Duration(milliseconds: 100));
 
         // Close the database to simulate an error
-        await SynquillStorage.reset();
+        await SynquillStorage.close();
 
         // Give the stream time to emit the error
         await Future.delayed(const Duration(milliseconds: 100));

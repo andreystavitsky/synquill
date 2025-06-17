@@ -3,7 +3,6 @@ import 'package:test/test.dart';
 
 // Import from example project to get LocalNote model and generated code
 import 'package:synquill/src/test_models/index.dart';
-import 'package:synquill/synquill_core.dart';
 
 void main() {
   group('Local-only Repository Tests', () {
@@ -28,7 +27,7 @@ void main() {
     });
 
     tearDown(() async {
-      await SynquillStorage.reset();
+      await SynquillStorage.close();
       await database.close();
     });
 

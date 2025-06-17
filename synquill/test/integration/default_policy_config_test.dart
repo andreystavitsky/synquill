@@ -302,7 +302,7 @@ void main() {
       // Reset SyncedStorage configuration before each test
       final database = TestDatabase(NativeDatabase.memory());
       final logger = Logger('SavePolicyTest');
-      await SynquillStorage.reset();
+      await SynquillStorage.close();
       await SynquillStorage.init(
         database: database,
         config: const SynquillStorageConfig(
@@ -318,13 +318,13 @@ void main() {
     });
 
     tearDown(() async {
-      await SynquillStorage.reset();
+      await SynquillStorage.close();
     });
 
     group('Configuration Setup', () {
       setUp(() async {
         repository = MockTestRepository(SynquillStorage.database);
-        await SynquillStorage.reset();
+        await SynquillStorage.close();
       });
       test('should use default fallback policies when no config is set', () {
         // No SyncedStorage initialization

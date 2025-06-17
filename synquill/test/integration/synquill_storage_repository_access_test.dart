@@ -35,7 +35,7 @@ void main() {
     });
 
     tearDown(() async {
-      await SynquillStorage.reset();
+      await SynquillStorage.close();
     });
 
     test('getRepository<T>() returns correct repository type', () {

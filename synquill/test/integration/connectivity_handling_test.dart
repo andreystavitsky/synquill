@@ -212,7 +212,7 @@ void main() {
       );
 
       // Reset should clean up subscription
-      await SynquillStorage.reset();
+      await SynquillStorage.close();
 
       // Controller should still be usable (subscription cleaned up)
       expect(connectivityController.isClosed, isFalse);
