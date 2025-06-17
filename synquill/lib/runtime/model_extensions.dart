@@ -130,41 +130,26 @@ extension SynquillDataModelExtensions<T extends SynquillDataModel<T>>
       final database = SynquillStorage.database;
 
       // Get ALL tasks for this model, including dead ones for getSyncDetails
-      final results = await database.customSelect(
-        'SELECT * FROM sync_queue_items WHERE model_type = ? AND model_id = ?',
+      final result = await database.customSelect(
+        '''
+        SELECT * FROM sync_queue_items 
+        WHERE model_type = ? AND model_id = ?
+        ORDER BY 
+          CASE WHEN created_at IS NOT NULL THEN created_at ELSE 0 END DESC,
+          id DESC
+        LIMIT 1
+        ''',
         variables: [
           Variable.withString(T.toString()),
           Variable.withString(id),
         ],
-      ).get();
+      ).getSingleOrNull();
 
-      final tasks = results.map((row) => row.data).toList();
-
-      if (tasks.isEmpty) {
+      if (result == null) {
         return const SyncDetails.synced();
       }
 
-      // Get the most recent task (highest ID or latest created_at)
-      tasks.sort((a, b) {
-        final aCreatedAt = a['created_at'] as int?;
-        final bCreatedAt = b['created_at'] as int?;
-
-        if (aCreatedAt != null && bCreatedAt != null) {
-          return bCreatedAt.compareTo(aCreatedAt);
-        }
-
-        // Fallback to ID comparison
-        final aId = a['id'] as int?;
-        final bId = b['id'] as int?;
-
-        if (aId != null && bId != null) {
-          return bId.compareTo(aId);
-        }
-
-        return 0;
-      });
-
-      final mostRecentTask = tasks.first;
+      final mostRecentTask = result.data;
       return SyncDetails.fromSyncQueueTask(mostRecentTask);
     } catch (e) {
       // If we can't access the sync queue, return synced status
