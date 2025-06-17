@@ -644,7 +644,7 @@ class SynquillStorage {
   /// // Trigger background sync processing
   /// await SynquillStorage.instance.processBackgroundSyncTasks();
   /// ```
-  Future<void> processBackgroundSyncTasks() async {
+  Future<void> processBackgroundSyncTasks({bool forceSync = false}) async {
     if (_instance == null) {
       throw StateError(
         'SynquillStorage has not been initialized. '
@@ -652,7 +652,8 @@ class SynquillStorage {
       );
     }
 
-    await _backgroundSyncManager!.processBackgroundSyncTasks();
+    await _backgroundSyncManager!
+        .processBackgroundSyncTasks(forceSync: forceSync);
   }
 
   /// Static method to trigger background sync tasks without an instance.

@@ -12,13 +12,12 @@ class RetryExecutor {
   final RequestQueueManager _queueManager;
   late final SyncQueueDao _syncQueueDao;
   late final Logger _log;
-
   Timer? _pollTimer;
   bool _isRunning = false;
   bool _isBackgroundMode = false;
 
   /// Tracks ongoing operations to ensure proper shutdown
-  Completer<void>? _currentOperation;
+  final Set<Completer<void>> _ongoingOperations = <Completer<void>>{};
 
   /// Cached regex for network error detection (performance optimization)
   static final RegExp _httpServerErrorPattern = RegExp(r'5\d\d');
@@ -112,11 +111,16 @@ class RetryExecutor {
     _pollTimer?.cancel();
     _pollTimer = null;
 
-    // Wait for any ongoing operations to complete
-    if (_currentOperation != null && !_currentOperation!.isCompleted) {
-      _log.info('Waiting for ongoing RetryExecutor operation to complete...');
+    // Wait for all ongoing operations to complete
+    if (_ongoingOperations.isNotEmpty) {
+      _log.info(
+        'Waiting for ${_ongoingOperations.length} ongoing RetryExecutor '
+        'operations to complete...',
+      );
       try {
-        await _currentOperation!.future;
+        final futures =
+            _ongoingOperations.map((completer) => completer.future).toList();
+        await Future.wait(futures);
       } catch (e) {
         // Ignore errors during shutdown
         _log.fine('Error during RetryExecutor shutdown: $e');
@@ -131,14 +135,15 @@ class RetryExecutor {
     if (!_isRunning) return;
 
     // Create a completer to track this operation
-    _currentOperation = Completer<void>();
+    final operationCompleter = Completer<void>();
+    _ongoingOperations.add(operationCompleter);
 
     try {
       // Check connectivity before processing any tasks
       // Skip processing if offline (unless forceSync is specifically
       // requesting offline processing)
       final isConnected = await SynquillStorage.isConnected;
-      if (!isConnected && !forceSync) {
+      if (!isConnected) {
         _log.fine('Device is offline, skipping sync queue processing');
         return;
       }
@@ -157,9 +162,10 @@ class RetryExecutor {
     } catch (e, stackTrace) {
       _log.severe('Error processing due tasks', e, stackTrace);
     } finally {
-      // Mark operation as complete
-      if (_currentOperation != null && !_currentOperation!.isCompleted) {
-        _currentOperation!.complete();
+      // Mark operation as complete and remove from tracking
+      _ongoingOperations.remove(operationCompleter);
+      if (!operationCompleter.isCompleted) {
+        operationCompleter.complete();
       }
     }
   }
@@ -802,18 +808,7 @@ class RetryExecutor {
   /// - External triggers from background tasks
   Future<void> processDueTasksNow({bool forceSync = false}) async {
     _log.info('Processing due tasks immediately (triggered externally)');
-
-    // Create a completer to track this operation if one doesn't exist
-    _currentOperation ??= Completer<void>();
-
-    try {
-      await _processDueTasks(forceSync: forceSync);
-    } finally {
-      // Only complete if this call created the completer
-      if (_currentOperation != null && !_currentOperation!.isCompleted) {
-        _currentOperation!.complete();
-      }
-    }
+    await _processDueTasks(forceSync: forceSync);
   }
 
   /// Checks if an error is network-related and should trigger immediate retry.
