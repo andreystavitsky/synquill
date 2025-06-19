@@ -6,9 +6,6 @@ class SynquillStorageConfig {
   /// If null, an internal default client will be configured.
   final dynamic dio; // Using dynamic for now, will be Dio? later
 
-  /// Whether to keep the connection alive. Defaults to true.
-  final bool keepConnectionAlive;
-
   /// The concurrency level for the remoteFirst request queue. Defaults to 1.
   final int foregroundQueueConcurrency;
 
@@ -103,13 +100,12 @@ class SynquillStorageConfig {
   /// Creates a new [SynquillStorageConfig].
   const SynquillStorageConfig({
     this.dio,
-    this.keepConnectionAlive = true,
     this.foregroundQueueConcurrency = 1,
     this.backgroundQueueConcurrency = 2,
     this.defaultSavePolicy = DataSavePolicy.localFirst,
     this.defaultLoadPolicy = DataLoadPolicy.localThenRemote,
     this.initialRetryDelay = const Duration(seconds: 2),
-    this.maxRetryDelay = const Duration(minutes: 5),
+    this.maxRetryDelay = const Duration(minutes: 30),
     this.backoffMultiplier = 2.0,
     this.jitterPercent = 0.2, // ±20% jitter
     this.maxRetryAttempts = 50,
@@ -489,14 +485,16 @@ class SynquillStorage {
     }
   }
 
-  /// Resets the singleton instance and configuration.
+  /// Closes the synced storage system and releases all resources.
   ///
-  /// This method is primarily intended for testing purposes.
-  /// After calling this method, [init] must be called again before using
-  /// the storage system.
-  static Future<void> reset() async {
-    // Stop retry executor first to prevent new tasks
-    _retryExecutor?.stop();
+  /// This method resets the singleton instance, closes the database,
+  /// and cancels connectivity monitoring. After calling this method,
+  /// [init] must be called again before using the storage system.
+  static Future<void> close() async {
+    // Stop retry executor first to prevent new tasks and wait for completion
+    if (_retryExecutor != null) {
+      await _retryExecutor!.stop();
+    }
 
     // Reset background sync manager
     await BackgroundSyncManager.reset();
@@ -508,7 +506,11 @@ class SynquillStorage {
 
     await _queueManager?.dispose();
 
-    await _database?.close();
+    // Close database after all operations are complete
+    if (_database != null) {
+      _logger?.info('Closing database connection');
+      await _database!.close();
+    }
 
     _instance = null;
     _config = null;
@@ -524,15 +526,6 @@ class SynquillStorage {
     _syncQueueDao = null;
     // Clear any cached repository instances
     SynquillRepositoryProvider.reset();
-  }
-
-  /// Closes the synced storage system and releases all resources.
-  ///
-  /// This method resets the singleton instance, closes the database,
-  /// and cancels connectivity monitoring. After calling this method,
-  /// [init] must be called again before using the storage system.
-  static Future<void> close() async {
-    await reset();
   }
 
   /// Sets the configuration for testing purposes without full initialization.
@@ -647,7 +640,7 @@ class SynquillStorage {
   /// // Trigger background sync processing
   /// await SynquillStorage.instance.processBackgroundSyncTasks();
   /// ```
-  Future<void> processBackgroundSyncTasks() async {
+  Future<void> processBackgroundSyncTasks({bool forceSync = false}) async {
     if (_instance == null) {
       throw StateError(
         'SynquillStorage has not been initialized. '
@@ -655,7 +648,8 @@ class SynquillStorage {
       );
     }
 
-    await _backgroundSyncManager!.processBackgroundSyncTasks();
+    await _backgroundSyncManager!
+        .processBackgroundSyncTasks(forceSync: forceSync);
   }
 
   /// Static method to trigger background sync tasks without an instance.

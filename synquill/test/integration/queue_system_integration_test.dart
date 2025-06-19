@@ -63,7 +63,7 @@ void main() {
     });
 
     tearDown(() async {
-      await SynquillStorage.reset();
+      await SynquillStorage.close();
       TestUserRepository.clearLocal();
     });
 
@@ -692,7 +692,7 @@ void main() {
     });
 
     tearDown(() async {
-      await SynquillStorage.reset();
+      await SynquillStorage.close();
       TestUserRepository.clearLocal();
     });
 
@@ -794,7 +794,7 @@ void main() {
     });
 
     tearDown(() async {
-      await SynquillStorage.reset();
+      await SynquillStorage.close();
       TestUserRepository.clearLocal();
     });
 
@@ -865,7 +865,7 @@ void main() {
 
     test('HIGH: Queue Capacity Race Condition Test', () async {
       // Reinitialize with very small queue capacity
-      await SynquillStorage.reset();
+      await SynquillStorage.close();
       await SynquillStorage.init(
         database: database,
         config: const SynquillStorageConfig(
@@ -1067,7 +1067,7 @@ void main() {
     });
 
     tearDown(() async {
-      await SynquillStorage.reset();
+      await SynquillStorage.close();
       TestUserRepository.clearLocal();
     });
 
@@ -1361,7 +1361,7 @@ void main() {
     });
 
     tearDown(() async {
-      await SynquillStorage.reset();
+      await SynquillStorage.close();
       TestUserRepository.clearLocal();
     });
 
@@ -1542,7 +1542,7 @@ void main() {
     });
 
     tearDown(() async {
-      await SynquillStorage.reset();
+      await SynquillStorage.close();
       TestUserRepository.clearLocal();
     });
 

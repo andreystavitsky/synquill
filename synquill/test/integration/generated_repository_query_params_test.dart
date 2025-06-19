@@ -31,7 +31,7 @@ void main() {
     });
 
     tearDown(() async {
-      await SynquillStorage.reset();
+      await SynquillStorage.close();
     });
 
     test('should filter PlainModel by name with TypedQueryParams', () async {

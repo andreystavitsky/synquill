@@ -12,10 +12,12 @@ class RetryExecutor {
   final RequestQueueManager _queueManager;
   late final SyncQueueDao _syncQueueDao;
   late final Logger _log;
-
   Timer? _pollTimer;
   bool _isRunning = false;
   bool _isBackgroundMode = false;
+
+  /// Tracks ongoing operations to ensure proper shutdown
+  final Set<Completer<void>> _ongoingOperations = <Completer<void>>{};
 
   /// Cached regex for network error detection (performance optimization)
   static final RegExp _httpServerErrorPattern = RegExp(r'5\d\d');
@@ -54,10 +56,9 @@ class RetryExecutor {
     _isRunning = true;
     _isBackgroundMode = backgroundMode;
     final config = SynquillStorage.config!;
-    final pollInterval =
-        backgroundMode
-            ? config.backgroundPollInterval
-            : config.foregroundPollInterval;
+    final pollInterval = backgroundMode
+        ? config.backgroundPollInterval
+        : config.foregroundPollInterval;
 
     final mode = backgroundMode ? 'background' : 'foreground';
     _log.info(
@@ -93,21 +94,39 @@ class RetryExecutor {
     _pollTimer?.cancel();
 
     final config = SynquillStorage.config!;
-    final pollInterval =
-        _isBackgroundMode
-            ? config.backgroundPollInterval
-            : config.foregroundPollInterval;
+    final pollInterval = _isBackgroundMode
+        ? config.backgroundPollInterval
+        : config.foregroundPollInterval;
 
     _pollTimer = Timer.periodic(pollInterval, (_) => _processDueTasks());
   }
 
   /// Stops the retry executor.
-  void stop() {
+  ///
+  /// Waits for any ongoing operations to complete before stopping.
+  Future<void> stop() async {
     if (!_isRunning) return;
 
     _isRunning = false;
     _pollTimer?.cancel();
     _pollTimer = null;
+
+    // Wait for all ongoing operations to complete
+    if (_ongoingOperations.isNotEmpty) {
+      _log.info(
+        'Waiting for ${_ongoingOperations.length} ongoing RetryExecutor '
+        'operations to complete...',
+      );
+      try {
+        final futures =
+            _ongoingOperations.map((completer) => completer.future).toList();
+        await Future.wait(futures);
+      } catch (e) {
+        // Ignore errors during shutdown
+        _log.fine('Error during RetryExecutor shutdown: $e');
+      }
+    }
+
     _log.info('RetryExecutor stopped');
   }
 
@@ -115,12 +134,16 @@ class RetryExecutor {
   Future<void> _processDueTasks({bool forceSync = false}) async {
     if (!_isRunning) return;
 
+    // Create a completer to track this operation
+    final operationCompleter = Completer<void>();
+    _ongoingOperations.add(operationCompleter);
+
     try {
       // Check connectivity before processing any tasks
       // Skip processing if offline (unless forceSync is specifically
       // requesting offline processing)
       final isConnected = await SynquillStorage.isConnected;
-      if (!isConnected && !forceSync) {
+      if (!isConnected) {
         _log.fine('Device is offline, skipping sync queue processing');
         return;
       }
@@ -138,6 +161,12 @@ class RetryExecutor {
       await _processTaskList(prioritizedTasks);
     } catch (e, stackTrace) {
       _log.severe('Error processing due tasks', e, stackTrace);
+    } finally {
+      // Mark operation as complete and remove from tracking
+      _ongoingOperations.remove(operationCompleter);
+      if (!operationCompleter.isCompleted) {
+        operationCompleter.complete();
+      }
     }
   }
 
@@ -355,15 +384,14 @@ class RetryExecutor {
     final modelId = _extractModelId(modelData);
 
     return NetworkTask<void>(
-      exec:
-          () => _executeApiOperation(
-            syncOp,
-            modelType,
-            modelData,
-            headers,
-            extra,
-            taskId,
-          ),
+      exec: () => _executeApiOperation(
+        syncOp,
+        modelType,
+        modelData,
+        headers,
+        extra,
+        taskId,
+      ),
       idempotencyKey: idempotencyKey,
       operation: syncOp,
       modelType: modelType,
@@ -655,8 +683,7 @@ class RetryExecutor {
       id: taskId,
       operation: 'update',
       nextRetryAt: null, // Keep immediately due for retry
-      lastError:
-          'Fallback failed: Both update and create '
+      lastError: 'Fallback failed: Both update and create '
           'returned 404. Update error: ${originalError.message}, '
           'Create error: ${createError.message}',
     );
@@ -751,10 +778,9 @@ class RetryExecutor {
     final config = SynquillStorage.config!;
 
     // Calculate base delay: 2s, 4s, 8s, 16s, etc., up to max
-    final baseDelayMs =
-        (config.initialRetryDelay.inMilliseconds *
-                math.pow(config.backoffMultiplier, attemptNumber - 1))
-            .toInt();
+    final baseDelayMs = (config.initialRetryDelay.inMilliseconds *
+            math.pow(config.backoffMultiplier, attemptNumber - 1))
+        .toInt();
 
     final cappedDelayMs = math.min(
       baseDelayMs,

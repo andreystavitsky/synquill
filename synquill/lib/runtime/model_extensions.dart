@@ -111,6 +111,52 @@ extension SynquillDataModelExtensions<T extends SynquillDataModel<T>>
     }
   }
 
+  /// Gets detailed synchronization information for this model instance.
+  ///
+  /// This getter provides comprehensive sync status information including
+  /// error details, retry scheduling, and operation types from the sync queue.
+  ///
+  /// Returns a [SyncDetails] object containing:
+  /// - lastError: The most recent error message (if any)
+  /// - nextRetryAt: When the next retry is scheduled (if any)
+  /// - attemptCount: Number of sync attempts made
+  /// - status: Current sync status
+  /// - operation: Type of pending operation (create, update, delete)
+  ///
+  /// If there are no sync queue entries for this model, returns
+  /// [SyncDetails.synced()].
+  Future<SyncDetails> get getSyncDetails async {
+    try {
+      final database = SynquillStorage.database;
+
+      // Get ALL tasks for this model, including dead ones for getSyncDetails
+      final result = await database.customSelect(
+        '''
+        SELECT * FROM sync_queue_items 
+        WHERE model_type = ? AND model_id = ?
+        ORDER BY 
+          CASE WHEN created_at IS NOT NULL THEN created_at ELSE 0 END DESC,
+          id DESC
+        LIMIT 1
+        ''',
+        variables: [
+          Variable.withString(T.toString()),
+          Variable.withString(id),
+        ],
+      ).getSingleOrNull();
+
+      if (result == null) {
+        return const SyncDetails.synced();
+      }
+
+      final mostRecentTask = result.data;
+      return SyncDetails.fromSyncQueueTask(mostRecentTask);
+    } catch (e) {
+      // If we can't access the sync queue, return synced status
+      return const SyncDetails.synced();
+    }
+  }
+
   /// Refreshes this model instance by fetching the latest data.
   ///
   /// Returns the refreshed instance if found, or null if the instance

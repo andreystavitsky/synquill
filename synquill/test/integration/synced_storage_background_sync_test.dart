@@ -49,7 +49,7 @@ void main() {
     });
 
     tearDown(() async {
-      await SynquillStorage.reset();
+      await SynquillStorage.close();
     });
 
     test('backgroundSyncManager getter should return manager instance', () {
@@ -213,7 +213,7 @@ void main() {
     });
 
     tearDown(() async {
-      await SynquillStorage.reset();
+      await SynquillStorage.close();
 
       // Add a small delay to ensure all isolates have finished
       await Future.delayed(const Duration(milliseconds: 100));
@@ -261,12 +261,10 @@ void main() {
       // Wait for isolate to complete and get results
       final result = await isolateCompleter.future.timeout(
         const Duration(seconds: 30),
-        onTimeout:
-            () =>
-                throw TimeoutException(
-                  'Isolate test timed out',
-                  const Duration(seconds: 30),
-                ),
+        onTimeout: () => throw TimeoutException(
+          'Isolate test timed out',
+          const Duration(seconds: 30),
+        ),
       );
 
       receivePort.close();
@@ -313,12 +311,10 @@ void main() {
 
       final result = await isolateCompleter.future.timeout(
         const Duration(seconds: 15),
-        onTimeout:
-            () =>
-                throw TimeoutException(
-                  'Pragma test timed out',
-                  const Duration(seconds: 5),
-                ),
+        onTimeout: () => throw TimeoutException(
+          'Pragma test timed out',
+          const Duration(seconds: 5),
+        ),
       );
 
       receivePort.close();

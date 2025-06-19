@@ -61,7 +61,7 @@ void main() {
     });
 
     tearDownAll(() async {
-      await SynquillStorage.reset();
+      await SynquillStorage.close();
     });
 
     test('loadTodos with QueryParams merges correctly', () async {

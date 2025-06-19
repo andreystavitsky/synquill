@@ -193,4 +193,18 @@ abstract class SynquillDataModel<T extends SynquillDataModel<T>> {
   ///
   /// This should be set by the library when the model is updated.
   DateTime? updatedAt;
+
+  /// The current synchronization status of this model instance.
+  ///
+  /// This field is automatically managed by the sync system based on
+  /// sync queue state:
+  /// - `pending`: The model has pending sync operations
+  /// - `synced`: The model is fully synchronized
+  /// - `dead`: The model has failed sync operations marked as dead
+  ///
+  /// The actual status is stored in the database and updated automatically
+  /// when sync queue operations occur. This getter returns a default value;
+  /// concrete implementations should override this to return the real
+  /// database value.
+  SyncStatus? syncStatus;
 }

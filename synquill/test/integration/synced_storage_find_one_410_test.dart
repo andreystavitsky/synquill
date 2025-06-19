@@ -57,7 +57,7 @@ void main() {
     });
 
     tearDown(() async {
-      await SynquillStorage.reset();
+      await SynquillStorage.close();
       mockApiAdapter.clearRemoteData();
       mockApiAdapter.clearOperationLog();
       mockApiAdapter.reset410Settings();
