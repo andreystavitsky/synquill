@@ -6,9 +6,6 @@ class SynquillStorageConfig {
   /// If null, an internal default client will be configured.
   final dynamic dio; // Using dynamic for now, will be Dio? later
 
-  /// Whether to keep the connection alive. Defaults to true.
-  final bool keepConnectionAlive;
-
   /// The concurrency level for the remoteFirst request queue. Defaults to 1.
   final int foregroundQueueConcurrency;
 
@@ -103,13 +100,12 @@ class SynquillStorageConfig {
   /// Creates a new [SynquillStorageConfig].
   const SynquillStorageConfig({
     this.dio,
-    this.keepConnectionAlive = true,
     this.foregroundQueueConcurrency = 1,
     this.backgroundQueueConcurrency = 2,
     this.defaultSavePolicy = DataSavePolicy.localFirst,
     this.defaultLoadPolicy = DataLoadPolicy.localThenRemote,
     this.initialRetryDelay = const Duration(seconds: 2),
-    this.maxRetryDelay = const Duration(minutes: 5),
+    this.maxRetryDelay = const Duration(minutes: 30),
     this.backoffMultiplier = 2.0,
     this.jitterPercent = 0.2, // ±20% jitter
     this.maxRetryAttempts = 50,
