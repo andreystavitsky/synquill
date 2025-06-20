@@ -552,7 +552,10 @@ class SyncQueueDao {
       final deletedCount = await deleteTasksForModelIdAndOperations(
         modelType,
         modelId,
-        ['create', 'update'], // Remove both CREATE and any UPDATE
+        [
+          SyncOperation.create.name,
+          SyncOperation.update.name
+        ], // Remove both CREATE and any UPDATE
       );
       return {
         'action': 'removed_create',
@@ -566,7 +569,7 @@ class SyncQueueDao {
       final deletedCount = await deleteTasksForModelIdAndOperations(
         modelType,
         modelId,
-        ['update'],
+        [SyncOperation.update.name],
       );
 
       if (scheduleDelete) {
@@ -575,7 +578,7 @@ class SyncQueueDao {
           modelType: modelType,
           modelId: modelId,
           payload: payload,
-          operation: 'delete',
+          operation: SyncOperation.delete.name,
           idempotencyKey: idempotencyKey,
           headers: headers,
           extra: extra,
@@ -601,7 +604,7 @@ class SyncQueueDao {
         modelType: modelType,
         modelId: modelId,
         payload: payload,
-        operation: 'delete',
+        operation: SyncOperation.delete.name,
         idempotencyKey: idempotencyKey,
         headers: headers,
         extra: extra,

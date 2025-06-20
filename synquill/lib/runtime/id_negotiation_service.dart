@@ -1,5 +1,26 @@
 part of synquill;
 
+/// Status of ID negotiation process for server-generated IDs.
+enum IdNegotiationStatus {
+  /// Negotiation is pending - waiting for server response
+  pending,
+
+  /// Negotiation is in progress - awaiting server assignment
+  in_progress,
+
+  /// Negotiation encountered a conflict - server and client IDs differ
+  conflict,
+
+  /// Negotiation completed successfully - server ID assigned
+  completed,
+
+  /// Negotiation failed - will retry or use fallback
+  failed,
+
+  /// Negotiation cancelled - operation aborted
+  cancelled,
+}
+
 /// Metadata for tracking server ID negotiation process
 class ServerIdMetadata {
   /// Temporary client-generated ID used before server assigns real ID

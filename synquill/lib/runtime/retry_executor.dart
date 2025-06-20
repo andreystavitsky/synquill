@@ -645,7 +645,7 @@ class RetryExecutor {
       // Update the sync queue entry to reflect the operation change
       await _syncQueueDao.updateItem(
         id: taskId,
-        operation: 'create',
+        operation: SyncOperation.create.name,
         lastError: null, // Clear any previous error
       );
 
@@ -682,7 +682,7 @@ class RetryExecutor {
     // that needs immediate attention
     await _syncQueueDao.updateItem(
       id: taskId,
-      operation: 'update',
+      operation: SyncOperation.update.name,
       nextRetryAt: null, // Keep immediately due for retry
       lastError: 'Fallback failed: Both update and create '
           'returned 404. Update error: ${originalError.message}, '
