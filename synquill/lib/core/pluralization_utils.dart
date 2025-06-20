@@ -31,14 +31,14 @@ class PluralizationUtils {
     if (className.isEmpty) return className;
 
     // Convert to snake_case first
-    final snakeCase = _toSnakeCase(className);
+    final snakeCase = toSnakeCase(className);
 
     // Apply proper pluralization rules
     return pluralize(snakeCase);
   }
 
   /// Converts a camelCase or PascalCase string to snake_case
-  static String _toSnakeCase(String input) {
+  static String toSnakeCase(String input) {
     if (input.isEmpty) return input;
 
     // Insert underscores before uppercase letters (except the first character)

@@ -12,6 +12,9 @@ enum RepositoryChangeType {
   /// An item was deleted from the repository
   deleted,
 
+  /// An item's ID was changed (e.g., temporary ID replaced with server ID)
+  idChanged,
+
   /// An error occurred while trying to make a change
   error,
 }
@@ -43,6 +46,9 @@ class RepositoryChange<T> {
   /// The ID of the item that was changed, if applicable
   final String? id;
 
+  /// The previous ID of the item, if the item's ID was changed.
+  final String? oldId;
+
   /// An error that occurred, if applicable
   final Object? error;
 
@@ -54,6 +60,7 @@ class RepositoryChange<T> {
     required this.type,
     this.item,
     this.id,
+    this.oldId,
     this.error,
     this.stackTrace,
   });
@@ -69,6 +76,15 @@ class RepositoryChange<T> {
   /// Creates a new repository change event for a deleted item.
   factory RepositoryChange.deleted(String id, [T? item]) =>
       RepositoryChange(type: RepositoryChangeType.deleted, id: id, item: item);
+
+  /// Creates a new repository change event for an ID change.
+  factory RepositoryChange.idChanged(T item, String oldId, String newId) =>
+      RepositoryChange(
+        type: RepositoryChangeType.idChanged,
+        item: item,
+        id: newId,
+        oldId: oldId,
+      );
 
   /// Creates a new repository change event for an error.
   factory RepositoryChange.error(Object error, [StackTrace? stackTrace]) =>

@@ -22,6 +22,8 @@ class _TestDatabase extends GeneratedDatabase {
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             model_type TEXT NOT NULL,
             model_id TEXT NOT NULL,
+            temporary_client_id TEXT,
+            id_negotiation_status TEXT default 'complete',
             payload TEXT NOT NULL,
             op TEXT NOT NULL,
             attempt_count INTEGER NOT NULL DEFAULT 0,

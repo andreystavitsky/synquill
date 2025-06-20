@@ -125,6 +125,9 @@ class SyncQueueDao {
 
   /// Inserts a new item into the sync queue.
   /// Returns the `id` of the newly inserted item.
+  ///
+  /// For models using server-generated IDs, use [insertItemWithIdNegotiation]
+  /// instead.
   Future<int> insertItem({
     required String modelType,
     required String modelId,
@@ -138,37 +141,22 @@ class SyncQueueDao {
     String? headers, // JSON string of headers
     String? extra, // JSON string of extra parameters
   }) async {
-    final itemId = await _db.customInsert(
-      'INSERT INTO sync_queue_items '
-      '(model_type, model_id, payload, op, attempt_count, last_error, '
-      'next_retry_at, idempotency_key, status, created_at, headers, extra) '
-      'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      variables: [
-        Variable.withString(modelType),
-        Variable.withString(modelId),
-        Variable.withString(payload),
-        Variable.withString(operation),
-        Variable.withInt(attemptCount),
-        lastError != null
-            ? Variable.withString(lastError)
-            : const Variable(null),
-        nextRetryAt != null
-            ? Variable.withDateTime(nextRetryAt)
-            : const Variable(null),
-        idempotencyKey != null
-            ? Variable.withString(idempotencyKey)
-            : const Variable(null),
-        Variable.withString(status), // Added status variable
-        Variable.withDateTime(DateTime.now().toUtc()), // Added created_at
-        headers != null ? Variable.withString(headers) : const Variable(null),
-        extra != null ? Variable.withString(extra) : const Variable(null),
-      ],
+    // Use the enhanced method with default values for backward compatibility
+    return insertItemWithIdNegotiation(
+      modelType: modelType,
+      modelId: modelId,
+      payload: payload,
+      operation: operation,
+      temporaryClientId: null, // No temporary ID for standard client IDs
+      idNegotiationStatus: 'complete', // Already complete for client IDs
+      attemptCount: attemptCount,
+      lastError: lastError,
+      nextRetryAt: nextRetryAt,
+      idempotencyKey: idempotencyKey,
+      status: status,
+      headers: headers,
+      extra: extra,
     );
-
-    // Update the model's syncStatus to reflect the new sync queue entry
-    await updateModelSyncStatus(modelType, modelId, status);
-
-    return itemId;
   }
 
   /// Updates an existing item in the sync queue.
@@ -468,6 +456,33 @@ class SyncQueueDao {
     return results.isNotEmpty;
   }
 
+  /// Find a pending sync task that's undergoing ID negotiation.
+  ///
+  /// This is specifically for models with server-generated IDs that may
+  /// have pending negotiations. Returns the task ID if found.
+  Future<int?> findPendingSyncTaskWithNegotiation(
+    String modelType,
+    String modelId,
+    String operation,
+  ) async {
+    final results = await _db.customSelect(
+      'SELECT id FROM sync_queue_items WHERE model_type = ? AND '
+      'model_id = ? AND op = ? AND status != ? AND '
+      'id_negotiation_status IN (?, ?) '
+      'ORDER BY created_at DESC LIMIT 1',
+      variables: [
+        Variable.withString(modelType),
+        Variable.withString(modelId),
+        Variable.withString(operation),
+        Variable.withString('dead'),
+        Variable.withString('pending'),
+        Variable.withString('in_progress'),
+      ],
+    ).get();
+
+    return results.isNotEmpty ? results.first.data['id'] as int : null;
+  }
+
   /// Smart delete logic for handling model deletion based on sync queue state.
   ///
   /// Logic:
@@ -659,6 +674,180 @@ class SyncQueueDao {
         e,
         stack,
       );
+    }
+  }
+
+  // ===== ID NEGOTIATION METHODS =====
+
+  /// Inserts an item with temporary ID tracking for server-generated IDs.
+  /// This enhanced version supports ID negotiation for models that use
+  /// server-generated IDs.
+  Future<int> insertItemWithIdNegotiation({
+    required String modelType,
+    required String modelId,
+    required String payload,
+    required String operation,
+    String? temporaryClientId,
+    String idNegotiationStatus = 'complete',
+    int attemptCount = 0,
+    String? lastError,
+    DateTime? nextRetryAt,
+    String? idempotencyKey,
+    String status = 'pending',
+    String? headers,
+    String? extra,
+  }) async {
+    final itemId = await _db.customInsert(
+      '''
+      INSERT INTO sync_queue_items (
+        model_type, model_id, payload, op, temporary_client_id, 
+        id_negotiation_status, attempt_count, last_error, 
+        next_retry_at, idempotency_key, status, created_at, headers, extra
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ''',
+      variables: [
+        Variable.withString(modelType),
+        Variable.withString(modelId),
+        Variable.withString(payload),
+        Variable.withString(operation),
+        temporaryClientId != null
+            ? Variable.withString(temporaryClientId)
+            : const Variable(null),
+        Variable.withString(idNegotiationStatus),
+        Variable.withInt(attemptCount),
+        lastError != null
+            ? Variable.withString(lastError)
+            : const Variable(null),
+        nextRetryAt != null
+            ? Variable.withDateTime(nextRetryAt)
+            : const Variable(null),
+        idempotencyKey != null
+            ? Variable.withString(idempotencyKey)
+            : const Variable(null),
+        Variable.withString(status),
+        Variable.withDateTime(DateTime.now().toUtc()),
+        headers != null ? Variable.withString(headers) : const Variable(null),
+        extra != null ? Variable.withString(extra) : const Variable(null),
+      ],
+    );
+
+    // Update the model's syncStatus to reflect the new sync queue entry
+    await updateModelSyncStatus(modelType, modelId, status);
+
+    return itemId;
+  }
+
+  /// Updates all references to an old ID with a new ID after server ID
+  /// negotiation.
+  /// This method must update:
+  /// 1. The sync queue item's modelId
+  /// 2. The model table record's ID
+  /// 3. All foreign key references in related models
+  /// 4. Mark ID negotiation as complete
+  Future<void> replaceIdEverywhere({
+    required int taskId,
+    required String oldId,
+    required String newId,
+    required String modelType,
+  }) async {
+    await _db.transaction(() async {
+      // 1. Update the sync queue item
+      await _db.customUpdate(
+        '''
+        UPDATE sync_queue_items 
+        SET model_id = ?, id_negotiation_status = 'complete'
+        WHERE id = ?
+        ''',
+        variables: [
+          Variable.withString(newId),
+          Variable.withInt(taskId),
+        ],
+      );
+
+      // 2. Update the model table record
+      final tableName = modelTypeToTableName(modelType);
+      final modelTable = _getCachedTable(tableName);
+
+      await _db.customUpdate(
+        'UPDATE $tableName SET id = ? WHERE id = ?',
+        variables: [
+          Variable.withString(newId),
+          Variable.withString(oldId),
+        ],
+        updates: modelTable != null ? {modelTable} : null,
+        updateKind: modelTable != null ? UpdateKind.update : null,
+      );
+
+      // 3. Update foreign key references using dedicated service
+      final foreignKeyService = ForeignKeyUpdateService(_db, _tryGetTable);
+      await foreignKeyService.updateForeignKeyReferences(
+        oldId,
+        newId,
+        modelType,
+      );
+
+      _log.info(
+        'Replaced ID $oldId with $newId for $modelType in task $taskId',
+      );
+    });
+  }
+
+  /// Gets all sync queue items that are pending ID negotiation.
+  Future<List<Map<String, dynamic>>> getPendingIdNegotiationItems() async {
+    final results = await _db.customSelect(
+      '''
+      SELECT * FROM sync_queue_items 
+      WHERE id_negotiation_status = 'pending'
+      ORDER BY created_at ASC
+      ''',
+    ).get();
+    return results.map((row) => row.data).toList();
+  }
+
+  /// Marks an ID negotiation as failed.
+  Future<void> markIdNegotiationAsFailed({
+    required int taskId,
+    required String error,
+  }) async {
+    await _db.customUpdate(
+      '''
+      UPDATE sync_queue_items 
+      SET id_negotiation_status = 'failed', last_error = ?
+      WHERE id = ?
+      ''',
+      variables: [
+        Variable.withString(error),
+        Variable.withInt(taskId),
+      ],
+    );
+  }
+
+  /// Gets all temporary IDs that need to be replaced for a given model type.
+  Future<List<Map<String, dynamic>>> getTemporaryIds(String modelType) async {
+    final results = await _db.customSelect(
+      '''
+      SELECT model_id, temporary_client_id, id
+      FROM sync_queue_items 
+      WHERE model_type = ? AND temporary_client_id IS NOT NULL
+      AND id_negotiation_status = 'pending'
+      ''',
+      variables: [Variable.withString(modelType)],
+    ).get();
+    return results.map((row) => row.data).toList();
+  }
+
+  /// Tries to get table info for a given table name.
+  ///
+  /// This method attempts to find the Drift table for the given table name
+  /// to enable proper change tracking and reactive updates.
+  /// Returns null if the table is not found.
+  Set<TableInfo<Table, dynamic>>? _tryGetTable(String tableName) {
+    try {
+      final table = _getCachedTable(tableName);
+      return table != null ? {table} : null;
+    } catch (e) {
+      _log.fine('Could not get table info for $tableName: $e');
+      return null;
     }
   }
 }

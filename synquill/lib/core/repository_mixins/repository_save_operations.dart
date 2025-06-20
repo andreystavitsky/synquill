@@ -32,6 +32,90 @@ mixin RepositorySaveOperations<T extends SynquillDataModel<T>>
     Map<String, String>? headers,
     bool updateTimestamps = true,
   }) async {
+    // Check if this repository supports server ID negotiation and if the item
+    // needs it. We check if 'this' is a RepositoryServerIdMixin
+
+    if (this is RepositoryServerIdMixin<T>) {
+      final idMixin = this as RepositoryServerIdMixin<T>;
+
+      // For models that use server-generated IDs, check if this is a new model
+      // that needs to be marked as temporary
+      if (idMixin.modelUsesServerGeneratedId(item)) {
+        final isExisting = await isExistingItem(item);
+
+        if (!isExisting && !idMixin.hasTemporaryId(item)) {
+          // This is a new model with a client-generated ID that should be
+          // temporary
+
+          idMixin.markAsTemporary(item, item.id);
+        }
+
+        if (idMixin.hasTemporaryId(item)) {
+          return await _handleServerIdNegotiation(
+            item,
+            savePolicy: savePolicy,
+            extra: extra,
+            headers: headers,
+            updateTimestamps: updateTimestamps,
+          );
+        }
+      }
+    }
+
+    // Standard save flow for client-generated IDs
+    return await _handleStandardSave(
+      item,
+      savePolicy: savePolicy,
+      extra: extra,
+      headers: headers,
+      updateTimestamps: updateTimestamps,
+    );
+  }
+
+  /// Handles save operations for models with server-generated IDs.
+  /// This method implements the ID negotiation process.
+  Future<T> _handleServerIdNegotiation(
+    T item, {
+    DataSavePolicy? savePolicy,
+    Map<String, dynamic>? extra,
+    Map<String, String>? headers,
+    bool updateTimestamps = true,
+  }) async {
+    savePolicy ??= defaultSavePolicy;
+    log.info(
+      'Handling server ID negotiation for $T with temporary ID ${item.id} '
+      'using policy ${savePolicy.name}',
+    );
+
+    // No need to set repository reference since we use service-based approach
+
+    switch (savePolicy) {
+      case DataSavePolicy.localFirst:
+        return await _handleLocalFirstWithIdNegotiation(
+          item,
+          extra: extra,
+          headers: headers,
+          updateTimestamps: updateTimestamps,
+        );
+
+      case DataSavePolicy.remoteFirst:
+        return await _handleRemoteFirstWithIdNegotiation(
+          item,
+          extra: extra,
+          headers: headers,
+          updateTimestamps: updateTimestamps,
+        );
+    }
+  }
+
+  /// Standard save flow for client-generated IDs (original implementation).
+  Future<T> _handleStandardSave(
+    T item, {
+    DataSavePolicy? savePolicy,
+    Map<String, dynamic>? extra,
+    Map<String, String>? headers,
+    bool updateTimestamps = true,
+  }) async {
     savePolicy ??= defaultSavePolicy;
     log.info('Saving $T with ID ${item.id} using policy ${savePolicy.name}');
 
@@ -372,5 +456,242 @@ mixin RepositorySaveOperations<T extends SynquillDataModel<T>>
         );
       }),
     );
+  }
+
+  // ===== ID NEGOTIATION METHODS =====
+
+  /// Handles local-first save with ID negotiation.
+  Future<T> _handleLocalFirstWithIdNegotiation(
+    T item, {
+    Map<String, dynamic>? extra,
+    Map<String, String>? headers,
+    bool updateTimestamps = true,
+  }) async {
+    log.info('LocalFirst with ID negotiation for ${item.id}');
+
+    // Set timestamps if needed
+    if (updateTimestamps) {
+      final now = DateTime.now();
+      if (item.createdAt == null) {
+        item.createdAt = now;
+      }
+      item.updatedAt = now;
+    }
+
+    // Save locally with temporary ID
+    await saveToLocal(item);
+    changeController.add(RepositoryChange.created(item));
+    log.fine('Local save with temporary ID ${item.id} successful');
+
+    // Check if this is a local-only repository
+    bool isLocalOnly = false;
+    try {
+      apiAdapter;
+    } on UnsupportedError {
+      isLocalOnly = true;
+      log.fine('Repository is local-only, skipping ID negotiation');
+    }
+
+    if (isLocalOnly) {
+      return item;
+    }
+
+    // Create sync queue entry with ID negotiation tracking
+    final syncQueueDao = SyncQueueDao(SynquillStorage.database);
+    final idempotencyKey = '${item.id}-create-${cuid()}';
+
+    // Check if there's already a pending negotiation for this model
+    final existingTaskId =
+        await syncQueueDao.findPendingSyncTaskWithNegotiation(
+      T.toString(),
+      item.id,
+      SyncOperation.create.name,
+    );
+
+    int syncQueueId;
+    if (existingTaskId != null) {
+      // Update existing task with new payload
+      await syncQueueDao.updateItem(
+        id: existingTaskId,
+        payload: convert.jsonEncode(item.toJson()),
+        idempotencyKey: idempotencyKey,
+        attemptCount: 0, // Reset attempt count for the new payload
+        nextRetryAt: null, // Allow immediate retry
+        lastError: null, // Clear any previous errors
+        headers: headers != null ? convert.jsonEncode(headers) : null,
+        extra: extra != null ? convert.jsonEncode(extra) : null,
+      );
+      syncQueueId = existingTaskId;
+      log.fine('Updated existing ID negotiation task $syncQueueId for '
+          '${item.id}');
+    } else {
+      // Create new sync queue entry
+      syncQueueId = await syncQueueDao.insertItemWithIdNegotiation(
+        modelId: item.id,
+        modelType: T.toString(),
+        payload: convert.jsonEncode(item.toJson()),
+        operation: SyncOperation.create.name,
+        temporaryClientId: item.id, // Store the temporary ID
+        idNegotiationStatus: 'pending', // Mark as pending negotiation
+        idempotencyKey: idempotencyKey,
+        headers: headers != null ? convert.jsonEncode(headers) : null,
+        extra: extra != null ? convert.jsonEncode(extra) : null,
+      );
+      log.fine('Created sync queue entry $syncQueueId with ID negotiation');
+    }
+
+    // Try immediate sync in background for ID negotiation
+    final syncTask = NetworkTask<void>(
+      exec: () => _executeIdNegotiationSync(item, headers, extra, syncQueueId),
+      idempotencyKey: idempotencyKey,
+      operation: SyncOperation.create,
+      modelType: T.toString(),
+      modelId: item.id,
+      taskName: 'IdNegotiation-${T.toString()}-${item.id}',
+    );
+
+    _tryImmediateSyncInBackground(syncTask, syncQueueId);
+
+    return item;
+  }
+
+  /// Handles remote-first save with ID negotiation.
+  Future<T> _handleRemoteFirstWithIdNegotiation(
+    T item, {
+    Map<String, dynamic>? extra,
+    Map<String, String>? headers,
+    bool updateTimestamps = true,
+  }) async {
+    log.info('RemoteFirst with ID negotiation for ${item.id}');
+
+    // Set timestamps if needed
+    if (updateTimestamps) {
+      final now = DateTime.now();
+      if (item.createdAt == null) {
+        item.createdAt = now;
+      }
+      item.updatedAt = now;
+    }
+
+    try {
+      // Create on server first to get permanent ID
+      final serverItem = await apiAdapter.createOne(
+        item,
+        headers: headers,
+        extra: extra,
+      );
+
+      if (serverItem == null) {
+        throw Exception('Server returned null for create operation');
+      }
+
+      // If server returned a different ID, replace it everywhere
+      if (serverItem.id != item.id) {
+        final updatedItem = await _replaceIdEverywhere(item, serverItem.id);
+
+        // Save to local with permanent ID
+        await saveToLocal(updatedItem);
+        changeController.add(RepositoryChange.created(updatedItem));
+
+        // Emit ID change event
+        changeController.add(
+          RepositoryChange.idChanged(updatedItem, item.id, serverItem.id),
+        );
+
+        log.info('ID negotiation complete: ${item.id} -> ${serverItem.id}');
+        return updatedItem;
+      } else {
+        // Server used the same ID, just save locally
+        await saveToLocal(serverItem);
+        changeController.add(RepositoryChange.created(serverItem));
+        return serverItem;
+      }
+    } catch (e, stack) {
+      log.severe('Remote-first ID negotiation failed for ${item.id}', e, stack);
+
+      // Fall back to local-first approach
+      log.info('Falling back to local-first approach');
+      return await _handleLocalFirstWithIdNegotiation(
+        item,
+        extra: extra,
+        headers: headers,
+        updateTimestamps: false, // Already set timestamps
+      );
+    }
+  }
+
+  /// Executes ID negotiation sync operation.
+  Future<void> _executeIdNegotiationSync(
+    T item,
+    Map<String, String>? headers,
+    Map<String, dynamic>? extra,
+    int syncQueueId,
+  ) async {
+    try {
+      log.fine('Executing ID negotiation sync for ${item.id}');
+
+      final serverItem = await apiAdapter.createOne(
+        item,
+        headers: headers,
+        extra: extra,
+      );
+
+      if (serverItem == null) {
+        throw Exception('Server returned null for create operation');
+      }
+
+      // If server assigned a different ID, replace it everywhere
+      if (serverItem.id != item.id) {
+        final syncQueueDao = SyncQueueDao(SynquillStorage.database);
+
+        // Replace ID in model table, sync queue, and relationships
+        await syncQueueDao.replaceIdEverywhere(
+          taskId: syncQueueId,
+          oldId: item.id,
+          newId: serverItem.id,
+          modelType: T.toString(),
+        );
+
+        // Create updated model instance
+        final updatedItem = await _replaceIdEverywhere(item, serverItem.id);
+
+        // Emit ID change event
+        changeController.add(
+          RepositoryChange.idChanged(updatedItem, item.id, serverItem.id),
+        );
+
+        log.info('ID negotiation successful: ${item.id} -> ${serverItem.id}');
+      }
+
+      // Mark sync as successful by removing from queue
+      final syncQueueDao = SyncQueueDao(SynquillStorage.database);
+      await syncQueueDao.deleteTask(syncQueueId);
+    } catch (e, stack) {
+      log.severe('ID negotiation sync failed for ${item.id}', e, stack);
+
+      // Mark ID negotiation as failed
+      final syncQueueDao = SyncQueueDao(SynquillStorage.database);
+      await syncQueueDao.markIdNegotiationAsFailed(
+        taskId: syncQueueId,
+        error: e.toString(),
+      );
+
+      rethrow;
+    }
+  }
+
+  /// Replaces an item's ID everywhere it's referenced.
+  /// This method uses the repository's ID negotiation service.
+  Future<T> _replaceIdEverywhere(T item, String newId) async {
+    if (this is RepositoryServerIdMixin<T>) {
+      final idMixin = this as RepositoryServerIdMixin<T>;
+      return idMixin.replaceIdEverywhere(item, newId);
+    } else {
+      // For models without server ID support, throw an error
+      throw UnsupportedError(
+        'ID replacement is not supported for models that do not use '
+        'server-generated IDs. Model: ${item.runtimeType}',
+      );
+    }
   }
 }

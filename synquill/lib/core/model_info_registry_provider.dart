@@ -1,5 +1,32 @@
 part of synquill;
 
+/// Represents a foreign key relationship where this model references another
+class ForeignKeyRelation {
+  /// The field name that contains the foreign key
+  final String fieldName;
+
+  /// The target model type name that this field references
+  final String targetType;
+
+  /// The table name that contains this foreign key
+  final String sourceTable;
+
+  /// Creates a [ForeignKeyRelation] describing a foreign key relationship.
+  ///
+  /// [fieldName] is the field that contains the foreign key,
+  /// [targetType] is the name of the target model type,
+  /// and [sourceTable] is the table name containing this foreign key.
+  const ForeignKeyRelation({
+    required this.fieldName,
+    required this.targetType,
+    required this.sourceTable,
+  });
+
+  @override
+  String toString() => 'ForeignKeyRelation(fieldName: $fieldName, '
+      'targetType: $targetType, sourceTable: $sourceTable)';
+}
+
 /// Represents a cascade delete relationship between models
 class CascadeDeleteRelation {
   /// The field name that has the cascade delete relation
@@ -25,8 +52,7 @@ class CascadeDeleteRelation {
   });
 
   @override
-  String toString() =>
-      'CascadeDeleteRelation(fieldName: $fieldName, '
+  String toString() => 'CascadeDeleteRelation(fieldName: $fieldName, '
       'targetType: $targetType, mappedBy: $mappedBy)';
 }
 
@@ -39,7 +65,10 @@ class ModelInfoRegistryProvider {
 
   /// Map from model type name to its cascade delete relations
   static final Map<String, List<CascadeDeleteRelation>>
-  _cascadeDeleteRelations = {};
+      _cascadeDeleteRelations = {};
+
+  /// Map from target model type to all models that reference it
+  static final Map<String, List<ForeignKeyRelation>> _foreignKeyRelations = {};
 
   static final _log = () {
     try {
@@ -122,6 +151,71 @@ class ModelInfoRegistryProvider {
     return _cascadeDeleteRelations.keys.toList();
   }
 
+  /// Registers foreign key relations for a target model type
+  ///
+  /// This method is called by generated code during initialization.
+  ///
+  /// - [targetModelType]: The model type that is referenced by foreign keys
+  /// - [relations]: List of foreign key relations that reference this model
+  ///
+  /// Example:
+  /// ```dart
+  /// ModelInfoRegistryProvider.registerForeignKeyRelations(
+  ///   'User',
+  ///   [
+  ///     ForeignKeyRelation(
+  ///       fieldName: 'userId',
+  ///       targetType: 'User',
+  ///       sourceTable: 'posts',
+  ///     ),
+  ///   ],
+  /// );
+  /// ```
+  static void registerForeignKeyRelations(
+    String targetModelType,
+    List<ForeignKeyRelation> relations,
+  ) {
+    _log.fine(
+      'Registering ${relations.length} foreign key relations '
+      'for target $targetModelType',
+    );
+    _foreignKeyRelations[targetModelType] = relations;
+
+    for (final relation in relations) {
+      _log.fine(
+        'Registered foreign key: '
+        '${relation.sourceTable}.${relation.fieldName} -> '
+        '${relation.targetType}',
+      );
+    }
+  }
+
+  /// Gets all foreign key relations that reference a target model type
+  ///
+  /// - [targetModelType]: The model type being referenced (e.g., 'User')
+  ///
+  /// Returns a list of foreign key relations that reference this model type.
+  /// Returns an empty list if no foreign key relations are registered.
+  ///
+  /// Example:
+  /// ```dart
+  /// final relations = ModelInfoRegistryProvider
+  ///     .getForeignKeyRelations('User');
+  /// for (final relation in relations) {
+  ///   print('Foreign key: ${relation.sourceTable}.${relation.fieldName}');
+  /// }
+  /// ```
+  static List<ForeignKeyRelation> getForeignKeyRelations(
+    String targetModelType,
+  ) {
+    final relations = _foreignKeyRelations[targetModelType] ?? [];
+    _log.fine(
+      'Retrieved ${relations.length} foreign key relations '
+      'for target $targetModelType',
+    );
+    return relations;
+  }
+
   /// Clears all registered model information
   ///
   /// Primarily used for cleaning up state in tests.
@@ -130,6 +224,7 @@ class ModelInfoRegistryProvider {
       'Resetting ModelInfoRegistryProvider: clearing all model information.',
     );
     _cascadeDeleteRelations.clear();
+    _foreignKeyRelations.clear();
   }
 
   /// Gets debug information about the current registry state
@@ -142,21 +237,21 @@ class ModelInfoRegistryProvider {
       'modelsWithCascadeDelete': _cascadeDeleteRelations.keys.toList(),
       'cascadeDeleteRelations':
           Map<String, List<Map<String, String>>>.fromEntries(
-            _cascadeDeleteRelations.entries.map(
-              (entry) => MapEntry(
-                entry.key,
-                entry.value
-                    .map(
-                      (relation) => {
-                        'fieldName': relation.fieldName,
-                        'targetType': relation.targetType,
-                        'mappedBy': relation.mappedBy,
-                      },
-                    )
-                    .toList(),
-              ),
-            ),
+        _cascadeDeleteRelations.entries.map(
+          (entry) => MapEntry(
+            entry.key,
+            entry.value
+                .map(
+                  (relation) => {
+                    'fieldName': relation.fieldName,
+                    'targetType': relation.targetType,
+                    'mappedBy': relation.mappedBy,
+                  },
+                )
+                .toList(),
           ),
+        ),
+      ),
     };
   }
 }

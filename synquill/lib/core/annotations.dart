@@ -1,5 +1,31 @@
 part of synquill;
 
+/// Strategy for ID generation in models.
+enum IdGenerationStrategy {
+  /// Client-generated IDs (default, backward compatible).
+  /// Uses CUID generation on the client side.
+  client,
+
+  /// Server-generated IDs (replaces temporary client IDs after sync).
+  /// Temporary client IDs are used until server assigns permanent IDs.
+  server,
+}
+
+/// Status of ID negotiation process for server-generated IDs.
+enum IdNegotiationStatus {
+  /// Negotiation is pending - waiting for server response
+  pending,
+
+  /// Negotiation completed successfully - server ID assigned
+  completed,
+
+  /// Negotiation failed - will retry or use fallback
+  failed,
+
+  /// Negotiation cancelled - operation aborted
+  cancelled,
+}
+
 /// An annotation to mark a class as a data model for which
 /// a Drift table and repository should be generated.
 ///
@@ -10,6 +36,10 @@ part of synquill;
 ///
 /// The build system will throw an error if these requirements are not met.
 class SynquillRepository {
+  /// Strategy for ID generation.
+  /// Defaults to [IdGenerationStrategy.client] for backward compatibility.
+  final IdGenerationStrategy idGeneration;
+
   /// A list of API adapter types to be used with this repository.
   /// For Stage 1, this might be a placeholder or a single adapter type.
   final List<Type>? adapters; // Example: [JsonApiAdapter]
@@ -31,6 +61,7 @@ class SynquillRepository {
 
   /// Creates a new [SynquillRepository] annotation.
   const SynquillRepository({
+    this.idGeneration = IdGenerationStrategy.client,
     this.adapters,
     this.tableFile,
     this.relations,

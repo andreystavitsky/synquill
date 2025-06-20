@@ -110,12 +110,44 @@ class $adapterClassName extends BasicApiAdapter<$className>
   /// Generates a local-only repository class that doesn't sync with remote API
   static String _generateLocalOnlyRepositoryClass(ModelInfo model,
       String className, String repositoryName, String daoName) {
+    // Generate mixins based on model configuration
+    final mixins = <String>[
+      'RepositoryHelpersMixin<$className>',
+    ];
+
+    // Add server ID mixin for models that use server-generated IDs
+    // Even local-only repositories may need ID management for consistency
+    if (model.usesServerGeneratedId) {
+      mixins.add('RepositoryServerIdMixin<$className>');
+    }
+
+    final mixinClause = mixins.join(', ');
+
+    // Generate constructor with ID negotiation service initialization
+    final constructorBody = model.usesServerGeneratedId
+        ? '''
+  /// Creates a new $className repository instance (local-only mode)
+  /// 
+  /// [db] The database instance to use for data operations
+  $repositoryName(super.db) {
+    _dao = $daoName(db as SynquillDatabase);
+    // Initialize ID negotiation service for server-generated ID models
+    initializeIdNegotiationService(usesServerGeneratedId: true);
+  }'''
+        : '''
+  /// Creates a new $className repository instance (local-only mode)
+  /// 
+  /// [db] The database instance to use for data operations
+  $repositoryName(super.db) {
+    _dao = $daoName(db as SynquillDatabase);
+  }''';
+
     return '''
 /// Local-only repository implementation for $className
 /// This repository only works with local database and does not sync with
 /// remote API
 class $repositoryName extends SynquillRepositoryBase<$className> 
-    with RepositoryHelpersMixin<$className> {
+    with $mixinClause {
   late final $daoName _dao;
   static Logger get _log {
     try {
@@ -125,12 +157,7 @@ class $repositoryName extends SynquillRepositoryBase<$className>
     }
   }
 
-  /// Creates a new $className repository instance (local-only mode)
-  /// 
-  /// [db] The database instance to use for data operations
-  $repositoryName(super.db) {
-    _dao = $daoName(db as SynquillDatabase);
-  }
+$constructorBody
 
   @override
   DatabaseAccessor get dao => _dao;
@@ -178,6 +205,18 @@ class $repositoryName extends SynquillRepositoryBase<$className>
   ///  with remote API
   static String _generateSyncRepositoryClass(ModelInfo model, String className,
       String repositoryName, String daoName) {
+    // Generate mixins based on model configuration
+    final mixins = <String>[
+      'RepositoryHelpersMixin<$className>',
+    ];
+
+    // Add server ID mixin for models that use server-generated IDs
+    if (model.usesServerGeneratedId) {
+      mixins.add('RepositoryServerIdMixin<$className>');
+    }
+
+    final mixinClause = mixins.join(', ');
+
     // Generate apiAdapter getter based on whether adapters are defined
     final apiAdapterGetter = (model.adapters == null || model.adapters!.isEmpty)
         ? '''  @override
@@ -189,10 +228,29 @@ class $repositoryName extends SynquillRepositoryBase<$className>
     return _${className}Adapter();
   }''';
 
+    // Generate constructor with ID negotiation service initialization
+    final constructorBody = model.usesServerGeneratedId
+        ? '''
+  /// Creates a new $className repository instance
+  /// 
+  /// [db] The database instance to use for data operations
+  $repositoryName(super.db) {
+    _dao = $daoName(db as SynquillDatabase);
+    // Initialize ID negotiation service for server-generated ID models
+    initializeIdNegotiationService(usesServerGeneratedId: true);
+  }'''
+        : '''
+  /// Creates a new $className repository instance
+  /// 
+  /// [db] The database instance to use for data operations
+  $repositoryName(super.db) {
+    _dao = $daoName(db as SynquillDatabase);
+  }''';
+
     return '''
 /// Concrete repository implementation for $className
 class $repositoryName extends SynquillRepositoryBase<$className> 
-    with RepositoryHelpersMixin<$className> {
+    with $mixinClause {
   late final $daoName _dao;
   static Logger get _log {
     try {
@@ -202,12 +260,7 @@ class $repositoryName extends SynquillRepositoryBase<$className>
     }
   }
 
-  /// Creates a new $className repository instance
-  /// 
-  /// [db] The database instance to use for data operations
-  $repositoryName(super.db) {
-    _dao = $daoName(db as SynquillDatabase);
-  }
+$constructorBody
 
   @override
   DatabaseAccessor get dao => _dao;
@@ -354,8 +407,9 @@ $apiAdapterGetter
     buffer.writeln('  // Register model dependencies for hierarchical sync');
     buffer.writeln('  registerModelDependencies();');
     buffer.writeln('  ');
-    buffer.writeln('  // Register model cascade delete relations');
-    buffer.writeln('  registerModelCascadeDeleteRelations();');
+    buffer.writeln(
+        '  // Register model relations (cascade delete and foreign keys)');
+    buffer.writeln('  registerModelRelations();');
     buffer.writeln('  ');
     buffer.writeln('}');
 
