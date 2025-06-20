@@ -141,7 +141,10 @@ class TableGenerator {
 @TableIndex(name: 'idx_status', columns: {#status})
 @TableIndex(name: 'idx_next_retry_at', columns: {#nextRetryAt})
 @TableIndex(name: 'idx_created_at', columns: {#createdAt})
-@TableIndex(name: 'idx_temporary_client_id', columns: {#temporaryClientId})
+@TableIndex(
+  name: 'idx_temporary_client_id', 
+  columns: {#temporaryClientId},
+  unique: true)
 @TableIndex(name: 'idx_id_negotiation_status', columns: {#idNegotiationStatus})
 class SyncQueueItems extends Table {
   /// Unique identifier for the queue item.
