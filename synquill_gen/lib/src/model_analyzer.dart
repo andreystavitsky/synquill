@@ -40,11 +40,10 @@ class ModelAnalyzer {
           if (annotation != null) {
             final reader = ConstantReader(annotation);
             final tableName = reader.peek('tableName')?.stringValue ??
-                PluralizationUtils.toCamelCasePlural(
-                    element.name.toLowerCase());
+                PluralizationUtils.toSnakeCasePlural(element.name);
 
             final endpoint = reader.peek('endpoint')?.stringValue ??
-                '/${PluralizationUtils.toCamelCasePlural(element.name.toLowerCase())}s';
+                '/${PluralizationUtils.toSnakeCasePlural(element.name)}';
 
             // Extract adapter information with import paths
             final adapters = await _extractAdapterInfo(
@@ -60,6 +59,22 @@ class ModelAnalyzer {
             // Extract localOnly parameter
             final localOnly = reader.peek('localOnly')?.boolValue ?? false;
 
+            // Extract idGeneration parameter
+            final idGenerationConstant = reader.peek('idGeneration');
+            // Default to client for backward compatibility
+            String idGeneration = 'client';
+
+            if (idGenerationConstant != null) {
+              // The idGeneration field is an enum, get its string
+              // representation
+              final enumValue = idGenerationConstant.objectValue
+                  .getField('_name')
+                  ?.toStringValue();
+              if (enumValue == 'server') {
+                idGeneration = 'server';
+              }
+            }
+
             final fields = extractFields(element, relations);
 
             annotatedModels.add(
@@ -72,6 +87,7 @@ class ModelAnalyzer {
                 adapters: adapters,
                 relations: relations,
                 localOnly: localOnly,
+                idGeneration: idGeneration,
               ),
             );
           }

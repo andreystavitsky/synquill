@@ -12,13 +12,15 @@ class TestDatabase extends GeneratedDatabase {
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
-    onCreate: (m) async {
-      // Create sync queue table for testing
-      await customStatement('''
+        onCreate: (m) async {
+          // Create sync queue table for testing
+          await customStatement('''
         CREATE TABLE sync_queue_items (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           model_type TEXT NOT NULL,
           model_id TEXT NOT NULL,
+          temporary_client_id TEXT,
+          id_negotiation_status TEXT default 'complete',
           payload TEXT NOT NULL,
           op TEXT NOT NULL,
           attempt_count INTEGER NOT NULL DEFAULT 0,
@@ -31,8 +33,8 @@ class TestDatabase extends GeneratedDatabase {
           extra TEXT
         )
       ''');
-    },
-  );
+        },
+      );
 }
 
 /// Test model for queue system integration testing

@@ -141,6 +141,11 @@ class TableGenerator {
 @TableIndex(name: 'idx_status', columns: {#status})
 @TableIndex(name: 'idx_next_retry_at', columns: {#nextRetryAt})
 @TableIndex(name: 'idx_created_at', columns: {#createdAt})
+@TableIndex(
+  name: 'idx_temporary_client_id', 
+  columns: {#temporaryClientId},
+  unique: true)
+@TableIndex(name: 'idx_id_negotiation_status', columns: {#idNegotiationStatus})
 class SyncQueueItems extends Table {
   /// Unique identifier for the queue item.
   IntColumn get id => integer().autoIncrement()();
@@ -150,6 +155,17 @@ class SyncQueueItems extends Table {
 
   /// The ID of the specific model instance being synced.
   TextColumn get modelId => text().named('model_id')();
+  
+  /// Temporary client ID for models using server-generated IDs.
+  /// Used to track the original temporary ID before server ID replacement.
+  TextColumn get temporaryClientId => text()
+    .named('temporary_client_id')
+    .nullable()();
+  
+  /// ID negotiation status for server-generated ID models.
+  /// Values: 'complete', 'pending', 'failed'
+  TextColumn get idNegotiationStatus => text().named('id_negotiation_status')
+      .withDefault(const Constant('complete'))();
 
   /// JSON string representation of the model data.
   /// For 'delete' operations, this might store the ID or key fields.

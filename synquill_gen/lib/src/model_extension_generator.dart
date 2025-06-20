@@ -10,6 +10,11 @@ class ModelExtensionGenerator {
     List<ModelInfo> allModels,
   ) {
     final buffer = StringBuffer();
+
+    // Generate ID management mixin for ALL models (this replaces extensions)
+    buffer.writeln(_generateIdManagementExtension(model));
+    buffer.writeln();
+
     final className = model.className;
 
     // Find relation fields that need load methods (field-level annotations)
@@ -22,12 +27,12 @@ class ModelExtensionGenerator {
         relationFields.isNotEmpty || model.relations.isNotEmpty;
 
     if (!hasRelations) {
-      return ''; // No relations, no extensions needed
+      return buffer.toString(); // Return ID management mixin if no relations
     }
 
+    buffer.writeln('/// Generated extension methods for loading ');
     buffer.writeln(
-      '/// Generated extension methods for loading '
-      'related objects for $className',
+      '/// related objects for $className',
     );
     buffer.writeln('extension ${className}RelationExtensions on $className {');
     buffer.writeln('  /// Logger for the $className relation extensions.');
@@ -305,5 +310,69 @@ class ModelExtensionGenerator {
     buffer.writeln('    }');
     buffer.writeln('  }');
     buffer.writeln();
+  }
+
+  /// Generate ID management mixin for all models
+  static String _generateIdManagementExtension(ModelInfo model) {
+    final buffer = StringBuffer();
+    final className = model.className;
+    final mixinName = '${className}IdManagement';
+
+    buffer.writeln('/// Generated ID management extension for $className');
+    buffer.writeln('extension $mixinName on $className {');
+
+    // Generate the main properties based on ID generation strategy
+    buffer.writeln('  /// Whether this model uses server-generated IDs');
+    buffer.writeln('  bool get \$usesServerGeneratedId => ');
+    buffer.writeln('      ${model.usesServerGeneratedId};');
+
+    // Generate $replaceIdEverywhere method for all models
+    buffer.writeln('');
+    buffer.writeln('  /// Create a new model instance with a different ID');
+    buffer.writeln('  /// This is used during ID negotiation when server '
+        'assigns a different ID');
+    buffer.writeln('  $className \$replaceIdEverywhere(String newId) {');
+    buffer.writeln('    final json = toJson();');
+    buffer.writeln('    json[\'id\'] = newId;');
+    buffer.writeln('    return fromJson(json);');
+    buffer.writeln('  }');
+
+    // For server-generated ID models, add helper methods
+    if (model.usesServerGeneratedId) {
+      buffer.writeln('');
+      buffer.writeln('  /// Whether this model currently has a temporary ID');
+      buffer.writeln('  /// Note: Use repository.hasTemporaryId(model) for '
+          'actual status');
+      buffer.writeln('  bool get \$hasTemporaryId => false;');
+
+      buffer.writeln('');
+      buffer.writeln('  /// Get temporary client ID for this model');
+      buffer.writeln('  /// Note: Use repository.getTemporaryClientId(model) '
+          'for actual value');
+      buffer.writeln('  String? get \$temporaryClientId => null;');
+    } else {
+      buffer.writeln('');
+      buffer.writeln('  /// Whether this model currently has a temporary ID ');
+      buffer.writeln('  /// (always false for client-generated IDs)');
+      buffer.writeln('  bool get \$hasTemporaryId => false;');
+
+      buffer.writeln('');
+      buffer.writeln('  /// Get temporary client ID for this model ');
+      buffer.writeln('  /// (always null for client-generated IDs)');
+      buffer.writeln('  String? get \$temporaryClientId => null;');
+    }
+
+    if (model.usesServerGeneratedId) {
+      buffer.writeln('');
+      buffer
+          .writeln('  /// Note: Use repository.hasTemporaryId(model) to check '
+              'temporary ID status');
+      buffer.writeln(
+          '  /// Note: Use repository.getTemporaryClientId(model) to get '
+          'temporary client ID');
+    }
+
+    buffer.writeln('}');
+    return buffer.toString();
   }
 }

@@ -69,11 +69,15 @@ abstract class BasicApiAdapter<TModel extends SynquillDataModel<TModel>>
     Map<String, String>? headers,
     Map<String, dynamic>? extra,
   }) async {
-    return await executeCreateRequest(
+    logger.fine('Creating ${TModel.toString()} with ID ${model.id}');
+
+    final result = await executeCreateRequest(
       model: model,
       headers: headers,
       extra: extra,
     );
+
+    return result;
   }
 
   @override

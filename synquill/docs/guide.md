@@ -9,6 +9,7 @@ This comprehensive guide covers all core concepts and features of Synquill, a po
   - [Data Load Policies](#data-load-policies)
   - [Dependency-Based Sync Ordering](#dependency-based-sync-ordering)
   - [Synchronization Behavior](#synchronization-behavior)
+  - [Server-Generated IDs](#server-generated-ids)
 - [Querying Data](#querying-data)
   - [Repository-Level Queries](#repository-level-queries)
   - [Model-Level Relationship Queries](#model-level-relationship-queries)
@@ -34,6 +35,7 @@ await user.save(savePolicy: DataSavePolicy.localFirst);
 
 // Save to remote first, then update local on success
 await user.save(savePolicy: DataSavePolicy.remoteFirst);
+> **Note:** When using the `remoteFirst` save policy, if the remote operation fails (e.g., due to offline status or a server error), a `SynquillStorageException` or `OfflineException` will be thrown and the local model will **not** be saved.
 ```
 
 ### Data Load Policies
@@ -113,6 +115,225 @@ try {
 ```
 
 This behavior ensures that items deleted on the server are properly cleaned up locally, maintaining consistency between remote and local data stores.
+
+### Server-Generated IDs
+
+Synquill supports server-generated IDs for models where the server needs to assign the final ID. This is useful when integrating with existing APIs that generate UUIDs, auto-incrementing IDs, or other server-specific ID formats.
+
+#### Configuring Server-Generated IDs
+
+To use server-generated IDs, add the `idGeneration` parameter to your model annotation:
+
+```dart
+@SynquillRepository(
+  idGeneration: IdGenerationStrategy.server, // default: IdGenerationStrategy.client
+  adapters: [MyApiAdapter],
+)
+class ServerManagedPost extends SynquillDataModel<ServerManagedPost> {
+  @override
+  final String id;
+  final String title;
+  final String content;
+
+  ServerManagedPost({
+    required this.id,
+    required this.title, 
+    required this.content,
+  });
+
+  // ... toJson, fromJson, fromDb methods
+}
+```
+
+#### Creating Models with Server-Generated IDs
+
+When creating new models, you still need to provide a temporary ID (using `generateCuid()`), but the server will replace it with a permanent ID during sync:
+
+```dart
+// Create with temporary client ID
+final post = ServerManagedPost(
+  id: generateCuid(), // Temporary ID
+  title: 'My Post',
+  content: 'Post content',
+);
+
+// Save the model - server will assign permanent ID
+final savedPost = await post.save();
+// savedPost.id will contain the server-assigned ID after sync
+```
+
+#### ID Negotiation Process
+
+When you save a model with server-generated IDs:
+
+1. **Local Save**: Model is saved locally with temporary client ID
+2. **Background Sync**: API call creates the record on server
+3. **ID Replacement**: Server returns permanent ID (e.g., `"server_1001"`)
+4. **Local Update**: Temporary ID is replaced everywhere with permanent ID
+5. **Relationship Updates**: All related models that reference this ID are automatically updated
+
+```dart
+// Before sync: model.id = "cuid_xyz123"
+final post = await repository.save(post, savePolicy: DataSavePolicy.localFirst);
+
+// After background sync completes: model.id = "server_1001"
+// All relationships automatically updated to reference "server_1001"
+```
+
+#### Relationships with Server-Generated IDs
+
+When models with server-generated IDs have relationships, Synquill automatically handles ID replacement across all related models:
+
+```dart
+@SynquillRepository(
+  idGeneration: IdGenerationStrategy.server,
+  relations: [
+    OneToMany(target: Comment, mappedBy: 'postId'),
+  ],
+)
+class Post extends SynquillDataModel<Post> {
+  // ... model definition
+}
+
+@SynquillRepository(
+  relations: [
+    ManyToOne(target: Post, foreignKeyColumn: 'postId'),
+  ],
+)
+class Comment extends SynquillDataModel<Comment> {
+  final String postId; // Will be automatically updated when Post ID changes
+  // ... model definition
+}
+
+// Create post and comment with temporary IDs
+final post = Post(id: generateCuid(), title: 'My Post');
+await post.save();
+
+final comment = Comment(
+  id: generateCuid(),
+  postId: post.id, // Uses temporary post ID initially
+  content: 'Great post!',
+);
+await comment.save();
+
+// After sync: both post.id and comment.postId will have server-assigned values
+// Relationship integrity is maintained automatically
+```
+
+#### Mixed ID Strategies
+
+You can use both client and server-generated IDs in the same application:
+
+```dart
+// User uses client-generated IDs (stable across offline usage)
+@SynquillRepository() // defaults to IdGenerationStrategy.client
+class User extends SynquillDataModel<User> {
+  // ID never changes, always client-generated
+}
+
+// Post uses server-generated IDs (integrates with existing blog system)
+@SynquillRepository(idGeneration: IdGenerationStrategy.server)
+class BlogPost extends SynquillDataModel<BlogPost> {
+  final String userId; // References stable client-generated User ID
+  // Post ID will be replaced with server ID after sync
+}
+```
+
+This approach ensures that user-centric data remains stable for offline usage, while server-managed content integrates seamlessly with existing backend systems.
+
+#### ID Conflict Resolution
+
+When the server assigns an ID that already exists locally, Synquill automatically attempts to resolve the conflict using several strategies:
+
+```dart
+// Scenario: Server wants to assign ID "server_123" but it already exists locally
+final post = ServerManagedPost(
+  id: generateCuid(), // temporary: "cuid_abc"
+  title: 'My Post',
+  content: 'Content',
+);
+
+await post.save(); // Server responds with ID "server_123" but it already exists
+```
+
+**Strategy 1: Same Record Detection**
+```dart
+// If the existing local record is actually the same entity:
+// - Compare all non-ID fields (name, content, etc.)
+// - If records are identical, cleanup temporary record and use existing ID
+// - Result: No conflict, existing record ID is used
+```
+
+**Strategy 2: Record Merging**
+```dart
+// If records represent the same entity but have different data:
+// - Compare creation timestamps
+// - If temporary record is newer, merge its data into existing record
+// - Update existing record with newer field values
+// - Cleanup temporary record
+// - Result: Existing ID kept, data merged
+```
+
+**Strategy 3: Concurrent Operation Handling**
+```dart
+// If the existing record is from another ongoing operation:
+// - Wait for other operation to complete
+// - Retry conflict resolution after delay
+// - Use exponential backoff (1s, 2s, 4s)
+// - Result: Resolved after other operation completes
+```
+
+**Strategy 4: Conflict Marking**
+```dart
+// If conflict cannot be resolved automatically:
+// - Keep temporary ID for the local record
+// - Mark sync queue task as "conflict" status
+// - Log detailed conflict information
+// - Result: Manual resolution required
+
+// Check for conflicts in sync queue:
+final syncQueueDao = SyncQueueDao(database);
+final allTasks = await syncQueueDao.getAllItems();
+final conflicts = allTasks.where((task) => 
+  task['id_negotiation_status'] == 'conflict'
+).toList();
+
+for (final conflict in conflicts) {
+  print('Conflict: ${conflict['model_id']} vs server ID');
+  print('Error: ${conflict['last_error']}');
+  // Handle manually or implement custom resolution logic
+}
+```
+
+**Foreign Key Integrity Protection**
+```dart
+// During ID conflict resolution, Synquill validates:
+// - No foreign key constraints will be violated
+// - Related models won't reference orphaned IDs
+// - Cascade relationships remain intact
+
+// Example: If Post references User, and Post ID changes:
+// 1. Check all Comments that reference Post.id
+// 2. Ensure Comment.postId updates are safe
+// 3. Validate no circular dependencies exist
+// 4. Update all references atomically
+```
+
+**Error Handling**
+```dart
+try {
+  await post.save();
+} on IdConflictException catch (e) {
+  print('ID conflict: ${e.message}');
+  print('Temporary ID: ${e.temporaryId}');
+  print('Server ID: ${e.proposedServerId}');
+  print('Model type: ${e.modelType}');
+  
+  // Handle conflict manually or retry later
+}
+```
+
+The conflict resolution system ensures data integrity while maximizing automatic resolution success rates. Most conflicts are resolved transparently without user intervention.
 
 ## Querying Data
 

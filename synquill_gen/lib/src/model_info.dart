@@ -30,6 +30,10 @@ class ModelInfo {
   /// When true, the repository will not attempt to sync with remote API.
   final bool localOnly;
 
+  /// ID generation strategy for this model.
+  /// Determines whether IDs are generated on client or server side.
+  final String idGeneration;
+
   /// Creates a new instance of [ModelInfo].
   const ModelInfo({
     required this.className,
@@ -40,7 +44,11 @@ class ModelInfo {
     this.adapters,
     this.relations = const [],
     this.localOnly = false,
+    this.idGeneration = 'client',
   });
+
+  /// Whether this model uses server-generated IDs.
+  bool get usesServerGeneratedId => idGeneration == 'server';
 }
 
 /// Information about a field in a model
