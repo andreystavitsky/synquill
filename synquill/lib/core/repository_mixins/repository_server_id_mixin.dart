@@ -45,24 +45,4 @@ mixin RepositoryServerIdMixin<T extends SynquillDataModel<T>>
   T replaceIdEverywhere(T model, String newId) {
     return _idNegotiationService.replaceIdEverywhere(model, newId);
   }
-
-  /// Update negotiation status for a model
-  void updateNegotiationStatus(T model, IdNegotiationStatus status) {
-    _idNegotiationService.updateNegotiationStatus(model, status);
-  }
-
-  /// Clean up completed or failed negotiations
-  void cleanupNegotiation(T model) {
-    _idNegotiationService.cleanupNegotiation(model);
-  }
-
-  /// Get all models currently undergoing ID negotiation
-  Map<String, ServerIdMetadata> getPendingNegotiations() {
-    return _idNegotiationService.getPendingNegotiations();
-  }
-
-  /// Check if there are any pending negotiations
-  bool hasPendingNegotiations() {
-    return _idNegotiationService.hasPendingNegotiations();
-  }
 }

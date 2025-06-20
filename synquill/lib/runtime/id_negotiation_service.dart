@@ -141,43 +141,4 @@ class IdNegotiationService<T extends SynquillDataModel<T>> {
 
     return newModel;
   }
-
-  /// Update negotiation status for a model
-  void updateNegotiationStatus(T model, IdNegotiationStatus status) {
-    if (!usesServerGeneratedId) return;
-
-    final metadata = _serverIdMetadata[model.id];
-    if (metadata != null) {
-      _serverIdMetadata[model.id] = metadata.copyWith(status: status);
-    } else {
-      // Create new metadata if it doesn't exist
-      _serverIdMetadata[model.id] = ServerIdMetadata(
-        temporaryClientId: model.id,
-        status: status,
-        initiatedAt: DateTime.now(),
-      );
-    }
-    _log.fine('Updated negotiation status for ${model.id}: $status');
-  }
-
-  /// Clean up completed or failed negotiations
-  void cleanupNegotiation(T model) {
-    if (!usesServerGeneratedId) return;
-
-    final removed = _serverIdMetadata.remove(model.id);
-    if (removed != null) {
-      _log.fine('Cleaned up negotiation for ${model.id}');
-    }
-  }
-
-  /// Get all models currently undergoing ID negotiation
-  Map<String, ServerIdMetadata> getPendingNegotiations() {
-    return Map.unmodifiable(_serverIdMetadata);
-  }
-
-  /// Check if there are any pending negotiations
-  bool hasPendingNegotiations() {
-    return _serverIdMetadata.values
-        .any((metadata) => metadata.status == IdNegotiationStatus.pending);
-  }
 }

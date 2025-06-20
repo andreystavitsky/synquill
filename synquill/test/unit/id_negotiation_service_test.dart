@@ -63,39 +63,6 @@ void main() {
       // But we should be able to get the original temporary client ID
       expect(service.getTemporaryClientId(newModel), equals(tempClientId));
     });
-
-    test('updateNegotiationStatus updates status correctly', () {
-      service.updateNegotiationStatus(testModel, IdNegotiationStatus.pending);
-
-      final negotiations = service.getPendingNegotiations();
-      expect(negotiations.containsKey(testModel.id), isTrue);
-      expect(negotiations[testModel.id]?.status,
-          equals(IdNegotiationStatus.pending));
-    });
-
-    test('cleanupNegotiation removes tracking data', () {
-      final tempClientId = generateCuid();
-      service.markAsTemporary(testModel, tempClientId);
-      service.updateNegotiationStatus(testModel, IdNegotiationStatus.pending);
-
-      expect(service.hasTemporaryId(testModel), isTrue);
-      expect(service.getPendingNegotiations().isNotEmpty, isTrue);
-
-      service.cleanupNegotiation(testModel);
-
-      expect(service.hasTemporaryId(testModel), isFalse);
-      expect(service.getTemporaryClientId(testModel), isNull);
-    });
-
-    test('hasPendingNegotiations returns correct status', () {
-      expect(service.hasPendingNegotiations(), isFalse);
-
-      service.updateNegotiationStatus(testModel, IdNegotiationStatus.pending);
-      expect(service.hasPendingNegotiations(), isTrue);
-
-      service.updateNegotiationStatus(testModel, IdNegotiationStatus.completed);
-      expect(service.hasPendingNegotiations(), isFalse);
-    });
   });
 
   group('Repository Integration Tests', () {
