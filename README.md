@@ -10,17 +10,9 @@ A Flutter package for Drift-powered offline storage with automatic REST API sync
 - Pluggable API adapters.
 - Background sync and retry mechanisms.
 
-## Getting started
+## Documentation
 
-TODO: Describe how to install the package and initial setup.
+All project documentation is located in the [`synquill/README.md`](synquill/README.md) file.
 
-## Usage
 
-TODO: Provide examples of how to use the library.
-
-```dart
-// Example code here
-```
-
-## Additional information
 
