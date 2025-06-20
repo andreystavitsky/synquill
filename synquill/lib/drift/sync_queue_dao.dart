@@ -106,7 +106,7 @@ class SyncQueueDao {
       variables: [
         Variable.withDateTime(DateTime.now()),
         Variable.withString(
-          'dead',
+          SyncStatus.dead.name, // Assuming 'dead' is the status for dead tasks
         ), // Assuming 'dead' is the status for dead tasks
       ],
     ).get();
@@ -148,7 +148,8 @@ class SyncQueueDao {
       payload: payload,
       operation: operation,
       temporaryClientId: null, // No temporary ID for standard client IDs
-      idNegotiationStatus: 'complete', // Already complete for client IDs
+      idNegotiationStatus:
+          IdNegotiationStatus.completed.name, // Already complete for client IDs
       attemptCount: attemptCount,
       lastError: lastError,
       nextRetryAt: nextRetryAt,
@@ -261,7 +262,7 @@ class SyncQueueDao {
     if (task != null && result > 0) {
       final modelType = task['model_type'] as String;
       final modelId = task['model_id'] as String;
-      await updateModelSyncStatus(modelType, modelId, 'synced');
+      await updateModelSyncStatus(modelType, modelId, SyncStatus.synced.name);
     }
 
     return result;
@@ -275,7 +276,7 @@ class SyncQueueDao {
 
     final result = await updateItem(
       id: id,
-      status: 'dead',
+      status: SyncStatus.dead.name, // Set status to 'dead'
       lastError: error,
       // nextRetryAt could be set to null or a far future date if desired
     );
@@ -284,7 +285,7 @@ class SyncQueueDao {
     if (task != null && result > 0) {
       final modelType = task['model_type'] as String;
       final modelId = task['model_id'] as String;
-      await updateModelSyncStatus(modelType, modelId, 'dead');
+      await updateModelSyncStatus(modelType, modelId, SyncStatus.dead.name);
     }
 
     return result;
@@ -305,14 +306,14 @@ class SyncQueueDao {
       nextRetryAt: nextRetryAt,
       attemptCount: attemptCount,
       lastError: lastError,
-      status: 'pending', // Ensure status is pending for retry
+      status: SyncStatus.pending.name, // Ensure status is pending for retry
     );
 
     // Update the model's syncStatus to 'pending'
     if (task != null && result > 0) {
       final modelType = task['model_type'] as String;
       final modelId = task['model_id'] as String;
-      await updateModelSyncStatus(modelType, modelId, 'pending');
+      await updateModelSyncStatus(modelType, modelId, SyncStatus.pending.name);
     }
 
     return result;
@@ -332,7 +333,7 @@ class SyncQueueDao {
       variables: [
         Variable.withString(modelType),
         Variable.withString(modelId),
-        Variable.withString('dead'),
+        Variable.withString(SyncStatus.dead.name), // Exclude dead tasks
       ],
     ).get();
     return results.map((row) => row.data).toList();
@@ -350,7 +351,7 @@ class SyncQueueDao {
       variables: [
         Variable.withString(modelType),
         Variable.withString(modelId),
-        Variable.withString('dead'),
+        Variable.withString(SyncStatus.dead.name), // Exclude dead tasks
       ],
     );
 
@@ -364,12 +365,13 @@ class SyncQueueDao {
         variables: [
           Variable.withString(modelType),
           Variable.withString(modelId),
-          Variable.withString('dead'),
+          Variable.withString(SyncStatus.dead.name),
         ],
       ).get();
 
       final hasDeadTasks = (deadTasks.first.data['count'] as int) > 0;
-      final syncStatus = hasDeadTasks ? 'dead' : 'synced';
+      final syncStatus =
+          hasDeadTasks ? SyncStatus.dead.name : SyncStatus.synced.name;
       await updateModelSyncStatus(modelType, modelId, syncStatus);
     }
 
@@ -391,7 +393,7 @@ class SyncQueueDao {
     final variables = [
       Variable.withString(modelType),
       Variable.withString(modelId),
-      Variable.withString('dead'),
+      Variable.withString(SyncStatus.dead.name), // Exclude dead tasks
       ...operations.map((op) => Variable.withString(op)),
     ];
 
@@ -406,7 +408,7 @@ class SyncQueueDao {
     // Since there's only one task per model, if we deleted it,
     // status becomes 'synced'
     if (result > 0) {
-      await updateModelSyncStatus(modelType, modelId, 'synced');
+      await updateModelSyncStatus(modelType, modelId, SyncStatus.synced.name);
     }
 
     return result;
@@ -431,7 +433,7 @@ class SyncQueueDao {
         Variable.withString(modelType),
         Variable.withString(modelId),
         Variable.withString(operation),
-        Variable.withString('dead'),
+        Variable.withString(SyncStatus.dead.name), // Exclude dead tasks
       ],
     ).get();
 
@@ -454,7 +456,7 @@ class SyncQueueDao {
         Variable.withString(modelType),
         Variable.withString(modelId),
         Variable.withString(operation),
-        Variable.withString('dead'),
+        Variable.withString(SyncStatus.dead.name), // Exclude dead tasks
       ],
     ).get();
 
@@ -479,9 +481,9 @@ class SyncQueueDao {
         Variable.withString(modelType),
         Variable.withString(modelId),
         Variable.withString(operation),
-        Variable.withString('dead'),
-        Variable.withString('pending'),
-        Variable.withString('in_progress'),
+        Variable.withString(SyncStatus.dead.name),
+        Variable.withString(IdNegotiationStatus.pending.name),
+        Variable.withString(IdNegotiationStatus.in_progress.name),
       ],
     ).get();
 
@@ -693,7 +695,7 @@ class SyncQueueDao {
     required String payload,
     required String operation,
     String? temporaryClientId,
-    String idNegotiationStatus = 'complete',
+    String idNegotiationStatus = 'completed',
     int attemptCount = 0,
     String? lastError,
     DateTime? nextRetryAt,
@@ -760,11 +762,12 @@ class SyncQueueDao {
       await _db.customUpdate(
         '''
         UPDATE sync_queue_items 
-        SET model_id = ?, id_negotiation_status = 'complete'
+        SET model_id = ?, id_negotiation_status = ?
         WHERE id = ?
         ''',
         variables: [
           Variable.withString(newId),
+          Variable.withString(IdNegotiationStatus.completed.name),
           Variable.withInt(taskId),
         ],
       );
@@ -802,9 +805,12 @@ class SyncQueueDao {
     final results = await _db.customSelect(
       '''
       SELECT * FROM sync_queue_items 
-      WHERE id_negotiation_status = 'pending'
+      WHERE id_negotiation_status = ?
       ORDER BY created_at ASC
       ''',
+      variables: [
+        Variable.withString(IdNegotiationStatus.pending.name),
+      ],
     ).get();
     return results.map((row) => row.data).toList();
   }
@@ -817,10 +823,11 @@ class SyncQueueDao {
     await _db.customUpdate(
       '''
       UPDATE sync_queue_items 
-      SET id_negotiation_status = 'failed', last_error = ?
+      SET id_negotiation_status = ?, last_error = ?
       WHERE id = ?
       ''',
       variables: [
+        Variable.withString(IdNegotiationStatus.failed.name),
         Variable.withString(error),
         Variable.withInt(taskId),
       ],
@@ -834,9 +841,12 @@ class SyncQueueDao {
       SELECT model_id, temporary_client_id, id
       FROM sync_queue_items 
       WHERE model_type = ? AND temporary_client_id IS NOT NULL
-      AND id_negotiation_status = 'pending'
+      AND id_negotiation_status = ?
       ''',
-      variables: [Variable.withString(modelType)],
+      variables: [
+        Variable.withString(modelType),
+        Variable.withString(IdNegotiationStatus.pending.name),
+      ],
     ).get();
     return results.map((row) => row.data).toList();
   }

@@ -640,7 +640,7 @@ mixin RepositorySaveOperations<T extends SynquillDataModel<T>>
         );
         await syncQueueDao.updateItem(
           id: syncQueueId,
-          idNegotiationStatus: 'failed',
+          idNegotiationStatus: IdNegotiationStatus.failed.name,
           lastError: 'Concurrent ID negotiation detected',
         );
         return;
@@ -649,7 +649,7 @@ mixin RepositorySaveOperations<T extends SynquillDataModel<T>>
       // 2. Mark negotiation as in progress to prevent concurrent modifications
       await syncQueueDao.updateItem(
         id: syncQueueId,
-        idNegotiationStatus: 'in_progress',
+        idNegotiationStatus: IdNegotiationStatus.in_progress.name,
       );
 
       // 3. Execute server create operation with timeout
@@ -735,7 +735,7 @@ mixin RepositorySaveOperations<T extends SynquillDataModel<T>>
         log.fine('Server used same ID: ${item.id}');
         await syncQueueDao.updateItem(
           id: syncQueueId,
-          idNegotiationStatus: 'complete',
+          idNegotiationStatus: IdNegotiationStatus.completed.name,
         );
       }
 

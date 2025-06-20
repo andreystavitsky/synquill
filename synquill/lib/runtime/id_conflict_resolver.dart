@@ -242,7 +242,9 @@ class IdConflictResolver {
       // Check for multiple pending ID negotiation tasks
       final idNegotiationTasks = pendingTasks
           .where(
-            (task) => task['id_negotiation_status'] == 'pending',
+            (task) =>
+                task['id_negotiation_status'] ==
+                IdNegotiationStatus.pending.name,
           )
           .toList();
 
@@ -522,7 +524,7 @@ class IdConflictResolver {
       // Check if there are any pending ID negotiation tasks for this ID
       final hasTemporaryStatus = pendingTasks.any(
         (task) =>
-            task['id_negotiation_status'] == 'pending' ||
+            task['id_negotiation_status'] == IdNegotiationStatus.pending.name ||
             task['temporary_client_id'] == recordId,
       );
 
@@ -725,7 +727,7 @@ class IdConflictResolver {
         final taskId = task['id'] as int;
         await syncQueueDao.updateItem(
           id: taskId,
-          idNegotiationStatus: 'conflict',
+          idNegotiationStatus: IdNegotiationStatus.conflict.name,
           lastError: 'ID conflict: server assigned $proposedServerId '
               'but it already exists locally',
         );

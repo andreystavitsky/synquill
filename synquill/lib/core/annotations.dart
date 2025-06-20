@@ -16,6 +16,12 @@ enum IdNegotiationStatus {
   /// Negotiation is pending - waiting for server response
   pending,
 
+  /// Negotiation is in progress - awaiting server assignment
+  in_progress,
+
+  /// Negotiation encountered a conflict - server and client IDs differ
+  conflict,
+
   /// Negotiation completed successfully - server ID assigned
   completed,
 

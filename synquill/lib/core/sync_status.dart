@@ -5,6 +5,9 @@ enum SyncStatus {
   /// The record is pending synchronization to the remote server
   pending,
 
+  /// The record is currently being processed for synchronization
+  processing,
+
   /// The record has been successfully synchronized
   synced,
 
@@ -16,6 +19,7 @@ enum SyncStatus {
 ///
 /// Converts between database String representation and SyncStatus enum
 class SyncStatusConverter extends TypeConverter<SyncStatus?, String?> {
+  /// Creates a new [SyncStatusConverter].
   const SyncStatusConverter();
 
   @override

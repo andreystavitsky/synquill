@@ -184,8 +184,8 @@ class RetryExecutor {
 
         // Filter out only pending and processing tasks (not dead ones)
         return allTasks.where((task) {
-          final status = task['status'] as String? ?? 'pending';
-          return status != 'dead';
+          final status = task['status'] as String? ?? SyncStatus.pending.name;
+          return status != SyncStatus.dead.name;
         }).toList();
       } else {
         // Force sync requested but no connectivity - return empty list
@@ -278,7 +278,8 @@ class RetryExecutor {
 
     try {
       // Mark as processing
-      await _syncQueueDao.updateItem(id: taskId, status: 'processing');
+      await _syncQueueDao.updateItem(
+          id: taskId, status: SyncStatus.processing.name);
 
       // Create NetworkTask for this sync operation
       final networkTask = await _createNetworkTaskFromQueue(
