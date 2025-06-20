@@ -49,7 +49,8 @@ class ModelInfoRegistryGenerator {
         for (final relation in cascadeDeleteRelations) {
           buffer.writeln('      const CascadeDeleteRelation(');
           buffer.writeln(
-            '        fieldName: \'${relation.targetType.toLowerCase()}s\',',
+            '        fieldName: \''
+            '${PluralizationUtils.toCamelCasePlural(relation.targetType)}\',',
           );
           buffer.writeln('        targetType: \'${relation.targetType}\',');
           buffer.writeln('        mappedBy: \'${relation.mappedBy}\',');

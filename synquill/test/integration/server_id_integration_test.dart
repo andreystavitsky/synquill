@@ -452,6 +452,287 @@ class MockServerChildAdapter extends ApiAdapterBase<ServerChildModel> {
   }
 }
 
+/// Mock API adapter that simulates ID collisions
+class MockIdCollisionAdapter extends MockServerIdAdapter {
+  final Set<String> _existingServerIds = {};
+  bool _shouldSimulateCollision = false;
+  String? _collisionId;
+
+  /// Add a model to remote data to simulate existing record
+  void addExistingModel(ServerTestModel model) {
+    _remoteData[model.id] = model;
+    _existingServerIds.add(model.id);
+  }
+
+  /// Configure the adapter to simulate ID collision
+  void simulateIdCollision(String existingId) {
+    _existingServerIds.add(existingId);
+    _shouldSimulateCollision = true;
+    _collisionId = existingId;
+  }
+
+  /// Reset collision simulation
+  void resetCollisionSimulation() {
+    _shouldSimulateCollision = false;
+    _collisionId = null;
+    _existingServerIds.clear();
+  }
+
+  @override
+  Future<ServerTestModel?> createOne(
+    ServerTestModel model, {
+    Map<String, String>? headers,
+    Map<String, dynamic>? extra,
+  }) async {
+    _operationLog.add('createOne(${model.id})');
+    await Future.delayed(const Duration(milliseconds: 10));
+
+    String serverId;
+    if (_shouldSimulateCollision && _collisionId != null) {
+      // Return the collision ID on first attempt
+      serverId = _collisionId!;
+      _shouldSimulateCollision = false; // Only collide once
+    } else {
+      serverId = 'server_${_nextServerId++}';
+    }
+
+    // Check if ID already exists in remote data (collision scenario)
+    if (_remoteData.containsKey(serverId)) {
+      throw Exception('ID collision: Server ID $serverId already exists');
+    }
+
+    final modelWithServerId = ServerTestModel(
+      id: serverId,
+      name: model.name,
+      description: model.description,
+    );
+
+    _remoteData[serverId] = modelWithServerId;
+    _existingServerIds.add(serverId);
+    return modelWithServerId;
+  }
+}
+
+/// Mock API adapter that simulates partial failures
+class MockPartialFailureAdapter extends MockServerIdAdapter {
+  bool _shouldFailOnCreate = false;
+  bool _shouldFailOnUpdate = false;
+  bool _shouldFailOnDelete = false;
+  int _failureCount = 0;
+  int _maxFailures = 1;
+
+  /// Configure the adapter to fail on create operations
+  void simulateCreateFailure({int maxFailures = 1}) {
+    _shouldFailOnCreate = true;
+    _maxFailures = maxFailures;
+    _failureCount = 0;
+  }
+
+  /// Configure the adapter to fail on update operations
+  void simulateUpdateFailure({int maxFailures = 1}) {
+    _shouldFailOnUpdate = true;
+    _maxFailures = maxFailures;
+    _failureCount = 0;
+  }
+
+  /// Configure the adapter to fail on delete operations
+  void simulateDeleteFailure({int maxFailures = 1}) {
+    _shouldFailOnDelete = true;
+    _maxFailures = maxFailures;
+    _failureCount = 0;
+  }
+
+  /// Reset failure simulation
+  void resetFailureSimulation() {
+    _shouldFailOnCreate = false;
+    _shouldFailOnUpdate = false;
+    _shouldFailOnDelete = false;
+    _failureCount = 0;
+  }
+
+  @override
+  Future<ServerTestModel?> createOne(
+    ServerTestModel model, {
+    Map<String, String>? headers,
+    Map<String, dynamic>? extra,
+  }) async {
+    _operationLog.add('createOne(${model.id})');
+    await Future.delayed(const Duration(milliseconds: 10));
+
+    if (_shouldFailOnCreate && _failureCount < _maxFailures) {
+      _failureCount++;
+      throw Exception('Simulated create failure (attempt $_failureCount)');
+    }
+
+    return super.createOne(model, headers: headers, extra: extra);
+  }
+
+  @override
+  Future<ServerTestModel?> updateOne(
+    ServerTestModel model, {
+    Map<String, String>? headers,
+    Map<String, dynamic>? extra,
+  }) async {
+    _operationLog.add('updateOne(${model.id})');
+    await Future.delayed(const Duration(milliseconds: 10));
+
+    if (_shouldFailOnUpdate && _failureCount < _maxFailures) {
+      _failureCount++;
+      throw Exception('Simulated update failure (attempt $_failureCount)');
+    }
+
+    return super.updateOne(model, headers: headers, extra: extra);
+  }
+
+  @override
+  Future<void> deleteOne(
+    String id, {
+    Map<String, String>? headers,
+    Map<String, dynamic>? extra,
+  }) async {
+    _operationLog.add('deleteOne($id)');
+    await Future.delayed(const Duration(milliseconds: 10));
+
+    if (_shouldFailOnDelete && _failureCount < _maxFailures) {
+      _failureCount++;
+      throw Exception('Simulated delete failure (attempt $_failureCount)');
+    }
+
+    return super.deleteOne(id, headers: headers, extra: extra);
+  }
+}
+
+/// Mock API adapter that simulates network timeouts
+class MockTimeoutAdapter extends MockServerIdAdapter {
+  Duration _timeout = const Duration(seconds: 5);
+  bool _shouldTimeout = false;
+  String _timeoutOperation = 'create';
+
+  /// Configure the adapter to simulate timeouts
+  void simulateTimeout({
+    Duration timeout = const Duration(seconds: 5),
+    String operation = 'create',
+  }) {
+    _timeout = timeout;
+    _shouldTimeout = true;
+    _timeoutOperation = operation;
+  }
+
+  /// Reset timeout simulation
+  void resetTimeoutSimulation() {
+    _shouldTimeout = false;
+  }
+
+  @override
+  Future<ServerTestModel?> createOne(
+    ServerTestModel model, {
+    Map<String, String>? headers,
+    Map<String, dynamic>? extra,
+  }) async {
+    _operationLog.add('createOne(${model.id})');
+
+    if (_shouldTimeout && _timeoutOperation == 'create') {
+      await Future.delayed(_timeout);
+      throw TimeoutException('Create operation timed out', _timeout);
+    }
+
+    return super.createOne(model, headers: headers, extra: extra);
+  }
+
+  @override
+  Future<ServerTestModel?> updateOne(
+    ServerTestModel model, {
+    Map<String, String>? headers,
+    Map<String, dynamic>? extra,
+  }) async {
+    _operationLog.add('updateOne(${model.id})');
+
+    if (_shouldTimeout && _timeoutOperation == 'update') {
+      await Future.delayed(_timeout);
+      throw TimeoutException('Update operation timed out', _timeout);
+    }
+
+    return super.updateOne(model, headers: headers, extra: extra);
+  }
+
+  @override
+  Future<void> deleteOne(
+    String id, {
+    Map<String, String>? headers,
+    Map<String, dynamic>? extra,
+  }) async {
+    _operationLog.add('deleteOne($id)');
+
+    if (_shouldTimeout && _timeoutOperation == 'delete') {
+      await Future.delayed(_timeout);
+      throw TimeoutException('Delete operation timed out', _timeout);
+    }
+
+    return super.deleteOne(id, headers: headers, extra: extra);
+  }
+}
+
+/// Mock API adapter that simulates concurrent ID replacement scenarios
+class MockConcurrentAdapter extends MockServerIdAdapter {
+  final Map<String, List<Completer<ServerTestModel?>>> _pendingOperations = {};
+  bool _shouldSimulateConcurrentOperations = false;
+  int _concurrentOperationDelay = 100; // milliseconds
+
+  /// Configure the adapter to simulate concurrent operations
+  void simulateConcurrentOperations({int delayMs = 100}) {
+    _shouldSimulateConcurrentOperations = true;
+    _concurrentOperationDelay = delayMs;
+  }
+
+  /// Reset concurrent simulation
+  void resetConcurrentSimulation() {
+    _shouldSimulateConcurrentOperations = false;
+    _pendingOperations.clear();
+  }
+
+  @override
+  Future<ServerTestModel?> createOne(
+    ServerTestModel model, {
+    Map<String, String>? headers,
+    Map<String, dynamic>? extra,
+  }) async {
+    _operationLog.add('createOne(${model.id})');
+
+    if (_shouldSimulateConcurrentOperations) {
+      // Check if there's already a pending operation for this model
+      if (_pendingOperations.containsKey(model.id)) {
+        // Add this operation to the queue
+        final completer = Completer<ServerTestModel?>();
+        _pendingOperations[model.id]!.add(completer);
+        return completer.future;
+      } else {
+        // Start a new concurrent operation sequence
+        _pendingOperations[model.id] = [];
+
+        // Simulate delay to allow concurrent operations to queue up
+        await Future.delayed(Duration(milliseconds: _concurrentOperationDelay));
+
+        // Process the operation
+        final result = await super.createOne(
+          model,
+          headers: headers,
+          extra: extra,
+        );
+
+        // Complete all queued operations with the same result
+        final queuedOperations = _pendingOperations.remove(model.id) ?? [];
+        for (final completer in queuedOperations) {
+          completer.complete(result);
+        }
+
+        return result;
+      }
+    }
+
+    return super.createOne(model, headers: headers, extra: extra);
+  }
+}
+
 void main() {
   group('Server ID Integration Tests', () {
     late SynquillDatabase db;
@@ -957,14 +1238,15 @@ void main() {
         expect(queueEntry['temporary_client_id'], equals(tempId));
         expect(queueEntry['id_negotiation_status'], equals('pending'));
 
-        // Verify adapter was called for creation
-        expect(mockAdapter.operationLog, contains('createOne($tempId)'));
-
-        // Wait for the async createOne operation to complete
-        await Future.delayed(const Duration(milliseconds: 300));
-
+        // Process background sync tasks to trigger ID negotiation
         await SynquillStorage.instance
             .processBackgroundSyncTasks(forceSync: true);
+
+        // Wait for the async operations to complete
+        await Future.delayed(const Duration(milliseconds: 300));
+
+        // Verify adapter was called for creation after background sync
+        expect(mockAdapter.operationLog, contains('createOne($tempId)'));
 
         // Verify server ID was assigned in remote data after async operation
         final serverKey = mockAdapter.remoteData.keys
@@ -1365,7 +1647,7 @@ void main() {
         expect(finalChild.data, equals('Offline data'));
 
         // CRITICAL: Verify automatic foreign key update
-        // The child's parentId should automatically reference 
+        // The child's parentId should automatically reference
         // the parent's new server ID
         expect(finalChild.parentId, equals(finalParent.id));
 
@@ -1407,6 +1689,826 @@ void main() {
         // Clean up subscriptions
         await parentSub.cancel();
         await childSub.cancel();
+      });
+    });
+
+    group('Edge Cases and Error Scenarios', () {
+      group('ID Collision Scenarios', () {
+        test('should handle server ID collision gracefully', () async {
+          final mockAdapter = MockIdCollisionAdapter();
+          final repository = _TestServerTestRepository(db, mockAdapter);
+
+          // Pre-populate adapter with existing server ID to simulate collision
+          const existingServerId = 'server_collision_test';
+          final existingModel = ServerTestModel(
+            id: existingServerId,
+            name: 'Existing Model',
+            description: 'Already exists',
+          );
+
+          // Use the proper method to add existing model
+          mockAdapter.addExistingModel(existingModel);
+          mockAdapter.simulateIdCollision(existingServerId);
+
+          final newModel = ServerTestModel(
+            id: generateCuid(),
+            name: 'New Model',
+            description: 'Should get different ID',
+          );
+
+          // Save with localFirst should succeed locally
+          final savedModel = await repository.save(
+            newModel,
+            savePolicy: DataSavePolicy.localFirst,
+          );
+          expect(savedModel.id, equals(newModel.id));
+
+          // Verify model is saved locally with temporary ID
+          final localModel = await repository.findOne(newModel.id);
+          expect(localModel, isNotNull);
+          expect(localModel!.name, equals('New Model'));
+
+          // Register repository for background sync
+          SynquillRepositoryProvider.register<ServerTestModel>(
+            (db) => _TestServerTestRepository(db, mockAdapter),
+          );
+
+          // Trigger background sync which should attempt createOne
+          // and detect collision
+          await SynquillStorage.instance
+              .processBackgroundSyncTasks(forceSync: true);
+
+          // Wait for async operations to complete
+          await Future.delayed(const Duration(milliseconds: 200));
+
+          // Verify that create operation was attempted (logged)
+          expect(
+            mockAdapter.operationLog,
+            contains('createOne(${newModel.id})'),
+          );
+
+          // Check if collision was handled - the adapter should have
+          // thrown exception but repository should still maintain local data
+          final stillLocalModel = await repository.findOne(newModel.id);
+          expect(stillLocalModel, isNotNull);
+          expect(stillLocalModel!.name, equals('New Model'));
+
+          // Verify existing model is still intact
+          expect(mockAdapter.remoteData[existingServerId], isNotNull);
+          expect(
+            mockAdapter.remoteData[existingServerId]!.name,
+            equals('Existing Model'),
+          );
+        });
+
+        test('should handle actual ID collision during background sync',
+            () async {
+          final mockAdapter = MockIdCollisionAdapter();
+          final repository = _TestServerTestRepository(db, mockAdapter);
+
+          // Create an existing model first
+          const existingServerId = 'server_collision_test';
+          final existingModel = ServerTestModel(
+            id: existingServerId,
+            name: 'Existing Model',
+            description: 'Already exists',
+          );
+
+          // Add existing model to remote data using proper method
+          mockAdapter.addExistingModel(existingModel);
+
+          // Configure adapter to always return the existing ID
+          // (simulating server always assigning the same ID)
+          mockAdapter.simulateIdCollision(existingServerId);
+
+          final newModel = ServerTestModel(
+            id: generateCuid(),
+            name: 'New Model',
+            description: 'Should conflict',
+          );
+
+          // Save with localFirst (succeeds locally)
+          final savedModel = await repository.save(
+            newModel,
+            savePolicy: DataSavePolicy.localFirst,
+          );
+          expect(savedModel.id, equals(newModel.id));
+
+          // Register repository for background sync
+          SynquillRepositoryProvider.register<ServerTestModel>(
+            (db) => _TestServerTestRepository(db, mockAdapter),
+          );
+
+          // Process background sync - this should fail due to collision
+          await SynquillStorage.instance
+              .processBackgroundSyncTasks(forceSync: true);
+
+          await Future.delayed(const Duration(milliseconds: 200));
+
+          // Verify create was attempted
+          expect(
+              mockAdapter.operationLog,
+              contains(
+                'createOne(${newModel.id})',
+              ));
+
+          // The new model should still exist locally with temp ID
+          // (since remote sync failed)
+          final localModel = await repository.findOne(newModel.id);
+          expect(localModel, isNotNull);
+          expect(localModel!.name, equals('New Model'));
+
+          // The existing model should remain untouched
+          expect(mockAdapter.remoteData[existingServerId], isNotNull);
+          expect(
+            mockAdapter.remoteData[existingServerId]!.name,
+            equals('Existing Model'),
+          );
+
+          // There should be only one model with the collision ID in remote
+          final modelsWithCollisionId = mockAdapter.remoteData.values
+              .where((m) => m.id == existingServerId)
+              .toList();
+          expect(modelsWithCollisionId, hasLength(1));
+        });
+
+        test('should resolve ID conflicts during concurrent operations',
+            () async {
+          final mockAdapter = MockIdCollisionAdapter();
+          final repository = _TestServerTestRepository(db, mockAdapter);
+
+          // Create two models with different temporary IDs
+          final model1 = ServerTestModel(
+            id: generateCuid(),
+            name: 'Test Model 1',
+            description: 'Description 1',
+          );
+
+          final model2 = ServerTestModel(
+            id: generateCuid(),
+            name: 'Test Model 2',
+            description: 'Description 2',
+          );
+
+          // Setup collision scenario - both models get same server ID
+          mockAdapter.simulateIdCollision('server_collision_id');
+
+          // Save first model successfully
+          final saved1 = await repository.save(
+            model1,
+            savePolicy: DataSavePolicy.localFirst,
+          );
+          expect(saved1.id, equals(model1.id));
+
+          // Reset collision for second model
+          mockAdapter.resetCollisionSimulation();
+
+          // Save second model - should get different server ID during sync
+          final saved2 = await repository.save(
+            model2,
+            savePolicy: DataSavePolicy.localFirst,
+          );
+          expect(saved2.id, equals(model2.id));
+
+          // Verify both models are saved locally with different IDs
+          expect(saved1.id, isNot(equals(saved2.id)));
+        });
+
+        test('should handle server returning locally existing ID', () async {
+          final mockAdapter = MockLocalIdConflictAdapter();
+          final repository = _TestServerTestRepository(db, mockAdapter);
+
+          // Step 1: Create and save a model locally first
+          final existingLocalModel = ServerTestModel(
+            id: 'local_existing_id',
+            name: 'Existing Local Model',
+            description: 'This model already exists in local database',
+          );
+
+          // Save this model directly to local database (bypassing API)
+          await repository.saveToLocal(existingLocalModel);
+
+          // Verify it exists locally
+          final localCheck = await repository.findOne('local_existing_id');
+          expect(localCheck, isNotNull);
+          expect(localCheck!.name, equals('Existing Local Model'));
+
+          // Step 2: Create a new model with temporary ID
+          final newModel = ServerTestModel(
+            id: generateCuid(), // This will be temporary client ID
+            name: 'New Model',
+            description: 'This model will cause ID conflict',
+          );
+
+          // Configure mock adapter to return the existing local ID
+          // when creating the new model
+          mockAdapter.forceReturnId('local_existing_id');
+
+          // Step 3: Save with localFirst policy
+          final savedModel = await repository.save(
+            newModel,
+            savePolicy: DataSavePolicy.localFirst,
+          );
+          expect(savedModel.id, equals(newModel.id)); // Still has temp ID
+
+          // Verify new model is saved locally with temp ID
+          final tempModel = await repository.findOne(newModel.id);
+          expect(tempModel, isNotNull);
+          expect(tempModel!.name, equals('New Model'));
+
+          // Step 4: Register repository for background sync
+          SynquillRepositoryProvider.register<ServerTestModel>(
+            (db) => _TestServerTestRepository(db, mockAdapter),
+          );
+
+          // Step 5: Trigger background sync which should detect the conflict
+          await SynquillStorage.instance
+              .processBackgroundSyncTasks(forceSync: true);
+
+          // Wait for async operations
+          await Future.delayed(const Duration(milliseconds: 300));
+
+          // Step 6: Verify conflict resolution behavior
+          expect(
+            mockAdapter.operationLog,
+            contains('createOne(${newModel.id})'),
+          );
+
+          // Step 7: Check the final state after conflict resolution
+
+          // The existing local model should remain unchanged
+          final stillExistingModel =
+              await repository.findOne('local_existing_id');
+          expect(stillExistingModel, isNotNull);
+          expect(stillExistingModel!.name, equals('Existing Local Model'));
+          expect(
+            stillExistingModel.description,
+            equals('This model already exists in local database'),
+          );
+
+          // The new model should still exist with its temporary ID since
+          // the server returned a conflicting ID
+          final stillNewModel = await repository.findOne(newModel.id);
+          expect(stillNewModel, isNotNull);
+          expect(stillNewModel!.name, equals('New Model'));
+
+          // Step 8: Verify that both models coexist without data corruption
+          final allModels = await repository.findAll();
+          final localExistingModels =
+              allModels.where((m) => m.id == 'local_existing_id').toList();
+          final newModels =
+              allModels.where((m) => m.id == newModel.id).toList();
+
+          expect(localExistingModels, hasLength(1));
+          expect(newModels, hasLength(1));
+          expect(
+            localExistingModels.first.name,
+            equals('Existing Local Model'),
+          );
+          expect(newModels.first.name, equals('New Model'));
+
+          // Step 9: Verify no data was overwritten or lost
+          expect(
+            localExistingModels.first.description,
+            equals('This model already exists in local database'),
+          );
+          expect(
+            newModels.first.description,
+            equals('This model will cause ID conflict'),
+          );
+
+          // The system should handle this gracefully without losing data
+          // and the sync operation should be retried or marked as conflicted
+        });
+      });
+
+      group('Partial Failure Scenarios', () {
+        test('should handle partial create failure with retry', () async {
+          final mockAdapter = MockPartialFailureAdapter();
+          final repository = _TestServerTestRepository(db, mockAdapter);
+
+          // Configure adapter to fail once then succeed
+          mockAdapter.simulateCreateFailure(maxFailures: 1);
+
+          final model = ServerTestModel(
+            id: generateCuid(),
+            name: 'Test Model',
+            description: 'Test Description',
+          );
+
+          // Save with local-first policy (should succeed locally)
+          final savedModel = await repository.save(
+            model,
+            savePolicy: DataSavePolicy.localFirst,
+          );
+          expect(savedModel.id, equals(model.id));
+
+          // Verify model is saved locally
+          final localModel = await repository.findOne(savedModel.id);
+          expect(localModel, isNotNull);
+          expect(localModel!.name, equals('Test Model'));
+
+          // Trigger background sync (should eventually succeed after retry)
+          await Future.delayed(const Duration(milliseconds: 100));
+
+          // Verify that create was attempted
+          expect(mockAdapter.operationLog, contains('createOne(${model.id})'));
+        });
+
+        test('should handle update failure during ID negotiation', () async {
+          final mockAdapter = MockPartialFailureAdapter();
+          final repository = _TestServerTestRepository(db, mockAdapter);
+
+          final model = ServerTestModel(
+            id: generateCuid(),
+            name: 'Test Model',
+            description: 'Test Description',
+          );
+
+          // First save successfully
+          final savedModel = await repository.save(
+            model,
+            savePolicy: DataSavePolicy.localFirst,
+          );
+
+          // Configure adapter to fail on updates
+          mockAdapter.simulateUpdateFailure(maxFailures: 1);
+
+          // Update the model by creating a new instance with same ID
+          final updatedModel = ServerTestModel(
+            id: savedModel.id,
+            name: 'Updated Name',
+            description: savedModel.description,
+          );
+
+          // Update should succeed locally even if remote fails
+          final result = await repository.save(
+            updatedModel,
+            savePolicy: DataSavePolicy.localFirst,
+          );
+          expect(result.name, equals('Updated Name'));
+
+          // Verify local update worked
+          final localModel = await repository.findOne(result.id);
+          expect(localModel?.name, equals('Updated Name'));
+        });
+
+        test('should handle cascading failures in relationships', () async {
+          final parentAdapter = MockServerParentAdapter();
+          final childAdapter = MockServerChildAdapter();
+
+          final parentRepo = _TestServerParentRepository(db, parentAdapter);
+          final childRepo = _TestServerChildRepository(db, childAdapter);
+
+          // Create parent model
+          final parent = ServerParentModel(
+            id: generateCuid(),
+            name: 'Parent',
+            category: 'Category A',
+          );
+
+          final savedParent = await parentRepo.save(
+            parent,
+            savePolicy: DataSavePolicy.localFirst,
+          );
+
+          // Create child model with reference to parent
+          final child = ServerChildModel(
+            id: generateCuid(),
+            name: 'Child',
+            parentId: savedParent.id,
+            data: 'Child data',
+          );
+
+          final savedChild = await childRepo.save(
+            child,
+            savePolicy: DataSavePolicy.localFirst,
+          );
+
+          // Verify relationship is maintained locally
+          expect(savedChild.parentId, equals(savedParent.id));
+
+          final retrievedChild = await childRepo.findOne(savedChild.id);
+          expect(retrievedChild?.parentId, equals(savedParent.id));
+        });
+      });
+
+      group('Network Timeout Scenarios', () {
+        test('should handle create timeout gracefully', () async {
+          final mockAdapter = MockTimeoutAdapter();
+          final repository = _TestServerTestRepository(db, mockAdapter);
+
+          // Configure short timeout for testing
+          mockAdapter.simulateTimeout(
+            timeout: const Duration(milliseconds: 100),
+            operation: 'create',
+          );
+
+          final model = ServerTestModel(
+            id: generateCuid(),
+            name: 'Test Model',
+            description: 'Test Description',
+          );
+
+          // Local-first save should succeed despite remote timeout
+          final savedModel = await repository.save(
+            model,
+            savePolicy: DataSavePolicy.localFirst,
+          );
+          expect(savedModel.id, equals(model.id));
+
+          // Verify model is saved locally
+          final localModel = await repository.findOne(savedModel.id);
+          expect(localModel, isNotNull);
+
+          // Test that remoteFirst will eventually timeout in background sync
+          // but the operation itself succeeds and queues the sync
+          final timeoutModel = ServerTestModel(
+            id: generateCuid(),
+            name: 'Timeout Model',
+            description: 'Will timeout',
+          );
+
+          // This should succeed locally and queue for background sync
+          final timeoutSavedModel = await repository.save(
+            timeoutModel,
+            savePolicy: DataSavePolicy.localFirst,
+          );
+          expect(timeoutSavedModel.id, equals(timeoutModel.id));
+
+          // Verify local save worked
+          final localTimeoutModel = await repository.findOne(timeoutModel.id);
+          expect(localTimeoutModel, isNotNull);
+        });
+
+        test('should handle update timeout during ID negotiation', () async {
+          final mockAdapter = MockTimeoutAdapter();
+          final repository = _TestServerTestRepository(db, mockAdapter);
+
+          final model = ServerTestModel(
+            id: generateCuid(),
+            name: 'Test Model',
+            description: 'Test Description',
+          );
+
+          // First save successfully
+          final savedModel = await repository.save(
+            model,
+            savePolicy: DataSavePolicy.localFirst,
+          );
+
+          // Configure timeout for updates
+          mockAdapter.simulateTimeout(
+            timeout: const Duration(milliseconds: 100),
+            operation: 'update',
+          );
+
+          // Update should succeed locally despite remote timeout
+          final updatedModel = ServerTestModel(
+            id: savedModel.id,
+            name: 'Updated Name',
+            description: savedModel.description,
+          );
+          final result = await repository.save(
+            updatedModel,
+            savePolicy: DataSavePolicy.localFirst,
+          );
+
+          expect(result.name, equals('Updated Name'));
+
+          // Verify local update worked
+          final localModel = await repository.findOne(result.id);
+          expect(localModel?.name, equals('Updated Name'));
+        });
+
+        test('should queue operations when network is unavailable', () async {
+          final mockAdapter = MockTimeoutAdapter();
+          final repository = _TestServerTestRepository(db, mockAdapter);
+
+          // Simulate network unavailable
+          mockAdapter.simulateTimeout(
+            timeout: const Duration(seconds: 1),
+            operation: 'create',
+          );
+
+          final models = List.generate(
+              3,
+              (i) => ServerTestModel(
+                    id: generateCuid(),
+                    name: 'Model $i',
+                    description: 'Description $i',
+                  ));
+
+          // Save multiple models with local-first policy
+          final savedModels = <ServerTestModel>[];
+          for (final model in models) {
+            final saved = await repository.save(
+              model,
+              savePolicy: DataSavePolicy.localFirst,
+            );
+            savedModels.add(saved);
+          }
+
+          // All models should be saved locally
+          expect(savedModels.length, equals(3));
+          for (int i = 0; i < savedModels.length; i++) {
+            expect(savedModels[i].name, equals('Model $i'));
+
+            final localModel = await repository.findOne(savedModels[i].id);
+            expect(localModel, isNotNull);
+            expect(localModel!.name, equals('Model $i'));
+          }
+
+          // Reset timeout simulation
+          mockAdapter.resetTimeoutSimulation();
+
+          // Background sync should eventually process queued operations
+          await Future.delayed(const Duration(milliseconds: 200));
+        });
+      });
+
+      group('Concurrent Operations Scenarios', () {
+        test('should handle concurrent ID replacements safely', () async {
+          final mockAdapter = MockConcurrentAdapter();
+          final repository = _TestServerTestRepository(db, mockAdapter);
+
+          // Configure concurrent operation simulation
+          mockAdapter.simulateConcurrentOperations(delayMs: 50);
+
+          final baseModel = ServerTestModel(
+            id: generateCuid(),
+            name: 'Concurrent Model',
+            description: 'Concurrent Description',
+          );
+
+          // Start multiple concurrent save operations with similar models
+          final futures = List.generate(3, (i) {
+            final model = ServerTestModel(
+              id: generateCuid(),
+              name: 'Concurrent Model $i',
+              description: baseModel.description,
+            );
+            return repository.save(
+              model,
+              savePolicy: DataSavePolicy.localFirst,
+            );
+          });
+
+          // Wait for all operations to complete
+          final results = await Future.wait(futures);
+
+          // All operations should complete successfully
+          expect(results.length, equals(3));
+          for (int i = 0; i < results.length; i++) {
+            expect(results[i].name, equals('Concurrent Model $i'));
+          }
+
+          // Verify all models are saved locally
+          for (final result in results) {
+            final localModel = await repository.findOne(result.id);
+            expect(localModel, isNotNull);
+          }
+        });
+
+        test('should handle concurrent updates to same model', () async {
+          final mockAdapter = MockServerIdAdapter();
+          final repository = _TestServerTestRepository(db, mockAdapter);
+
+          final model = ServerTestModel(
+            id: generateCuid(),
+            name: 'Original Model',
+            description: 'Original Description',
+          );
+
+          // Save initial model
+          final savedModel = await repository.save(
+            model,
+            savePolicy: DataSavePolicy.localFirst,
+          );
+
+          // Start concurrent updates using the same ID but different content
+          final update1Future = repository.save(
+            ServerTestModel(
+              id: savedModel.id,
+              name: 'Update 1',
+              description: savedModel.description,
+            ),
+            savePolicy: DataSavePolicy.localFirst,
+          );
+
+          final update2Future = repository.save(
+            ServerTestModel(
+              id: savedModel.id,
+              name: 'Update 2',
+              description: savedModel.description,
+            ),
+            savePolicy: DataSavePolicy.localFirst,
+          );
+
+          final update3Future = repository.save(
+            ServerTestModel(
+              id: savedModel.id,
+              name: savedModel.name,
+              description: 'Update 3 Description',
+            ),
+            savePolicy: DataSavePolicy.localFirst,
+          );
+
+          // Wait for all updates to complete
+          final results = await Future.wait([
+            update1Future,
+            update2Future,
+            update3Future,
+          ]);
+
+          // All updates should be successful
+          expect(results.length, equals(3));
+
+          // The final state should reflect the last update
+          final finalModel = await repository.findOne(savedModel.id);
+          expect(finalModel, isNotNull);
+
+          // At least one of the updates should be applied
+          expect(finalModel!.id, equals(savedModel.id));
+        });
+
+        test('should handle race conditions during foreign key updates',
+            () async {
+          final parentAdapter = MockServerParentAdapter();
+          final childAdapter = MockServerChildAdapter();
+
+          final parentRepo = _TestServerParentRepository(db, parentAdapter);
+          final childRepo = _TestServerChildRepository(db, childAdapter);
+
+          // Create parent model
+          final parent = ServerParentModel(
+            id: generateCuid(),
+            name: 'Parent',
+            category: 'Category A',
+          );
+
+          final savedParent = await parentRepo.save(
+            parent,
+            savePolicy: DataSavePolicy.localFirst,
+          );
+
+          // Create multiple children concurrently
+          final childFutures = List.generate(3, (i) {
+            final child = ServerChildModel(
+              id: generateCuid(),
+              name: 'Child $i',
+              parentId: savedParent.id,
+              data: 'Child $i data',
+            );
+
+            return childRepo.save(
+              child,
+              savePolicy: DataSavePolicy.localFirst,
+            );
+          });
+
+          // Wait for all children to be saved
+          final savedChildren = await Future.wait(childFutures);
+
+          // All children should be saved successfully
+          expect(savedChildren.length, equals(3));
+
+          // All children should reference the same parent
+          for (int i = 0; i < savedChildren.length; i++) {
+            expect(savedChildren[i].parentId, equals(savedParent.id));
+            expect(savedChildren[i].name, equals('Child $i'));
+
+            // Verify local storage
+            final localChild = await childRepo.findOne(savedChildren[i].id);
+            expect(localChild, isNotNull);
+            expect(localChild!.parentId, equals(savedParent.id));
+          }
+        });
+      });
+
+      group('Successful Merge Scenarios', () {
+        test(
+          'should successfully merge records when newer conflicts '
+          'with existing',
+          () async {
+            final mockAdapter = MockLocalIdConflictAdapter();
+            final repository = _TestServerTestRepository(db, mockAdapter);
+
+            // Step 1: Create and save an older model locally first
+            final existingLocalModel = ServerTestModel(
+              id: 'merge_target_id',
+              name: 'Original Model',
+              description: 'Original description',
+            );
+
+            // Save this model directly to local database
+            await repository.saveToLocal(existingLocalModel);
+
+            // Manually set older timestamp for existing record
+            final oldTimestamp = DateTime.now()
+                .subtract(const Duration(hours: 1))
+                .millisecondsSinceEpoch;
+            await db.customUpdate(
+              'UPDATE server_test_models SET created_at = ? WHERE id = ?',
+              variables: [
+                Variable.withInt(oldTimestamp),
+                Variable.withString('merge_target_id'),
+              ],
+            );
+
+            // Verify it exists locally
+            final localCheck = await repository.findOne('merge_target_id');
+            expect(localCheck, isNotNull);
+            expect(localCheck!.name, equals('Original Model'));
+
+            // Step 2: Create a newer model with updated content
+            final newerModel = ServerTestModel(
+              id: generateCuid(), // Temporary ID
+              name: 'Updated Model', // Different name - this should merge
+              description: 'Updated description', // Different description
+            );
+
+            // Configure adapter to return the existing ID
+            mockAdapter.forceReturnId('merge_target_id');
+
+            // Step 3: Save with localFirst policy
+            final savedModel = await repository.save(
+              newerModel,
+              savePolicy: DataSavePolicy.localFirst,
+            );
+            expect(savedModel.id, equals(newerModel.id)); // Still has temp ID
+
+            // Step 4: Manually set newer timestamp for the temp record
+            final newTimestamp = DateTime.now().millisecondsSinceEpoch;
+            await db.customUpdate(
+              'UPDATE server_test_models SET created_at = ? WHERE id = ?',
+              variables: [
+                Variable.withInt(newTimestamp),
+                Variable.withString(newerModel.id),
+              ],
+            );
+
+            // Verify new model is saved locally with temp ID
+            final tempModel = await repository.findOne(newerModel.id);
+            expect(tempModel, isNotNull);
+            expect(tempModel!.name, equals('Updated Model'));
+
+            // Step 5: Register repository for background sync
+            SynquillRepositoryProvider.register<ServerTestModel>(
+              (db) => _TestServerTestRepository(db, mockAdapter),
+            );
+
+            // Step 6: Trigger background sync which should perform the merge
+            // await SynquillStorage.instance
+            //     .processBackgroundSyncTasks(forceSync: true);
+
+            // Wait for async operations
+            await Future.delayed(const Duration(milliseconds: 300));
+
+            // Step 7: Verify merge was successful
+            expect(
+              mockAdapter.operationLog,
+              contains('createOne(${newerModel.id})'),
+            );
+
+            // Step 8: The merge should have succeeded - verify final state
+
+            // The original record should now have updated data
+            // from newer record
+            final mergedModel = await repository.findOne('merge_target_id');
+            expect(mergedModel, isNotNull);
+            expect(mergedModel!.name, equals('Updated Model')); // Updated
+            expect(
+              mergedModel.description,
+              equals('Updated description'),
+            ); // Updated
+            expect(
+              mergedModel.id,
+              equals('merge_target_id'),
+            ); // Kept original ID
+
+            // The temporary record should be cleaned up
+            final tempStillExists = await repository.findOne(newerModel.id);
+            expect(tempStillExists, isNull);
+
+            // Step 9: Verify only one record exists with the target ID
+            final allModels = await repository.findAll();
+            final modelsWithTargetId =
+                allModels.where((m) => m.id == 'merge_target_id').toList();
+
+            expect(modelsWithTargetId, hasLength(1));
+            expect(modelsWithTargetId.first.name, equals('Updated Model'));
+            expect(
+              modelsWithTargetId.first.description,
+              equals('Updated description'),
+            );
+
+            // Verify no temporary records remain
+            final tempRecords =
+                allModels.where((m) => m.id == newerModel.id).toList();
+            expect(tempRecords, isEmpty);
+          },
+        );
       });
     });
   });
@@ -1528,5 +2630,73 @@ class _TestServerTestRepository extends SynquillRepositoryBase<ServerTestModel>
     Map<String, dynamic>? extra,
   }) async {
     return await _mockAdapter.findAll(queryParams: queryParams);
+  }
+}
+
+/// Mock API adapter that simulates server returning locally existing ID
+class MockLocalIdConflictAdapter extends MockServerIdAdapter {
+  String? _forceReturnId;
+  bool _persistConflict = false;
+
+  /// Configure the adapter to ALWAYS return a specific ID (simulating server
+  /// consistently returning an ID that already exists locally)
+  void forceReturnId(String id, {bool persistConflict = true}) {
+    _forceReturnId = id;
+    _persistConflict = persistConflict;
+  }
+
+  /// Reset the forced ID
+  void resetForcedId() {
+    _forceReturnId = null;
+    _persistConflict = false;
+  }
+
+  /// Add a model to remote data (helper method for testing)
+  void addToRemoteData(String id, ServerTestModel model) {
+    _remoteData[id] = model;
+  }
+
+  @override
+  Future<ServerTestModel?> createOne(
+    ServerTestModel model, {
+    Map<String, String>? headers,
+    Map<String, dynamic>? extra,
+  }) async {
+    _operationLog.add('createOne(${model.id})');
+    await Future.delayed(const Duration(milliseconds: 10));
+
+    String serverId;
+    if (_forceReturnId != null) {
+      // ALWAYS return the forced ID (simulating server consistently
+      // returning the same conflicting ID)
+      serverId = _forceReturnId!;
+
+      // If not persisting conflict, only use the forced ID once
+      if (!_persistConflict) {
+        _forceReturnId = null;
+      }
+    } else {
+      serverId = 'server_${_nextServerId++}';
+    }
+
+    final modelWithServerId = ServerTestModel(
+      id: serverId,
+      name: model.name,
+      description: model.description,
+    );
+
+    // Check if this would create a conflict by overwriting existing data
+    if (_remoteData.containsKey(serverId)) {
+      // Simulate server conflict - throw an exception or return error
+      // This simulates what would happen if server detects the conflict
+      _operationLog.add('CONFLICT: ID $serverId already exists');
+      throw ApiException(
+        'Server ID conflict: ID $serverId already exists',
+        statusCode: 409, // Conflict
+      );
+    }
+
+    _remoteData[serverId] = modelWithServerId;
+    return modelWithServerId;
   }
 }

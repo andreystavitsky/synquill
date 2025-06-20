@@ -47,6 +47,7 @@ part 'core/synquill_repository.dart';
 part 'drift/sync_queue_dao.dart';
 part 'runtime/dependency_resolver.dart';
 part 'runtime/foreign_key_update_service.dart';
+part 'runtime/id_conflict_resolver.dart';
 part 'runtime/id_negotiation_service.dart';
 part 'runtime/model_extensions.dart';
 part 'runtime/network_task.dart';

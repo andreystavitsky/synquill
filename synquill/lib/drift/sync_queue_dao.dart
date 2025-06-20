@@ -177,6 +177,7 @@ class SyncQueueDao {
     String? status, // Added status
     String? headers, // JSON string of headers
     String? extra, // JSON string of extra parameters
+    String? idNegotiationStatus, // Added ID negotiation status
   }) async {
     final updates = <String>[];
     final variables = <Variable>[];
@@ -224,6 +225,10 @@ class SyncQueueDao {
     if (extra != null) {
       updates.add('extra = ?');
       variables.add(Variable.withString(extra));
+    }
+    if (idNegotiationStatus != null) {
+      updates.add('id_negotiation_status = ?');
+      variables.add(Variable.withString(idNegotiationStatus));
     }
 
     if (updates.isEmpty) {

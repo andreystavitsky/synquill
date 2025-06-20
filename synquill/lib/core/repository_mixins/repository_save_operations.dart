@@ -627,57 +627,564 @@ mixin RepositorySaveOperations<T extends SynquillDataModel<T>>
     Map<String, dynamic>? extra,
     int syncQueueId,
   ) async {
+    final syncQueueDao = SyncQueueDao(SynquillStorage.database);
+    final conflictResolver = IdConflictResolver(SynquillStorage.database);
+
     try {
       log.fine('Executing ID negotiation sync for ${item.id}');
 
-      final serverItem = await apiAdapter.createOne(
+      // 1. Check for concurrent operations on the same model
+      if (await _hasConcurrentIdNegotiation(item.id, syncQueueId)) {
+        log.warning(
+          'Concurrent ID negotiation detected for ${item.id}, aborting',
+        );
+        await syncQueueDao.updateItem(
+          id: syncQueueId,
+          idNegotiationStatus: 'failed',
+          lastError: 'Concurrent ID negotiation detected',
+        );
+        return;
+      }
+
+      // 2. Mark negotiation as in progress to prevent concurrent modifications
+      await syncQueueDao.updateItem(
+        id: syncQueueId,
+        idNegotiationStatus: 'in_progress',
+      );
+
+      // 3. Execute server create operation with timeout
+      final serverItem = await _executeCreateWithTimeout(
         item,
-        headers: headers,
-        extra: extra,
+        headers,
+        extra,
       );
 
       if (serverItem == null) {
         throw Exception('Server returned null for create operation');
       }
 
-      // If server assigned a different ID, replace it everywhere
+      // 4. If server assigned a different ID, handle ID replacement with
+      // conflict resolution
       if (serverItem.id != item.id) {
-        final syncQueueDao = SyncQueueDao(SynquillStorage.database);
-
-        // Replace ID in model table, sync queue, and relationships
-        await syncQueueDao.replaceIdEverywhere(
-          taskId: syncQueueId,
-          oldId: item.id,
-          newId: serverItem.id,
-          modelType: T.toString(),
+        log.info(
+          'Server assigned different ID: ${item.id} -> ${serverItem.id}',
         );
 
-        // Create updated model instance
-        final updatedItem = await _replaceIdEverywhere(item, serverItem.id);
+        // Check for potential ID collision before proceeding
+        if (await _wouldCauseConstraintViolation(serverItem.id)) {
+          log.warning(
+            'Server ID ${serverItem.id} would cause constraint violation',
+          );
 
-        // Emit ID change event
-        changeController.add(
-          RepositoryChange.idChanged(updatedItem, item.id, serverItem.id),
+          // Resolve conflict using conflict resolver
+          final resolvedId = await conflictResolver.resolveIdConflict(
+            temporaryId: item.id,
+            proposedServerId: serverItem.id,
+            modelType: T.toString(),
+          );
+
+          // Check if conflict was resolved through merge
+          if (resolvedId == serverItem.id) {
+            // This means the conflict was resolved through merge
+            // The temporary record was cleaned up by the resolver
+            // We just need to mark the sync as complete
+            log.info(
+              'ID conflict resolved through merge: ${item.id} -> $resolvedId',
+            );
+
+            // Check if temp record still exists (might have been cleaned up)
+            final tempStillExists = await _validateModelExists(item.id);
+            if (!tempStillExists) {
+              // Record was merged and cleaned up, just mark sync complete
+              await syncQueueDao.deleteTask(syncQueueId);
+              log.info('Sync marked complete after successful merge');
+              return;
+            }
+          }
+
+          // If we reach here, either:
+          // 1. Conflict was resolved but temp record still exists
+          // 2. Resolved ID is different (fallback scenario)
+          // Proceed with atomic replacement
+          final finalId = resolvedId;
+
+          // 5. Perform atomic ID replacement within transaction
+          await _performAtomicIdReplacement(
+            syncQueueId: syncQueueId,
+            oldId: item.id,
+            newId: finalId,
+            updatedItem: finalId == serverItem.id ? serverItem : item,
+          );
+
+          log.info('ID negotiation successful: ${item.id} -> $finalId');
+        } else {
+          // No conflict, proceed with direct replacement
+          await _performAtomicIdReplacement(
+            syncQueueId: syncQueueId,
+            oldId: item.id,
+            newId: serverItem.id,
+            updatedItem: serverItem,
+          );
+
+          log.info(
+            'ID negotiation successful: ${item.id} -> ${serverItem.id}',
+          );
+        }
+      } else {
+        // Server used the same ID, just mark as complete
+        log.fine('Server used same ID: ${item.id}');
+        await syncQueueDao.updateItem(
+          id: syncQueueId,
+          idNegotiationStatus: 'complete',
         );
-
-        log.info('ID negotiation successful: ${item.id} -> ${serverItem.id}');
       }
 
-      // Mark sync as successful by removing from queue
-      final syncQueueDao = SyncQueueDao(SynquillStorage.database);
+      // 6. Mark sync as successful by removing from queue
       await syncQueueDao.deleteTask(syncQueueId);
     } catch (e, stack) {
       log.severe('ID negotiation sync failed for ${item.id}', e, stack);
 
-      // Mark ID negotiation as failed
-      final syncQueueDao = SyncQueueDao(SynquillStorage.database);
-      await syncQueueDao.markIdNegotiationAsFailed(
-        taskId: syncQueueId,
-        error: e.toString(),
-      );
+      // Enhanced error handling with retry logic
+      await _handleIdNegotiationFailure(syncQueueId, item.id, e);
 
       rethrow;
     }
+  }
+
+  /// Checks if there are concurrent ID negotiations for the same model.
+  Future<bool> _hasConcurrentIdNegotiation(
+    String modelId,
+    int currentSyncQueueId,
+  ) async {
+    try {
+      final syncQueueDao = SyncQueueDao(SynquillStorage.database);
+      final pendingTasks = await syncQueueDao.getTasksForModelId(
+        T.toString(),
+        modelId,
+      );
+
+      // Check for other pending ID negotiation tasks for the same model
+      final concurrentTasks = pendingTasks
+          .where((task) =>
+              task['id'] != currentSyncQueueId &&
+              task['id_negotiation_status'] == 'pending' &&
+              task['status'] == 'pending')
+          .toList();
+
+      return concurrentTasks.isNotEmpty;
+    } catch (e) {
+      log.warning('Error checking concurrent ID negotiations: $e');
+      return false;
+    }
+  }
+
+  /// Executes the create operation with timeout protection.
+  Future<T?> _executeCreateWithTimeout(
+    T item,
+    Map<String, String>? headers,
+    Map<String, dynamic>? extra,
+  ) async {
+    const timeoutDuration = Duration(seconds: 30);
+
+    try {
+      return await apiAdapter
+          .createOne(
+        item,
+        headers: headers,
+        extra: extra,
+      )
+          .timeout(
+        timeoutDuration,
+        onTimeout: () {
+          throw TimeoutException(
+            'Create operation timed out after '
+            '${timeoutDuration.inSeconds} seconds',
+            timeoutDuration,
+          );
+        },
+      );
+    } catch (e) {
+      log.warning('Create operation failed or timed out: $e');
+      rethrow;
+    }
+  }
+
+  /// Performs atomic ID replacement within a database transaction.
+  Future<void> _performAtomicIdReplacement({
+    required int syncQueueId,
+    required String oldId,
+    required String newId,
+    required T updatedItem,
+  }) async {
+    final syncQueueDao = SyncQueueDao(SynquillStorage.database);
+
+    await SynquillStorage.database.transaction(() async {
+      try {
+        // 1. Validate that the old ID still exists before replacement
+        if (!await _validateModelExists(oldId)) {
+          throw StateError('Model with ID $oldId no longer exists');
+        }
+
+        // 2. Check for constraint violations before proceeding
+        if (await _wouldCauseConstraintViolation(newId)) {
+          throw StateError(
+            'ID replacement would cause constraint violation for ID $newId',
+          );
+        }
+
+        // 3. Validate foreign key integrity before replacement
+        await _validateForeignKeyIntegrityBeforeReplacement(
+          oldId,
+          newId,
+          T.toString(),
+        );
+
+        // 4. Replace ID in model table, sync queue, and relationships
+        await syncQueueDao.replaceIdEverywhere(
+          taskId: syncQueueId,
+          oldId: oldId,
+          newId: newId,
+          modelType: T.toString(),
+        );
+
+        // 5. Validate foreign key integrity after replacement
+        await _validateForeignKeyIntegrityAfterReplacement(
+          oldId,
+          newId,
+          T.toString(),
+        );
+
+        // 6. Create updated model instance and emit change event
+        final updatedModelWithNewId =
+            await _replaceIdEverywhere(updatedItem, newId);
+        changeController.add(
+          RepositoryChange.idChanged(updatedModelWithNewId, oldId, newId),
+        );
+
+        log.fine('Atomic ID replacement completed successfully');
+      } catch (e, stackTrace) {
+        log.severe(
+          'Atomic ID replacement failed, transaction will rollback',
+          e,
+          stackTrace,
+        );
+        rethrow;
+      }
+    });
+  }
+
+  /// Validates that a model with the given ID exists in the database.
+  Future<bool> _validateModelExists(String modelId) async {
+    try {
+      // Cast to query operations to access findOne
+      if (this is RepositoryQueryOperations<T>) {
+        final queryOps = this as RepositoryQueryOperations<T>;
+        final existingModel = await queryOps.findOne(modelId);
+        return existingModel != null;
+      }
+      return false;
+    } catch (e) {
+      log.warning('Error validating model existence for $modelId: $e');
+      return false;
+    }
+  }
+
+  /// Checks if using the new ID would cause a constraint violation.
+  Future<bool> _wouldCauseConstraintViolation(String newId) async {
+    try {
+      // Cast to query operations to access findOne
+      if (this is RepositoryQueryOperations<T>) {
+        final queryOps = this as RepositoryQueryOperations<T>;
+        final existingModel = await queryOps.findOne(newId);
+        return existingModel != null;
+      }
+      return false;
+    } catch (e) {
+      log.warning('Error checking constraint violation for $newId: $e');
+      return false;
+    }
+  }
+
+  /// Validates foreign key integrity before ID replacement.
+  Future<void> _validateForeignKeyIntegrityBeforeReplacement(
+    String oldId,
+    String newId,
+    String modelType,
+  ) async {
+    try {
+      // Get all foreign key relations that reference this model type
+      final foreignKeyRelations =
+          ModelInfoRegistryProvider.getForeignKeyRelations(modelType);
+
+      if (foreignKeyRelations.isEmpty) {
+        log.fine('No foreign key relations to validate for $modelType');
+        return;
+      }
+
+      log.fine(
+        'Validating foreign key integrity before ID replacement for '
+        '${foreignKeyRelations.length} relations',
+      );
+
+      // Check each relation for potential conflicts with the new ID
+      for (final relation in foreignKeyRelations) {
+        await _validateSingleForeignKeyBeforeReplacement(
+          relation,
+          oldId,
+          newId,
+        );
+      }
+
+      log.fine(
+        'Foreign key integrity validation before replacement completed',
+      );
+    } catch (e, stackTrace) {
+      log.severe(
+        'Foreign key integrity validation failed before replacement '
+        'for $oldId -> $newId',
+        e,
+        stackTrace,
+      );
+      rethrow;
+    }
+  }
+
+  /// Validates a single foreign key relation before ID replacement.
+  Future<void> _validateSingleForeignKeyBeforeReplacement(
+    ForeignKeyRelation relation,
+    String oldId,
+    String newId,
+  ) async {
+    final sourceTable = relation.sourceTable;
+    final foreignKeyField = relation.fieldName;
+
+    try {
+      final relationColumnName =
+          PluralizationUtils.toSnakeCase(foreignKeyField);
+
+      // Check if there are existing references to the new ID
+      final existingReferences = await SynquillStorage.database.customSelect(
+        '''
+        SELECT COUNT(*) as count FROM $sourceTable 
+        WHERE $relationColumnName = ?
+        ''',
+        variables: [Variable.withString(newId)],
+      ).getSingleOrNull();
+
+      final count = existingReferences?.data['count'] as int? ?? 0;
+      if (count > 0) {
+        log.warning(
+          'Existing foreign key references found for new ID $newId '
+          'in $sourceTable.$relationColumnName (count: $count)',
+        );
+
+        // This might be legitimate if the server ID already has references
+        // We'll log it but not fail the validation unless it causes issues
+      }
+
+      // Check if the old ID has references that need to be updated
+      final oldReferences = await SynquillStorage.database.customSelect(
+        '''
+        SELECT COUNT(*) as count FROM $sourceTable 
+        WHERE $relationColumnName = ?
+        ''',
+        variables: [Variable.withString(oldId)],
+      ).getSingleOrNull();
+
+      final oldCount = oldReferences?.data['count'] as int? ?? 0;
+      if (oldCount > 0) {
+        log.info(
+          'Found $oldCount foreign key references to update from $oldId '
+          'to $newId in $sourceTable.$relationColumnName',
+        );
+      }
+    } catch (e) {
+      log.warning(
+        'Failed to validate foreign key relation before replacement '
+        '$sourceTable.$foreignKeyField: $e',
+      );
+      // Continue with other relations even if one fails
+    }
+  }
+
+  /// Validates foreign key integrity after ID replacement.
+  Future<void> _validateForeignKeyIntegrityAfterReplacement(
+    String oldId,
+    String newId,
+    String modelType,
+  ) async {
+    try {
+      // Get all foreign key relations that reference this model type
+      final foreignKeyRelations =
+          ModelInfoRegistryProvider.getForeignKeyRelations(modelType);
+
+      if (foreignKeyRelations.isEmpty) {
+        return;
+      }
+
+      log.fine(
+        'Validating foreign key integrity after ID replacement for '
+        '${foreignKeyRelations.length} relations',
+      );
+
+      // Check each relation to ensure references were properly updated
+      for (final relation in foreignKeyRelations) {
+        await _validateSingleForeignKeyAfterReplacement(
+          relation,
+          oldId,
+          newId,
+        );
+      }
+
+      log.fine(
+        'Foreign key integrity validation after replacement completed',
+      );
+    } catch (e, stackTrace) {
+      log.severe(
+        'Foreign key integrity validation failed after replacement '
+        'for $oldId -> $newId',
+        e,
+        stackTrace,
+      );
+
+      // Don't rethrow here - the ID replacement already happened
+      // Log the issue for monitoring but don't roll back the transaction
+    }
+  }
+
+  /// Validates a single foreign key relation after ID replacement.
+  Future<void> _validateSingleForeignKeyAfterReplacement(
+    ForeignKeyRelation relation,
+    String oldId,
+    String newId,
+  ) async {
+    final sourceTable = relation.sourceTable;
+    final foreignKeyField = relation.fieldName;
+
+    try {
+      final relationColumnName =
+          PluralizationUtils.toSnakeCase(foreignKeyField);
+
+      // Check if any references to the old ID still exist
+      final remainingOldReferences =
+          await SynquillStorage.database.customSelect(
+        '''
+        SELECT COUNT(*) as count FROM $sourceTable 
+        WHERE $relationColumnName = ?
+        ''',
+        variables: [Variable.withString(oldId)],
+      ).getSingleOrNull();
+
+      final oldCount = remainingOldReferences?.data['count'] as int? ?? 0;
+      if (oldCount > 0) {
+        log.warning(
+          'Foreign key integrity issue: $oldCount references to old ID '
+          '$oldId still exist in $sourceTable.$relationColumnName '
+          'after replacement with $newId',
+        );
+      }
+
+      // Check if references to the new ID exist (should be > 0 if updated)
+      final newReferences = await SynquillStorage.database.customSelect(
+        '''
+        SELECT COUNT(*) as count FROM $sourceTable 
+        WHERE $relationColumnName = ?
+        ''',
+        variables: [Variable.withString(newId)],
+      ).getSingleOrNull();
+
+      final newCount = newReferences?.data['count'] as int? ?? 0;
+      log.fine(
+        'Foreign key validation: $newCount references to new ID $newId '
+        'found in $sourceTable.$relationColumnName',
+      );
+    } catch (e) {
+      log.warning(
+        'Failed to validate foreign key relation after replacement '
+        '$sourceTable.$foreignKeyField: $e',
+      );
+    }
+  }
+
+  /// Handles ID negotiation failures with enhanced error handling and
+  /// retry logic.
+  Future<void> _handleIdNegotiationFailure(
+    int syncQueueId,
+    String modelId,
+    Object error,
+  ) async {
+    final syncQueueDao = SyncQueueDao(SynquillStorage.database);
+
+    try {
+      // Get current sync queue item to check retry count
+      final queueItem = await syncQueueDao.getItemById(syncQueueId);
+      if (queueItem == null) {
+        log.warning(
+          'Sync queue item $syncQueueId not found during error handling',
+        );
+        return;
+      }
+
+      final currentAttemptCount = queueItem['attempt_count'] as int? ?? 0;
+      const maxRetryAttempts = 3;
+
+      if (currentAttemptCount < maxRetryAttempts && _isRetryableError(error)) {
+        // Schedule retry with exponential backoff
+        final nextRetryAt = DateTime.now().add(
+          Duration(seconds: math.pow(2, currentAttemptCount).toInt() * 60),
+        );
+
+        await syncQueueDao.updateTaskRetry(
+          syncQueueId,
+          nextRetryAt,
+          currentAttemptCount + 1,
+          error.toString(),
+        );
+
+        log.info(
+          'Scheduled retry for ID negotiation of $modelId '
+          '(attempt ${currentAttemptCount + 1}/$maxRetryAttempts) '
+          'at $nextRetryAt',
+        );
+      } else {
+        // Mark as permanently failed
+        await syncQueueDao.markIdNegotiationAsFailed(
+          taskId: syncQueueId,
+          error: 'Max retry attempts exceeded: ${error.toString()}',
+        );
+
+        log.severe(
+          'ID negotiation permanently failed for $modelId after '
+          '$maxRetryAttempts attempts',
+        );
+      }
+    } catch (e, stackTrace) {
+      log.severe(
+        'Error handling ID negotiation failure for $modelId',
+        e,
+        stackTrace,
+      );
+    }
+  }
+
+  /// Determines if an error is retryable.
+  bool _isRetryableError(Object error) {
+    if (error is TimeoutException) return true;
+    if (error is DioException) {
+      // Retry on network errors, server errors, but not client errors
+      final type = error.type;
+      return type == DioExceptionType.connectionTimeout ||
+          type == DioExceptionType.receiveTimeout ||
+          type == DioExceptionType.sendTimeout ||
+          type == DioExceptionType.connectionError ||
+          (error.response?.statusCode != null &&
+              error.response!.statusCode! >= 500);
+    }
+    // Don't retry conflict errors
+    if (error is IdConflictException) return false;
+
+    // Default to retryable for unknown errors
+    return true;
   }
 
   /// Replaces an item's ID everywhere it's referenced.
