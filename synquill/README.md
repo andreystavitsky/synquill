@@ -241,13 +241,13 @@ void main() async {
 
 ## 📚 Documentation
 
-For comprehensive documentation, guides, and advanced features, please visit the [documentation directory](./docs/).
+For comprehensive documentation, guides, and advanced features, please visit the [documentation directory](./doc/).
 
-- **[Getting Started Guide](./docs/guide.md)** - Core concepts, querying, operations, and relationships
-- **[API Adapters](./docs/api-adapters.md)** - Customizing HTTP methods, headers, and response parsing
-- **[Configuration](./docs/configuration.md)** - Storage configuration and background sync setup
-- **[Advanced Features](./docs/advanced-features.md)** - Queue management, dependency resolution, and more
-- **[API Reference](./docs/api-reference.md)** - Complete API documentation
+- **[Getting Started Guide](./doc/guide.md)** - Core concepts, querying, operations, and relationships
+- **[API Adapters](./doc/api-adapters.md)** - Customizing HTTP methods, headers, and response parsing
+- **[Configuration](./doc/configuration.md)** - Storage configuration and background sync setup
+- **[Advanced Features](./doc/advanced-features.md)** - Queue management, dependency resolution, and more
+- **[API Reference](./doc/api-reference.md)** - Complete API documentation
 
 - **[Advanced Topics]** - Deep dive into complex features
   - [Queue Management](queues.md) - Sync queue system and task processing

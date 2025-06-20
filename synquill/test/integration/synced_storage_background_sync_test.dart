@@ -4,7 +4,7 @@ import 'package:test/test.dart';
 import 'dart:isolate';
 import 'dart:io';
 import 'dart:async';
-import 'package:path/path.dart' as path;
+
 import 'package:synquill/synquill_core.dart';
 
 import 'package:synquill/synquill.generated.dart';
@@ -184,7 +184,7 @@ void main() {
 
     setUp(() async {
       tempDir = await Directory.systemTemp.createTemp('synquill_test');
-      tempDatabasePath = path.join(tempDir.path, 'test_db.sqlite');
+      tempDatabasePath = '${tempDir.path}/test_db.sqlite';
 
       // Create database for main isolate with cross-isolate sharing enabled
       mainDatabase = SynquillDatabase(

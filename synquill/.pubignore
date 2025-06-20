@@ -1,0 +1,6 @@
+build/
+lib/generated/
+*.g.dart
+*.mocks.dart
+*.freezed.dart
+*.generated.dart
