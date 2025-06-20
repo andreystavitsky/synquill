@@ -22,16 +22,12 @@ enum IdGenerationStrategy {
 /// The build system will throw an error if these requirements are not met.
 class SynquillRepository {
   /// Strategy for ID generation.
-  /// Defaults to [IdGenerationStrategy.client] for backward compatibility.
+  /// Defaults to [IdGenerationStrategy.client]
   final IdGenerationStrategy idGeneration;
 
   /// A list of API adapter types to be used with this repository.
   /// For Stage 1, this might be a placeholder or a single adapter type.
   final List<Type>? adapters; // Example: [JsonApiAdapter]
-
-  /// Optional path for the generated Drift table file.
-  /// If not provided, defaults to `model_name.drift.dart`.
-  final String? tableFile;
 
   /// Relations defined at class level (OneToMany and ManyToOne).
   /// This is a cleaner alternative to field-level annotations.
@@ -48,14 +44,13 @@ class SynquillRepository {
   const SynquillRepository({
     this.idGeneration = IdGenerationStrategy.client,
     this.adapters,
-    this.tableFile,
     this.relations,
     this.localOnly = false,
   });
 }
 
 /// Annotation to mark a field as a one-to-many relation.
-/// This field should be of type List\<T\> where T is the related model.
+/// This field should be of type List<T> where T is the related model.
 class OneToMany {
   /// The target model class for this relation.
   /// Can be a Type or a String to avoid circular imports.
@@ -83,10 +78,6 @@ class ManyToOne {
   /// Can be a Type or a String to avoid circular imports.
   final dynamic target;
 
-  /// Whether to cascade delete when the parent is deleted.
-  /// Default is false for safety.
-  final bool cascadeDelete;
-
   /// The name of the foreign key column in the database.
   /// If not specified, defaults to '${fieldName}_id'.
   final String? foreignKeyColumn;
@@ -94,7 +85,6 @@ class ManyToOne {
   /// Creates a new [ManyToOne] annotation.
   const ManyToOne({
     required this.target,
-    this.cascadeDelete = false,
     this.foreignKeyColumn,
   });
 }

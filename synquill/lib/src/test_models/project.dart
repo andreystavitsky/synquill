@@ -6,11 +6,10 @@ part 'project.g.dart';
 @JsonSerializable()
 @SynquillRepository(
   relations: [
-    ManyToOne(target: User, foreignKeyColumn: 'ownerId', cascadeDelete: true),
+    ManyToOne(target: User, foreignKeyColumn: 'ownerId'),
     ManyToOne(
       target: Category,
       foreignKeyColumn: 'categoryId',
-      cascadeDelete: true,
     ),
   ],
 )
