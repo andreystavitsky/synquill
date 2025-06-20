@@ -35,6 +35,7 @@ await user.save(savePolicy: DataSavePolicy.localFirst);
 
 // Save to remote first, then update local on success
 await user.save(savePolicy: DataSavePolicy.remoteFirst);
+> **Note:** When using the `remoteFirst` save policy, if the remote operation fails (e.g., due to offline status or a server error), a `SynquillStorageException` or `OfflineException` will be thrown and the local model will **not** be saved.
 ```
 
 ### Data Load Policies
@@ -125,7 +126,7 @@ To use server-generated IDs, add the `idGeneration` parameter to your model anno
 
 ```dart
 @SynquillRepository(
-  idGeneration: IdGenerationStrategy.server,
+  idGeneration: IdGenerationStrategy.server, // default: IdGenerationStrategy.client
   adapters: [MyApiAdapter],
 )
 class ServerManagedPost extends SynquillDataModel<ServerManagedPost> {
