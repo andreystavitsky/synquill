@@ -17,10 +17,8 @@ dependencies:
   logging: ^1.3.0
   meta: ^1.16.0
   source_gen: ^2.0.0
-  synquill_utils:
-    path: ../synquill_utils
+  synquill_utils: ^0.5.0
 
-  
 dependency_overrides:
   analyzer: '>=7.3.0 <7.4.0'
 
