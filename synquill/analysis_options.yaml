@@ -17,6 +17,7 @@ linter:
     unnecessary_new: true
     unnecessary_const: true
     unnecessary_this: true
+    unawaited_futures: true
     # Documentation
     public_member_api_docs: true # Enforce for public APIs as per spec
     # Pub
@@ -38,6 +39,7 @@ analyzer:
     use_string_in_part_of_directives: ignore
     unnecessary_library_name: ignore
     lines_longer_than_80_chars: warning 
+    unawaited_futures: error
 
 # Additional information about this file can be found at
 # https://dart.dev/guides/language/analysis-options

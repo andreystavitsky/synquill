@@ -60,20 +60,18 @@ class BackgroundSyncManager {
       final retryExecutor = SynquillStorage.retryExecutor;
 
       // Process all due tasks with a 20-second timeout
-      await retryExecutor
-          .processDueTasksNow(forceSync: forceSync)
-          .timeout(
-            const Duration(seconds: 20),
-            onTimeout: () {
-              logger.warning(
-                'Background sync processing timed out after 20 seconds',
-              );
-              throw TimeoutException(
-                'Background sync processing exceeded 20 seconds timeout',
-                const Duration(seconds: 20),
-              );
-            },
+      await retryExecutor.processDueTasksNow(forceSync: forceSync).timeout(
+        const Duration(seconds: 20),
+        onTimeout: () {
+          logger.warning(
+            'Background sync processing timed out after 20 seconds',
           );
+          throw TimeoutException(
+            'Background sync processing exceeded 20 seconds timeout',
+            const Duration(seconds: 20),
+          );
+        },
+      );
 
       logger.info('Background sync processing completed successfully');
     } on TimeoutException catch (e, stackTrace) {
@@ -95,7 +93,7 @@ class BackgroundSyncManager {
 
     try {
       // Stop the retry executor to prevent further background work
-      SynquillStorage.retryExecutor.stop();
+      await SynquillStorage.retryExecutor.stop();
       // Platform specific cancellation would go here
       _logger!.info('Background sync cancelled successfully');
     } catch (e, stackTrace) {
@@ -135,15 +133,13 @@ class BackgroundSyncManager {
     try {
       final retryExecutor = SynquillStorage.retryExecutor;
       if (forceSync) {
-        processBackgroundSyncTasks(forceSync: true)
-            .then((_) {
-              _logger?.info('Forced sync completed successfully');
-              retryExecutor.setBackgroundMode(false);
-            })
-            .catchError((error) {
-              _logger?.warning('Error during forced sync: $error');
-              retryExecutor.setBackgroundMode(false);
-            });
+        processBackgroundSyncTasks(forceSync: true).then((_) {
+          _logger?.info('Forced sync completed successfully');
+          retryExecutor.setBackgroundMode(false);
+        }).catchError((error) {
+          _logger?.warning('Error during forced sync: $error');
+          retryExecutor.setBackgroundMode(false);
+        });
       } else {
         retryExecutor.setBackgroundMode(false);
       }

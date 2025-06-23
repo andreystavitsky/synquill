@@ -266,7 +266,7 @@ void main() {
       retryExecutor.setBackgroundMode(false);
       await Future.delayed(const Duration(milliseconds: 100));
 
-      retryExecutor.stop();
+      await retryExecutor.stop();
     });
 
     test('Dead Queue Item Handling', () async {
@@ -965,14 +965,14 @@ void main() {
         await Future.delayed(const Duration(milliseconds: 10));
 
         // Stop
-        retryExecutor.stop();
+        await retryExecutor.stop();
         await Future.delayed(const Duration(milliseconds: 10));
       }
 
       // After all cycles, executor should be in a clean state
       retryExecutor.start(backgroundMode: false);
       await Future.delayed(const Duration(milliseconds: 100));
-      retryExecutor.stop();
+      await retryExecutor.stop();
     });
 
     test('HIGH: Database Concurrent Task Status Updates', () async {
@@ -1188,7 +1188,7 @@ void main() {
 
         // Simulate connectivity changes during execution
         await Future.delayed(const Duration(milliseconds: 25));
-        queueManager.clearQueuesOnDisconnect();
+        await queueManager.clearQueuesOnDisconnect();
 
         await Future.wait(futures);
 
