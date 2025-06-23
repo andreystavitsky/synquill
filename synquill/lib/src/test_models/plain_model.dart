@@ -1,4 +1,6 @@
-import "index.dart";
+// ignore_for_file: public_member_api_docs
+
+import 'package:synquill/src/test_models/index.dart';
 
 @SynquillRepository()
 class PlainModel extends SynquillDataModel<PlainModel> {

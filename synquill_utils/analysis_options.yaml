@@ -1,3 +1,5 @@
+include: package:lints/recommended.yaml
+
 linter:
   rules:
     # ERROR RULES
@@ -23,47 +25,12 @@ linter:
     # WARNING RULES
     # Style
     lines_longer_than_80_chars: true # Good for readability
-    
-    # Other
-    # avoid_empty_else: true # Already in flutter_lints
-    # prefer_collection_literals: true # Already in flutter_lints
-    # prefer_conditional_assignment: true # Already in flutter_lints
-    # prefer_for_elements_to_map_fromIterable: true # Already in flutter_lints
-    # prefer_if_null_operators: true # Already in flutter_lints
-    # prefer_is_empty: true # Already in flutter_lints
-    # prefer_is_not_empty: true # Already in flutter_lints
-    # prefer_iterable_whereType: true # Already in flutter_lints
-    # prefer_spread_collections: true # Already in flutter_lints
-    # unnecessary_brace_in_string_interps: true # Already in flutter_lints
-    # unnecessary_string_escapes: true # Already in flutter_lints
-    # unnecessary_string_interpolations: true # Already in flutter_lints
-    # use_rethrow_when_possible: true # Already in flutter_lints
 
 analyzer:
-  exclude:
-    #- '**/*.g.dart' # Exclude generated files
-    #- '**/*.freezed.dart' # Exclude generated files
-    - '**/*.mocks.dart' # Exclude generated files
   errors:
     # treat missing required parameters as an error
     missing_required_param: error
-    # treat most lints as warnings, some as errors
-    # (see rules above for error-level lints)
-    # avoid_print: error # Set above
-    # public_member_api_docs: error # Set above
-    # prefer_single_quotes: error # Set above
-    # prefer_double_quotes: error # Set above
-    # always_use_package_imports: error # Set above
-    # avoid_relative_lib_imports: error # Set above
-    # prefer_const_constructors: error # Set above
-    # prefer_const_declarations: error # Set above
-    # prefer_final_fields: error # Set above
-    # prefer_final_locals: error # Set above
-    # unnecessary_new: error # Set above
-    # unnecessary_const: error # Set above
-    # unnecessary_this: error # Set above
-    # sort_pub_dependencies: error # Set above
-    lines_longer_than_80_chars: warning # Set above
+    lines_longer_than_80_chars: warning
 
 # Additional information about this file can be found at
 # https://dart.dev/guides/language/analysis-options

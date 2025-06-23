@@ -16,6 +16,7 @@ abstract class SynquillRepositoryBase<T extends SynquillDataModel<T>>
   final GeneratedDatabase db;
 
   /// The logger for this repository.
+  @override
   late final Logger log;
 
   /// The queue manager for handling API operations.
@@ -73,16 +74,19 @@ abstract class SynquillRepositoryBase<T extends SynquillDataModel<T>>
 
   /// Gets the stream controller for emitting change events.
   /// This is used by the mixins to emit change events.
+  @override
   @protected
   StreamController<RepositoryChange<T>> get changeController =>
       _changeController;
 
   /// Gets the queue manager for this repository.
   /// This is used by the mixins for sync operations.
+  @override
   @protected
   RequestQueueManager get queueManager => _queueManager;
 
   /// Gets the default save policy from global configuration.
+  @override
   @protected
   DataSavePolicy get defaultSavePolicy {
     return SynquillStorage.config?.defaultSavePolicy ??
@@ -90,6 +94,7 @@ abstract class SynquillRepositoryBase<T extends SynquillDataModel<T>>
   }
 
   /// Gets the default load policy from global configuration.
+  @override
   @protected
   DataLoadPolicy get defaultLoadPolicy {
     return SynquillStorage.config?.defaultLoadPolicy ??
@@ -98,6 +103,7 @@ abstract class SynquillRepositoryBase<T extends SynquillDataModel<T>>
 
   /// Gets the API adapter for this repository.
   /// This needs to be implemented by the concrete generated repository.
+  @override
   @protected
   ApiAdapterBase<T> get apiAdapter =>
       throw UnimplementedError(
@@ -113,6 +119,7 @@ abstract class SynquillRepositoryBase<T extends SynquillDataModel<T>>
   /// or both.
   /// [QueryParams] Additional query parameters for filtering, sorting,
   /// and pagination (applied to local queries).
+  @override
   Future<T> findOneOrFail(
     String id, {
     DataLoadPolicy? loadPolicy,

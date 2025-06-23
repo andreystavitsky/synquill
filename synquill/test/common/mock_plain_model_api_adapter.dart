@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'package:dio/dio.dart';
 import 'package:synquill/src/test_models/index.dart';
 
 /// Mock API adapter for PlainModel testing

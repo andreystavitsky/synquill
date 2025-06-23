@@ -1,4 +1,6 @@
-import 'index.dart';
+// ignore_for_file: public_member_api_docs
+
+import 'package:synquill/src/test_models/index.dart';
 
 /// A simple local-only note model for testing localOnly functionality
 @SynquillRepository(

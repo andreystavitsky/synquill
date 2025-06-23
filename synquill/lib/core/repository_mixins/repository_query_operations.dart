@@ -11,9 +11,11 @@ mixin RepositoryQueryOperations<T extends SynquillDataModel<T>>
   DataLoadPolicy get defaultLoadPolicy;
 
   /// The stream controller for repository change events.
+  @override
   StreamController<RepositoryChange<T>> get changeController;
 
   /// The request queue manager for handling queued operations.
+  @override
   RequestQueueManager get queueManager;
 
   /// Finds an item by ID.

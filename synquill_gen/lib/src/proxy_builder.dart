@@ -1,3 +1,5 @@
+// ignore_for_file: strict_top_level_inference
+
 part of synquill_gen;
 
 /// Creates a no-op builder that does nothing during the build process.

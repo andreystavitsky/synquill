@@ -1,5 +1,4 @@
 import 'package:test/test.dart';
-import 'package:dio/dio.dart';
 import 'package:mockito/mockito.dart';
 import 'package:synquill/synquill.dart';
 

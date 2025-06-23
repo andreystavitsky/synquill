@@ -1,9 +1,7 @@
 // ignore_for_file: avoid_relative_lib_imports
 import 'package:synquill/src/test_models/index.dart';
-import 'package:synquill/synquill.dart';
 
 import 'dart:async';
-import 'package:dio/dio.dart';
 
 /// Mock API adapter for Category testing
 class MockCategoryApiAdapter extends ApiAdapterBase<Category> {

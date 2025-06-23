@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'package:dio/dio.dart';
 import 'package:synquill/synquill.dart';
 import 'test_models.dart';
 

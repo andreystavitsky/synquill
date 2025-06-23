@@ -128,7 +128,7 @@ class RequestQueueManager {
         throw SynquillStorageException(message);
       }
 
-      _log.fine('Enqueueing ${task} to ${queueType.name} queue');
+      _log.fine('Enqueueing $task to ${queueType.name} queue');
 
       // Track the task for cancellation purposes
       queue._pendingTasks.add(task);

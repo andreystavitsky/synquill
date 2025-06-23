@@ -1,5 +1,4 @@
 import 'package:test/test.dart' hide isNull, isNotNull;
-import 'package:dio/dio.dart';
 import 'package:mockito/mockito.dart';
 import 'package:mockito/annotations.dart';
 import 'package:synquill/synquill.dart';
@@ -822,8 +821,7 @@ class TestBasicApiAdapter extends BasicApiAdapter<TestModel> {
 class CustomExecuteRequestAdapter extends TestBasicApiAdapter {
   final String customAuthToken;
 
-  CustomExecuteRequestAdapter({required this.customAuthToken, MockDio? mockDio})
-    : super(mockDio: mockDio);
+  CustomExecuteRequestAdapter({required this.customAuthToken, super.mockDio});
 
   @override
   Future<Response<T>> executeRequest<T>({
@@ -865,7 +863,7 @@ class CustomExecuteRequestAdapter extends TestBasicApiAdapter {
 class CustomFindOneAdapter extends TestBasicApiAdapter {
   final Map<String, TestModel> cache = {};
 
-  CustomFindOneAdapter({MockDio? mockDio}) : super(mockDio: mockDio);
+  CustomFindOneAdapter({super.mockDio});
 
   @override
   Future<TestModel?> executeFindOneRequest({
@@ -904,8 +902,7 @@ class CustomFindOneAdapter extends TestBasicApiAdapter {
 class CustomFindAllAdapter extends TestBasicApiAdapter {
   final int maxPageSize;
 
-  CustomFindAllAdapter({required this.maxPageSize, MockDio? mockDio})
-    : super(mockDio: mockDio);
+  CustomFindAllAdapter({required this.maxPageSize, super.mockDio});
 
   @override
   Future<List<TestModel>> executeFindAllRequest({
@@ -955,8 +952,7 @@ class CustomFindAllAdapter extends TestBasicApiAdapter {
 class CustomCreateAdapter extends TestBasicApiAdapter {
   final List<String> requiredFields;
 
-  CustomCreateAdapter({required this.requiredFields, MockDio? mockDio})
-    : super(mockDio: mockDio);
+  CustomCreateAdapter({required this.requiredFields, super.mockDio});
 
   @override
   Future<TestModel?> executeCreateRequest({
@@ -997,7 +993,7 @@ class CustomCreateAdapter extends TestBasicApiAdapter {
 class CustomUpdateAdapter extends TestBasicApiAdapter {
   final Map<String, TestModel> optimisticCache = {};
 
-  CustomUpdateAdapter({MockDio? mockDio}) : super(mockDio: mockDio);
+  CustomUpdateAdapter({super.mockDio});
 
   @override
   Future<TestModel?> executeUpdateRequest({
@@ -1040,7 +1036,7 @@ class CustomUpdateAdapter extends TestBasicApiAdapter {
 class CustomDeleteAdapter extends TestBasicApiAdapter {
   final Set<String> softDeletedIds = {};
 
-  CustomDeleteAdapter({MockDio? mockDio}) : super(mockDio: mockDio);
+  CustomDeleteAdapter({super.mockDio});
 
   @override
   Future<void> executeDeleteRequest({
@@ -1064,7 +1060,7 @@ class CustomDeleteAdapter extends TestBasicApiAdapter {
 class CustomParsingAdapter extends TestBasicApiAdapter {
   final Map<String, dynamic> extractedMetadata = {};
 
-  CustomParsingAdapter({MockDio? mockDio}) : super(mockDio: mockDio);
+  CustomParsingAdapter({super.mockDio});
 
   @override
   TestModel? parseFindOneResponse(dynamic responseData, Response response) {
@@ -1156,7 +1152,7 @@ class _CombinedOverrideAdapter extends TestBasicApiAdapter {
   final Map<String, String> requestHeaders = {};
   final Map<String, dynamic> extractedMetadata = {};
 
-  _CombinedOverrideAdapter({MockDio? mockDio}) : super(mockDio: mockDio);
+  _CombinedOverrideAdapter({super.mockDio});
 
   @override
   Future<Response<T>> executeRequest<T>({

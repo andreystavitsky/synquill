@@ -1,8 +1,6 @@
 // ignore_for_file: avoid_relative_lib_imports
-import 'package:synquill/synquill.dart';
 
 import 'dart:async';
-import 'package:dio/dio.dart';
 import 'package:synquill/src/test_models/index.dart';
 
 /// Mock API adapter for Project testing

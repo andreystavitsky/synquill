@@ -1,3 +1,5 @@
+//ignore_for_file: avoid_print
+
 import 'dart:async';
 import 'dart:convert';
 
@@ -1584,7 +1586,9 @@ void main() {
           savePolicy: DataSavePolicy.remoteFirst,
         );
         fail('Expected save to fail');
-      } catch (e) {}
+      } catch (e) {
+        // Expected error for test; ignore.
+      }
 
       // Wait for error event to propagate
       await Future.delayed(const Duration(milliseconds: 100));
@@ -1822,7 +1826,9 @@ void main() {
           user.copyWith(id: 'new-user', name: 'New User'),
           savePolicy: DataSavePolicy.remoteFirst,
         );
-      } catch (e) {}
+      } catch (e) {
+        // Expected error for test; ignore.
+      }
 
       mockAdapter.shouldFailOnCreate = false;
       mockAdapter.shouldFailOnUpdate = true;
@@ -1833,7 +1839,9 @@ void main() {
           user.copyWith(name: 'Updated Name'),
           savePolicy: DataSavePolicy.remoteFirst,
         );
-      } catch (e) {}
+      } catch (e) {
+        // Expected error for test; ignore.
+      }
 
       mockAdapter.shouldFailOnUpdate = false;
       mockAdapter.shouldFailOnDelete = true;
@@ -1844,7 +1852,9 @@ void main() {
           user.id,
           savePolicy: DataSavePolicy.remoteFirst,
         );
-      } catch (e) {}
+      } catch (e) {
+        // Expected error for test; ignore.
+      }
 
       // Reset adapter and verify stream is still functional
       mockAdapter.shouldFailOnDelete = false;

@@ -34,8 +34,6 @@ void main() {
           SynquillStorage.instance.getRepository<User>() as UserRepository;
       todoRepository =
           SynquillStorage.instance.getRepository<Todo>() as TodoRepository;
-      ;
-      ;
       // Call the original _insertTestData as the group for multiple relations
       // has its own specific setup.
       await _insertTestData(userRepository, todoRepository);
@@ -1653,8 +1651,6 @@ void main() {
           SynquillStorage.instance.getRepository<User>() as UserRepository;
       todoRepository =
           SynquillStorage.instance.getRepository<Todo>() as TodoRepository;
-      ;
-      ;
 
       // Create minimal test data
       final user = User(id: 'user1', name: 'Test User');
