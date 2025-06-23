@@ -1,12 +1,10 @@
-part of synquill;
-
 /// Utility class for English pluralization rules
 class PluralizationUtils {
-  /// Returns the plural form of [className] in capitalized camelCase.
+  /// Returns the plural form of [className] in PascalCase.
   ///
   /// For example, "Category" becomes "Categories", "PlainModelJson"
   /// becomes "PlainModelJsons".
-  static String capitalizedCamelCasePlural(String className) {
+  static String PascalCasePlural(String className) {
     if (className.isEmpty) return className;
 
     // Apply proper pluralization rules

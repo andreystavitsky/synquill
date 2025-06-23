@@ -1,5 +1,3 @@
-part of synquill;
-
 /// Strategy for ID generation in models.
 enum IdGenerationStrategy {
   /// Client-generated IDs (default, backward compatible).
@@ -83,10 +81,7 @@ class ManyToOne {
   final String? foreignKeyColumn;
 
   /// Creates a new [ManyToOne] annotation.
-  const ManyToOne({
-    required this.target,
-    this.foreignKeyColumn,
-  });
+  const ManyToOne({required this.target, this.foreignKeyColumn});
 }
 
 /// Annotation to mark a field for database indexing.

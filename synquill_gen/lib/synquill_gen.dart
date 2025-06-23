@@ -11,7 +11,7 @@ import 'package:build/build.dart';
 import 'package:analyzer/dart/element/type.dart';
 import 'package:glob/glob.dart';
 import 'package:source_gen/source_gen.dart';
-import 'package:synquill/synquill.dart';
+import 'package:synquill_utils/synquill_utils.dart';
 
 // Export all builder components
 part 'src/adapter_info.dart';

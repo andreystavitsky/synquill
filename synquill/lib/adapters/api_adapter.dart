@@ -21,8 +21,8 @@ abstract class ApiAdapterBase<TModel extends SynquillDataModel<TModel>> {
   /// Content-Type is added dynamically for operations that send data.
   /// Can be async to allow for dynamic header generation (e.g., auth tokens).
   FutureOr<Map<String, String>> get baseHeaders => const {
-    'Accept': 'application/json',
-  };
+        'Accept': 'application/json',
+      };
 
   /// HTTP headers for operations that send data (POST, PUT, PATCH).
   /// Includes Content-Type header for JSON data.
@@ -46,9 +46,9 @@ abstract class ApiAdapterBase<TModel extends SynquillDataModel<TModel>> {
   /// Uses proper English pluralization rules.
   /// Override in subclasses for custom entity names.
   ///
-  /// Example: `categories`, `todos`, `users`, `plainModelJsons`
+  /// Example: `categories`, `todos`, `users`, `plain_model_jsons`
   String get pluralType =>
-      PluralizationUtils.pluralize(TModel.toString().toLowerCase());
+      PluralizationUtils.toSnakeCasePlural(TModel.toString());
 
   // HTTP Method Configuration
   // These provide defaults but can be overridden per model
@@ -255,12 +255,12 @@ abstract class ApiAdapterBase<TModel extends SynquillDataModel<TModel>> {
       // even with empty values, as they may be meaningful for API queries
       final shouldIncludeEmptyValue =
           filter.operator == FilterOperator.isNull ||
-          filter.operator == FilterOperator.isNotNull ||
-          filter.operator == FilterOperator.equals ||
-          filter.operator == FilterOperator.notEquals ||
-          filter.operator == FilterOperator.contains ||
-          filter.operator == FilterOperator.startsWith ||
-          filter.operator == FilterOperator.endsWith;
+              filter.operator == FilterOperator.isNotNull ||
+              filter.operator == FilterOperator.equals ||
+              filter.operator == FilterOperator.notEquals ||
+              filter.operator == FilterOperator.contains ||
+              filter.operator == FilterOperator.startsWith ||
+              filter.operator == FilterOperator.endsWith;
 
       if (value.isNotEmpty || shouldIncludeEmptyValue) {
         httpParams['filter[$fieldName][$operator]'] = value;
@@ -269,14 +269,12 @@ abstract class ApiAdapterBase<TModel extends SynquillDataModel<TModel>> {
 
     // Handle sorting
     if (queryParams.sorts.isNotEmpty) {
-      final sortValues = queryParams.sorts
-          .map((sort) {
-            final fieldName = sort.field.fieldName;
-            final direction =
-                sort.direction == SortDirection.ascending ? 'asc' : 'desc';
-            return '$fieldName:$direction';
-          })
-          .join(',');
+      final sortValues = queryParams.sorts.map((sort) {
+        final fieldName = sort.field.fieldName;
+        final direction =
+            sort.direction == SortDirection.ascending ? 'asc' : 'desc';
+        return '$fieldName:$direction';
+      }).join(',');
       httpParams['sort'] = sortValues;
     }
 

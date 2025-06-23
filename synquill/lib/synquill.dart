@@ -10,8 +10,10 @@ import 'package:logging/logging.dart';
 import 'package:meta/meta.dart';
 import 'package:queue/queue.dart';
 import 'package:dio/dio.dart';
+import 'package:synquill_utils/synquill_utils.dart';
 
 export 'package:drift/native.dart';
+export 'package:synquill_utils/synquill_utils.dart';
 
 export 'package:stream_transform/stream_transform.dart' show Switch;
 export 'package:logging/logging.dart';
@@ -23,12 +25,10 @@ part 'adapters/mixins/dio_client_mixin.dart';
 part 'adapters/mixins/error_handling_mixin.dart';
 part 'adapters/mixins/http_execution_mixin.dart';
 part 'adapters/mixins/response_parsing_mixin.dart';
-part 'core/annotations.dart';
 part 'core/database_provider.dart';
 part 'core/exceptions.dart';
 part 'core/mixins.dart';
 part 'core/model_info_registry_provider.dart';
-part 'core/pluralization_utils.dart';
 part 'core/query_parameters.dart';
 part 'core/repository_mixins/repository_types.dart';
 part 'core/repository_mixins/repository_local_operations.dart';

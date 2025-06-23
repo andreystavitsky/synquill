@@ -787,6 +787,13 @@ packages:
       relative: true
     source: path
     version: "0.5.0"
+  synquill_utils:
+    dependency: transitive
+    description:
+      path: "../../synquill_utils"
+      relative: true
+    source: path
+    version: "0.5.0"
   term_glyph:
     dependency: transitive
     description:

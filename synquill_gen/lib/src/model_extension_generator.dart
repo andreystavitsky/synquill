@@ -77,7 +77,7 @@ class ModelExtensionGenerator {
   ) {
     final targetClassName = relation.targetType;
     final methodName =
-        'load${PluralizationUtils.capitalizedCamelCasePlural(targetClassName)}';
+        'load${PluralizationUtils.PascalCasePlural(targetClassName)}';
     final mappedBy = relation.mappedBy;
 
     if (mappedBy == null) {
@@ -86,7 +86,7 @@ class ModelExtensionGenerator {
     }
 
     buffer.writeln(
-      '  /// Load related ${PluralizationUtils.capitalizedCamelCasePlural(targetClassName)} objects',
+      '  /// Load related ${PluralizationUtils.PascalCasePlural(targetClassName)} objects',
     );
     buffer.writeln(
       '  /// Uses mappedBy field \'$mappedBy\' in $targetClassName',
@@ -128,7 +128,7 @@ class ModelExtensionGenerator {
     buffer.writeln('      _log.severe(');
     buffer.writeln(
       '        \'Failed to load '
-      '${PluralizationUtils.capitalizedCamelCasePlural(targetClassName)} '
+      '${PluralizationUtils.PascalCasePlural(targetClassName)} '
       'for \$runtimeType[\$id]\', e, stackTrace);',
     );
     buffer.writeln('      rethrow;');
@@ -145,7 +145,7 @@ class ModelExtensionGenerator {
   ) {
     final targetClassName = relation.targetType;
     final methodName = 'watch'
-        '${PluralizationUtils.capitalizedCamelCasePlural(targetClassName)}';
+        '${PluralizationUtils.PascalCasePlural(targetClassName)}';
     final mappedBy = relation.mappedBy;
 
     if (mappedBy == null) {
@@ -155,7 +155,7 @@ class ModelExtensionGenerator {
 
     buffer.writeln(
       '  /// Watch related '
-      '${PluralizationUtils.capitalizedCamelCasePlural(targetClassName)} '
+      '${PluralizationUtils.PascalCasePlural(targetClassName)} '
       'objects as a stream',
     );
     buffer.writeln(
@@ -190,7 +190,7 @@ class ModelExtensionGenerator {
     buffer.writeln('      _log.severe(');
     buffer.writeln(
       '        \'Failed to watch'
-      '${PluralizationUtils.capitalizedCamelCasePlural(targetClassName)} '
+      '${PluralizationUtils.PascalCasePlural(targetClassName)} '
       'for \$runtimeType[\$id]\', e, stackTrace);',
     );
     buffer.writeln('      rethrow;');
