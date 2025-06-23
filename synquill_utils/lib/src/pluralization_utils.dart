@@ -4,7 +4,7 @@ class PluralizationUtils {
   ///
   /// For example, "Category" becomes "Categories", "PlainModelJson"
   /// becomes "PlainModelJsons".
-  static String PascalCasePlural(String className) {
+  static String toPascalCasePlural(String className) {
     if (className.isEmpty) return className;
 
     // Apply proper pluralization rules

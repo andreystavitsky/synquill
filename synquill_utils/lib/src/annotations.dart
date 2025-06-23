@@ -48,7 +48,7 @@ class SynquillRepository {
 }
 
 /// Annotation to mark a field as a one-to-many relation.
-/// This field should be of type List<T> where T is the related model.
+/// This field should be of type List\<T\> where T is the related model.
 class OneToMany {
   /// The target model class for this relation.
   /// Can be a Type or a String to avoid circular imports.

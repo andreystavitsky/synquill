@@ -5,23 +5,23 @@ void main() {
   group('PluralizationUtils', () {
     group('capitalizedCamelCasePlural', () {
       test('returns empty string for empty input', () {
-        expect(PluralizationUtils.PascalCasePlural(''), '');
+        expect(PluralizationUtils.toPascalCasePlural(''), '');
       });
       test('capitalizes and pluralizes simple class', () {
-        expect(PluralizationUtils.PascalCasePlural('Category'), 'Categories');
-        expect(PluralizationUtils.PascalCasePlural('Todo'), 'Todos');
+        expect(PluralizationUtils.toPascalCasePlural('Category'), 'Categories');
+        expect(PluralizationUtils.toPascalCasePlural('Todo'), 'Todos');
       });
       test('handles PascalCase class', () {
-        expect(PluralizationUtils.PascalCasePlural('PlainModelJson'),
+        expect(PluralizationUtils.toPascalCasePlural('PlainModelJson'),
             'PlainModelJsons');
       });
       test('handles irregulars', () {
-        expect(PluralizationUtils.PascalCasePlural('Child'), 'Children');
-        expect(PluralizationUtils.PascalCasePlural('Foot'), 'Feet');
-        expect(PluralizationUtils.PascalCasePlural('Tooth'), 'Teeth');
-        expect(PluralizationUtils.PascalCasePlural('Mouse'), 'Mice');
-        expect(PluralizationUtils.PascalCasePlural('Man'), 'Men');
-        expect(PluralizationUtils.PascalCasePlural('Woman'), 'Women');
+        expect(PluralizationUtils.toPascalCasePlural('Child'), 'Children');
+        expect(PluralizationUtils.toPascalCasePlural('Foot'), 'Feet');
+        expect(PluralizationUtils.toPascalCasePlural('Tooth'), 'Teeth');
+        expect(PluralizationUtils.toPascalCasePlural('Mouse'), 'Mice');
+        expect(PluralizationUtils.toPascalCasePlural('Man'), 'Men');
+        expect(PluralizationUtils.toPascalCasePlural('Woman'), 'Women');
       });
     });
 
