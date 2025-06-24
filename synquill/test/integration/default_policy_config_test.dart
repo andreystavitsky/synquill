@@ -428,7 +428,10 @@ void main() {
 
           expect(result, equals(testItem));
           expect(repository.operationLog, contains('fetchFromRemote(test1)'));
-          expect(repository.operationLog, contains('saveToLocal(test1)'));
+          expect(
+            repository.operationLog,
+            contains('updateLocalCache(1 items)'),
+          );
         },
       );
     });

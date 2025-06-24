@@ -72,7 +72,7 @@ mixin RepositoryQueryOperations<T extends SynquillDataModel<T>>
 
           if (remoteItem != null) {
             log.fine('Remote fetch for $id successful. Updating local copy.');
-            await saveToLocal(remoteItem);
+            await updateLocalCache([remoteItem]);
             result = remoteItem;
           } else {
             // fetchFromRemote returned null without
@@ -144,7 +144,7 @@ mixin RepositoryQueryOperations<T extends SynquillDataModel<T>>
                 'Remote fetch for $id successful after local failure. '
                 'Updating local copy.',
               );
-              await saveToLocal(remoteItem);
+              await updateLocalCache([remoteItem]);
               result = remoteItem;
             } else {
               log.warning(
@@ -424,7 +424,7 @@ mixin RepositoryQueryOperations<T extends SynquillDataModel<T>>
               'Async remote fetch for $id (localThenRemote) successful.'
               ' Updating local copy.',
             );
-            await saveToLocal(remoteItem);
+            await updateLocalCache([remoteItem]);
           } else {
             log.fine(
               'Async remote fetch for $id (localThenRemote) '

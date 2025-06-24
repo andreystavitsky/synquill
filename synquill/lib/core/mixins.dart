@@ -61,6 +61,13 @@ mixin RepositoryHelpersMixin<T extends SynquillDataModel<T>> {
   /// and model serialization/deserialization for type [T].
   ApiAdapterBase<T> get apiAdapter;
 
+  /// The stream controller for repository change events.
+  ///
+  /// Used to emit notifications about data changes such as updates from
+  /// remote cache refreshes. Must be implemented by concrete repository
+  /// classes.
+  StreamController<RepositoryChange<T>> get changeController;
+
   /// Fetches a model from local storage by its unique identifier.
   ///
   /// [id] The unique identifier of the model to fetch.
@@ -201,8 +208,10 @@ mixin RepositoryHelpersMixin<T extends SynquillDataModel<T>> {
   /// [items] The list of models to update the cache with.
   /// This method skips updating models that have pending sync operations
   /// to avoid overwriting local changes.
+  /// Emits RepositoryChange.updated events for items that are updated.
   Future<void> updateLocalCache(List<T> items) async {
     final syncQueueDao = SyncQueueDao(db);
+    final updatedItems = <T>[];
 
     for (final item in items) {
       final pendingTasks = await syncQueueDao.getTasksForModelId(
@@ -219,6 +228,7 @@ mixin RepositoryHelpersMixin<T extends SynquillDataModel<T>> {
 
       // No pending operations, safe to update local cache with remote data
       await saveToLocal(item);
+      updatedItems.add(item);
     }
 
     // After processing remote items, check for pending CREATE/UPDATE operations
@@ -229,6 +239,7 @@ mixin RepositoryHelpersMixin<T extends SynquillDataModel<T>> {
       T.toString(),
     );
 
+    final recreatedItems = <T>[];
     for (final task in allPendingTasks) {
       final operation = task['op'] as String;
       final modelId = task['model_id'] as String;
@@ -249,6 +260,7 @@ mixin RepositoryHelpersMixin<T extends SynquillDataModel<T>> {
             // reconstruct the model
             final recreatedModel = apiAdapter.fromJson(modelData);
             await saveToLocal(recreatedModel);
+            recreatedItems.add(recreatedModel);
           } catch (e) {
             // Log error but don't fail the entire operation
             log.warning(
@@ -257,6 +269,17 @@ mixin RepositoryHelpersMixin<T extends SynquillDataModel<T>> {
           }
         }
       }
+    }
+
+    // Emit change events for updated items
+    for (final item in updatedItems) {
+      changeController.add(RepositoryChange.updated(item));
+    }
+
+    // Emit change events for recreated items (these are typically creates
+    // that were restored from sync queue)
+    for (final item in recreatedItems) {
+      changeController.add(RepositoryChange.created(item));
     }
   }
 }
