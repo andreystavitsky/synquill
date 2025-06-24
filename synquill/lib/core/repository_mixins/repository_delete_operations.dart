@@ -7,12 +7,14 @@ part of synquill;
 /// - Cascade delete support for related models
 /// - Smart delete queue management
 /// - Local storage removal methods
-mixin RepositoryDeleteOperations<T extends SynquillDataModel<T>> {
+mixin RepositoryDeleteOperations<T extends SynquillDataModel<T>>
+    on RepositoryLocalOperations<T> {
   /// The logger instance for this repository.
   ///
   /// Used for logging all repository operations, errors, and debug
   /// information. This logger should be used for all actions, errors,
   /// and debug output related to repository lifecycle and sync.
+  @override
   Logger get log;
 
   /// The stream controller for repository change events.
@@ -42,25 +44,6 @@ mixin RepositoryDeleteOperations<T extends SynquillDataModel<T>> {
   /// (e.g., local-first or remote-first) when not explicitly specified.
   /// This policy guides how data is prioritized between local and remote.
   DataSavePolicy get defaultSavePolicy;
-
-  /// Abstract methods that must be implemented by the using class
-  /// Removes an item from local storage if it exists.
-  ///
-  /// [id] The unique identifier of the item to remove.
-  Future<void> removeFromLocalIfExists(String id);
-
-  /// Saves an item to local storage.
-  ///
-  /// [item] The item to save.
-  /// [extra] Optional extra data to associate with the save operation.
-  Future<void> saveToLocal(T item, {Map<String, dynamic>? extra});
-
-  /// Fetches an item from local storage by its ID.
-  ///
-  /// [id] The unique identifier of the item to fetch.
-  /// [queryParams] Optional query parameters for the fetch operation.
-  /// Returns the item if found, or null otherwise.
-  Future<T?> fetchFromLocal(String id, {QueryParams? queryParams});
 
   /// Deletes an item by its ID.
   ///
@@ -515,6 +498,30 @@ mixin RepositoryDeleteOperations<T extends SynquillDataModel<T>> {
       // Still try to remove the local copy even if cascade delete fails
       await removeFromLocalIfExists(id);
       changeController.add(RepositoryChange.deleted(id));
+    }
+  }
+
+  /// Truncates (clears) all local storage for this model type.
+  ///
+  /// This method deletes all records from the local table without triggering
+  /// Truncates (clears) all local storage for this model type.
+  ///
+  /// This method deletes all records from the local table without triggering
+  /// API synchronization. It's useful for "refreshing" local data by loading
+  /// records from API after clearing the local cache.
+  ///
+  /// Note: This does not affect sync_queue_items - only the model table.
+  Future<void> truncateLocal() async {
+    log.info('Truncating all local storage for $T');
+    try {
+      await truncateLocalStorage();
+      log.fine('Local storage truncated successfully for $T');
+      changeController.add(RepositoryChange.deleted('*'));
+      // '*' indicates all items deleted
+    } catch (e, stackTrace) {
+      log.severe('Failed to truncate local storage for $T', e, stackTrace);
+      changeController.add(RepositoryChange.error(e, stackTrace));
+      rethrow;
     }
   }
 }

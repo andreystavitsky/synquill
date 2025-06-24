@@ -398,27 +398,6 @@ mixin RepositoryQueryOperations<T extends SynquillDataModel<T>>
     return watchAllFromLocal(queryParams: queryParams);
   }
 
-  /// Truncates (clears) all local storage for this model type.
-  ///
-  /// This method deletes all records from the local table without triggering
-  /// API synchronization. It's useful for "refreshing" local data by loading
-  /// records from API after clearing the local cache.
-  ///
-  /// Note: This does not affect sync_queue_items - only the model table.
-  Future<void> truncateLocal() async {
-    log.info('Truncating all local storage for $T');
-    try {
-      await truncateLocalStorage();
-      log.fine('Local storage truncated successfully for $T');
-      changeController.add(RepositoryChange.deleted('*'));
-      // '*' indicates all items deleted
-    } catch (e, stackTrace) {
-      log.severe('Failed to truncate local storage for $T', e, stackTrace);
-      changeController.add(RepositoryChange.error(e, stackTrace));
-      rethrow;
-    }
-  }
-
   /// Enqueues a remote fetch task for localThenRemote operations.
   ///
   /// This method uses the load queue (QueueType.load) to perform async
