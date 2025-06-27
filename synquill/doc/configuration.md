@@ -35,12 +35,28 @@ const config = SynquillStorageConfig(
 ```
 
 When initializing `SynquillStorage`, you can pass
-`enableInternetMonitoring`, `connectivityStream`, or
+`enableInternetMonitoring`, `connectivityStream`, and
 `connectivityChecker` to control how connectivity is tracked.
+
+```dart
+import 'package:internet_connection_checker_plus/internet_connection_checker_plus.dart';
+
+// ...
+
+  await SynquillStorage.init(
+    connectivityChecker: () async =>
+        await InternetConnection().hasInternetAccess,
+    connectivityStream: InternetConnection()
+        .onStatusChange
+        .map((status) => status == InternetStatus.connected),
+    enableInternetMonitoring: true,
+    // ...
+  );
+```
 
 ## Background Sync
 
-Configure automatic background synchronization:
+Configure automatic background synchronization with Workmanager:
 
 ```dart
 void main() async {

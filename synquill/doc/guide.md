@@ -33,10 +33,11 @@ Control how data is saved to local and remote storage:
 // Save locally first, then sync to remote in background
 await user.save(savePolicy: DataSavePolicy.localFirst);
 
-// Save to remote first, then update local on success
+// Save to remote first, then save/update local on success
 await user.save(savePolicy: DataSavePolicy.remoteFirst);
-> **Note:** When using the `remoteFirst` save policy, if the remote operation fails (e.g., due to offline status or a server error), a `SynquillStorageException` or `OfflineException` will be thrown and the local model will **not** be saved.
 ```
+> **Note:** When using the `remoteFirst` save policy, if the remote operation fails (e.g., due to offline status or a server error), a `SynquillStorageException` or `OfflineException` will be thrown and the local model will **not** be saved.
+
 
 ### Data Load Policies
 
@@ -430,6 +431,9 @@ user.watchTodos().listen((todos) {
   // Automatically updated when user's todos change
   print('User now has ${todos.length} todos');
 });
+
+// Remember to cancel the subscription when it is no longer needed to prevent memory leaks.
+subscription?.cancel();
 ```
 > **Note**: Reactive streams currently only watch local database changes. Remote data changes are reflected in streams only after they've been synced to the local database. See [Current Limitations](advanced-features.md#current-limitations) for more details.
 
@@ -467,21 +471,17 @@ Every model instance has convenient methods:
 final user = User(name: 'John Doe', email: 'john@example.com');
 final savedUser = await user.save();
 
-TODO: describe update
-
 // Delete
 await savedUser.delete();
 
-// Refresh from remote - not implemented yet
+// Force refresh from remote is not yet implemented; for now, use findOne with DataLoadPolicy.remoteFirst to fetch the latest data from the server.
 // final refreshedUser = await savedUser.refresh();
 ```
 
 ### Bulk Operations
 
-```dart
-// bulk save/update is not supported yet
+> **Note:** Bulk save, update, and delete operations are not yet supported. These features are planned for future releases.
 
-```
 
 ## Relationships
 

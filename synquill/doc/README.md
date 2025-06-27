@@ -54,23 +54,6 @@ This documentation is organized into several sections to help you get started qu
 
 ### For Reference
 - Use the **[API Reference](api-reference.md)** for detailed method signatures and examples
-- Check the **[Advanced Topics](advanced/)** section for specialized use cases
-
-## 📖 Documentation Structure
-
-```
-docs/
-├── README.md                 # This overview (you are here)
-├── guide.md                  # Getting started guide
-├── api-adapters.md          # HTTP communication customization
-├── configuration.md         # Setup and configuration
-├── advanced-features.md     # Power user features
-├── api-reference.md         # Complete API documentation
-└── advanced/                # Advanced topics
-    ├── README.md            # Advanced topics navigation
-    ├── queues.md           # Queue management system
-    └── dependency-resolver.md # Task dependency resolution
-```
 
 ## 🎯 Key Concepts
 
@@ -99,14 +82,14 @@ Before diving into the documentation, familiarize yourself with these core conce
 1. **Start Simple**: Begin with basic CRUD operations before implementing complex sync scenarios
 2. **Test Offline**: Always test your app's behavior when connectivity is unavailable
 3. **Monitor Queues**: Use the queue monitoring tools to debug sync issues
-4. **Optimize Queries**: Leverage indexes and efficient query patterns for better performance
+4. **Use Indexes**: Leverage indexes for better performance
 5. **Handle Errors**: Implement proper error handling for network and database operations
 
 ## 🤝 Contributing to Documentation
 
 Found an error or want to improve the documentation? Contributions are welcome!
 
-1. Documentation lives in the `/docs` directory
+1. Documentation lives in the `/doc` directory
 2. Follow the existing structure and formatting
 3. Include code examples where helpful
 4. Test any code snippets before submitting
