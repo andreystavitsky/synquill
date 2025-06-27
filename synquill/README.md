@@ -236,17 +236,17 @@ void main() async {
 
 ## Documentation
 
-For comprehensive documentation, guides, and advanced features, please visit the [documentation directory](./doc/).
+For comprehensive documentation, guides, and advanced features, please visit the [documentation directory](https://github.com/andreystavitsky/synquill/tree/main/synquill/doc/).
 
-- **[Getting Started Guide](./doc/guide.md)** - Core concepts, querying, operations, and relationships
-- **[JSON API Adapters](./doc/api-adapters.md)** - Customizing HTTP methods, headers, and response parsing
-- **[Configuration](./doc/configuration.md)** - Storage configuration and background sync setup
-- **[Advanced Features](./doc/advanced-features.md)** - Queue management, dependency resolution, and more
-- **[API Reference](./doc/api-reference.md)** - Complete API documentation
+- **[Getting Started Guide](https://github.com/andreystavitsky/synquill/tree/main/synquill/doc/guide.md)** - Core concepts, querying, operations, and relationships
+- **[JSON API Adapters](https://github.com/andreystavitsky/synquill/tree/main/synquill/docapi-adapters.md)** - Customizing HTTP methods, headers, and response parsing
+- **[Configuration](https://github.com/andreystavitsky/synquill/tree/main/synquill/doc/configuration.md)** - Storage configuration and background sync setup
+- **[Advanced Features](https://github.com/andreystavitsky/synquill/tree/main/synquill/doc/advanced-features.md)** - Queue management, dependency resolution, and more
+- **[API Reference](https://github.com/andreystavitsky/synquill/tree/main/synquill/doc/api-reference.md)** - Complete API documentation
 
 - **[Advanced Topics]** - Deep dive into complex features
-  - [Queue Management](queues.md) - Sync queue system and task processing
-  - [Dependency Resolution](dependency-resolver.md) - Hierarchical task dependencies
+  - [Queue Management](https://github.com/andreystavitsky/synquill/tree/main/synquill/doc/queues.md) - Sync queue system and task processing
+  - [Dependency Resolution](https://github.com/andreystavitsky/synquill/tree/main/synquill/doc/dependency-resolver.md) - Hierarchical task dependencies
 
 ## Contributing
 
