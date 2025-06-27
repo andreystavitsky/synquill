@@ -2,58 +2,56 @@
 
 A powerful Flutter package for offline-first data management with automatic REST API synchronization. Built on top of Drift for robust local storage and featuring intelligent sync queues for seamless online/offline operation.
 
-> **Note**: This package is inspired by [flutter_data](https://pub.dev/packages/flutter_data), a fantastic data layer solution for Flutter applications.
-
 [![pub package](https://img.shields.io/pub/v/synquill.svg)](https://pub.dev/packages/synquill)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-## 🚀 Why Synquill?
+## Why Synquill?
 
-### 📱 Offline-First Architecture
+### Offline-First Architecture
 - **Local-first operations** with Drift-powered SQLite database
 - **Automatic background sync** with configurable retry mechanisms
 - **Smart queue management** for operations with related data dependencies
 - **Works completely offline** - sync when connectivity returns
 
-### 🔄 Intelligent Synchronization
+### Intelligent Synchronization
 - **Bidirectional sync** between local storage and REST APIs
 - **Configurable sync policies**: `localFirst`, `remoteFirst`, `localThenRemote`
 - **Dependency-based sync ordering** with hierarchical task resolution
 - **Background processing** capabilities, enabling integration with tools like WorkManager
 - **Retry logic** with exponential backoff for failed operations
 
-### 🏗️ Model-Driven Development
+### Model-Driven Development
 - **Code generation** for repositories, DAOs, and database tables
 - **Relationship support**: `OneToMany` and `ManyToOne` with cascade operations
 - **JSON serialization** compatibility with `json_annotation`
 - **Type-safe queries** with filtering, sorting, and pagination
 
-### 🌐 Flexible API Integration
+### Flexible API Integration
 - **Pluggable API adapters** for different REST API patterns
 - **Custom HTTP headers** and authentication support
 - **Error handling** with comprehensive exception types
 - **Request/response interceptors** for logging and debugging
 
-### ⚡ Reactive Data Streams
+### Reactive Data Streams
 - **Real-time UI updates** with `watchOne()` and `watchAll()` streams
 - **Repository change events** for fine-grained reactivity
 - **Automatic UI synchronization** when data changes locally or remotely
 
-## 📦 Installation
+## Installation
 
 Add to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
   json_annotation: ^4.9.0
-  synquill: ^1.0.0
+  synquill: ^0.5.0
 
 dev_dependencies:
-  synquill_gen: ^1.0.0
+  synquill_gen: ^0.5.0
   build_runner: ^2.4.14
 ```
 
-## 🏁 Quick Start
+## Quick Start
 
 ### 1. Define Your Models
 
@@ -68,7 +66,6 @@ part 'user.g.dart';
   adapters: [JsonApiAdapter, UserApiAdapter],
   relations: [
     OneToMany(target: Todo, mappedBy: 'userId'),
-    OneToMany(target: Post, mappedBy: 'userId'),
   ],
 )
 class User extends SynquillDataModel<User> {
@@ -87,13 +84,15 @@ class User extends SynquillDataModel<User> {
     required this.id,
     required this.name,
     required this.email,
+    /// The following fields are optional. You can omit them if you do not require access.
     DateTime? createdAt,
     DateTime? updatedAt,
-    DateTime? lastSyncedAt,
+    SyncStatus? syncStatus,
   }) {
+    /// The following fields are optional. You can omit them if you do not require access.
     this.createdAt = createdAt;
     this.updatedAt = updatedAt;
-    this.lastSyncedAt = lastSyncedAt;
+    this.syncStatus = syncStatus ?? SyncStatus.synced;
   }
 
   factory User.fromJson(Map<String, dynamic> json) => _$UserFromJson(json);
@@ -125,17 +124,11 @@ class Todo extends SynquillDataModel<Todo> {
 
   Todo.fromDb({
     required this.id,
-    required this.title,
-    required this.isCompleted,
-    required this.userId,
-    DateTime? createdAt,
-    DateTime? updatedAt,
-    DateTime? lastSyncedAt,
-  }) {
-    this.createdAt = createdAt;
-    this.updatedAt = updatedAt;
-    this.lastSyncedAt = lastSyncedAt;
-  }
+      required this.title,
+      required this.isCompleted,
+      required this.userId,
+      /// Example constructor omitting createdAt and updatedAt fields
+  });
 
   factory Todo.fromJson(Map<String, dynamic> json) => _$TodoFromJson(json);
   
@@ -187,9 +180,9 @@ mixin TodoApiAdapter on BasicApiAdapter<Todo> {
         .findAll(loadPolicy: DataLoadPolicy.localOnly);
     
     if (users.isNotEmpty) {
-      return baseUrl.resolve('api/v1/users/${users.first.id}/todos');
+      return baseUrl.resolve('api/v1/users/${users.first.id}/$pluralType');
     }
-    return baseUrl.resolve('api/v1/todos');
+    return baseUrl.resolve('api/v1/$pluralType');
   }
 }
 ```
@@ -239,12 +232,12 @@ void main() async {
 }
 ```
 
-## 📚 Documentation
+## Documentation
 
 For comprehensive documentation, guides, and advanced features, please visit the [documentation directory](./doc/).
 
 - **[Getting Started Guide](./doc/guide.md)** - Core concepts, querying, operations, and relationships
-- **[API Adapters](./doc/api-adapters.md)** - Customizing HTTP methods, headers, and response parsing
+- **[JSON API Adapters](./doc/api-adapters.md)** - Customizing HTTP methods, headers, and response parsing
 - **[Configuration](./doc/configuration.md)** - Storage configuration and background sync setup
 - **[Advanced Features](./doc/advanced-features.md)** - Queue management, dependency resolution, and more
 - **[API Reference](./doc/api-reference.md)** - Complete API documentation
@@ -253,20 +246,22 @@ For comprehensive documentation, guides, and advanced features, please visit the
   - [Queue Management](queues.md) - Sync queue system and task processing
   - [Dependency Resolution](dependency-resolver.md) - Hierarchical task dependencies
 
-## 🤝 Contributing
+## Contributing
 
 Contributions are welcome! Please feel free to submit pull requests, open issues, or ask questions on GitHub.
 
-## 📄 License
+## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🔗 Related Packages
+## Related Packages
 
 - **[drift](https://pub.dev/packages/drift)** - SQLite database toolkit
 - **[json_annotation](https://pub.dev/packages/json_annotation)** - JSON serialization
 - **[dio](https://pub.dev/packages/dio)** - HTTP client for API communication
 - **[logging](https://pub.dev/packages/logging)** - Logging utilities
+
+> **Note**: This package is inspired by [flutter_data](https://pub.dev/packages/flutter_data), a fantastic data layer solution for Flutter applications.
 
 ---
 

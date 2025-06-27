@@ -54,11 +54,11 @@ class User extends SynquillDataModel<User> {
     required this.name,
     DateTime? createdAt,
     DateTime? updatedAt,
-    DateTime? lastSyncedAt,
+    SyncStatus? syncStatus,
   }) {
     this.createdAt = createdAt;
     this.updatedAt = updatedAt;
-    this.lastSyncedAt = lastSyncedAt;
+    this.syncStatus = syncStatus ?? SyncStatus.synced;
   }
 
   factory User.fromJson(Map<String, dynamic> json) => _$UserFromJson(json);
