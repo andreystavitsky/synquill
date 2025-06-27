@@ -5,6 +5,8 @@ A powerful Flutter package for offline-first data management with automatic REST
 [![pub package](https://img.shields.io/pub/v/synquill.svg)](https://pub.dev/packages/synquill)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
+> **Note:** Synquill is currently under active development. If you choose to use it in production, please proceed with caution and at your own risk. We encourage you to report any issues or feedback via the GitHub repository.
+
 ## Why Synquill?
 
 ### Offline-First Architecture

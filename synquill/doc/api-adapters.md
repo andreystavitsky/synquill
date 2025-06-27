@@ -97,7 +97,7 @@ mixin TodoApiAdapter on BasicApiAdapter<Todo> {
   
   @override
   FutureOr<Uri> urlForFindOne(String id, {Map<String, dynamic>? extra}) async {
-    return baseUrl.resolve('api/v1/todos/$id');
+    return baseUrl.resolve('api/v1/$pluralType$/$id');
   }
 }
 ```
