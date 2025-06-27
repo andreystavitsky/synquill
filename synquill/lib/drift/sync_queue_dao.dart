@@ -483,7 +483,7 @@ class SyncQueueDao {
         Variable.withString(operation),
         Variable.withString(SyncStatus.dead.name),
         Variable.withString(IdNegotiationStatus.pending.name),
-        Variable.withString(IdNegotiationStatus.in_progress.name),
+        Variable.withString(IdNegotiationStatus.inprogress.name),
       ],
     ).get();
 

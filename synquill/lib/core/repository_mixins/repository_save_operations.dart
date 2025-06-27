@@ -649,7 +649,7 @@ mixin RepositorySaveOperations<T extends SynquillDataModel<T>>
       // 2. Mark negotiation as in progress to prevent concurrent modifications
       await syncQueueDao.updateItem(
         id: syncQueueId,
-        idNegotiationStatus: IdNegotiationStatus.in_progress.name,
+        idNegotiationStatus: IdNegotiationStatus.inprogress.name,
       );
 
       // 3. Execute server create operation with timeout
