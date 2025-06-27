@@ -1,4 +1,6 @@
 build/
+lib/src/test_models/
+lib/*.generated.dart
 lib/generated/
 *.g.dart
 *.mocks.dart

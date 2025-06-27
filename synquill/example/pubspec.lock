@@ -779,7 +779,7 @@ packages:
       path: ".."
       relative: true
     source: path
-    version: "0.5.0"
+    version: "0.5.1"
   synquill_gen:
     dependency: "direct dev"
     description:
@@ -790,9 +790,10 @@ packages:
   synquill_utils:
     dependency: transitive
     description:
-      path: "../../synquill_utils"
-      relative: true
-    source: path
+      name: synquill_utils
+      sha256: c9aba719b065aee8110c1b7178118665847a2a4e2d987a3d61b5511239f6fe9a
+      url: "https://pub.dev"
+    source: hosted
     version: "0.5.0"
   term_glyph:
     dependency: transitive

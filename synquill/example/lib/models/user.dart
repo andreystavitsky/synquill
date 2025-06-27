@@ -36,7 +36,6 @@ mixin UserApiAdapter on BasicApiAdapter<User> {
   relations: [
     OneToMany(target: Todo, mappedBy: 'userId'),
     OneToMany(target: Post, mappedBy: 'userId'),
-    OneToMany(target: Project, mappedBy: 'ownerId'),
     OneToMany(target: LocalNote, mappedBy: 'ownerId'),
   ],
 )

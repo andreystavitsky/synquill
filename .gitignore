@@ -42,11 +42,11 @@ fabric.properties
 .pub-cache/
 .pub/
 build/
-lib/generated/
-*.g.dart
+
+
 *.mocks.dart
 *.freezed.dart
-*.synced.g.dart
+
 ios/Pods/
 ios/.symlinks/
 ios/Flutter/App.framework
