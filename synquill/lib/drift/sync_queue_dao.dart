@@ -797,6 +797,20 @@ class SyncQueueDao {
         modelType,
       );
 
+      // 4. Update pending payloads referencing the old ID
+      await _db.customUpdate(
+        '''
+        UPDATE sync_queue_items
+        SET payload = REPLACE(payload, ?, ?)
+        WHERE payload LIKE ?
+        ''',
+        variables: [
+          Variable.withString(oldId),
+          Variable.withString(newId),
+          Variable.withString('%$oldId%'),
+        ],
+      );
+
       _log.info(
         'Replaced ID $oldId with $newId for $modelType in task $taskId',
       );

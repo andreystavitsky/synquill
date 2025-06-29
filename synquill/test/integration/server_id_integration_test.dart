@@ -1057,13 +1057,13 @@ void main() {
         await serverRepo.save(serverModel);
         await clientRepo.save(clientModel);
 
-        // Verify both types work independently
-        final finalServerModel = await serverRepo.findOne(serverModel.id);
-        expect(finalServerModel, isNotNull);
+        // Verify both models exist
+        final savedServerModel = await serverRepo.findOne(serverModel.id);
+        expect(savedServerModel, isNotNull);
 
-        final finalClientModel = await clientRepo.findOne(clientOriginalId);
-        expect(finalClientModel, isNotNull);
-        expect(finalClientModel!.id, equals(clientOriginalId));
+        final savedClientModel = await clientRepo.findOne(clientOriginalId);
+        expect(savedClientModel, isNotNull);
+        expect(savedClientModel!.id, equals(clientOriginalId));
 
         // Check both appear in findAll
         final allServerModels = await serverRepo.findAll();
@@ -1453,6 +1453,32 @@ void main() {
         expect(allParents, hasLength(1));
         expect(allChildren, hasLength(1));
         expect(allChildren.first.parentId, equals(allParents.first.id));
+
+        // --- NEW: Check that pending child sync queue payloads are updated ---
+        final queueDao = SyncQueueDao(db);
+        final childQueueItems = await queueDao.getAllItems();
+        for (final item in childQueueItems) {
+          if (item['model_type'] == 'ServerChildModel' &&
+              item['payload'] != null &&
+              item['payload'] is String) {
+            final payload = item['payload'] as String;
+            // The payload should not contain the old tempParentId
+            expect(
+              payload.contains(tempParentId),
+              isFalse,
+              reason:
+                  'Child sync queue payload should not reference old parentId '
+                  'after parent ID negotiation',
+            );
+            // The payload should contain the new parentId
+            expect(
+              payload.contains(savedParent.id),
+              isTrue,
+              reason: 'Child sync queue payload should reference new parentId '
+                  'after parent ID negotiation',
+            );
+          }
+        }
 
         // Clean up subscriptions
         await parentSub.cancel();
@@ -1900,7 +1926,7 @@ void main() {
             description: 'This model will cause ID conflict',
           );
 
-          // Configure mock adapter to return the existing local ID
+          // Configure mock adapter to return the existing ID
           // when creating the new model
           mockAdapter.forceReturnId('local_existing_id');
 
@@ -2438,7 +2464,7 @@ void main() {
             );
             expect(savedModel.id, equals(newerModel.id)); // Still has temp ID
 
-            // Step 4: Manually set newer timestamp for the temp record
+            // Manually set newer timestamp for the temp record
             final newTimestamp = DateTime.now().millisecondsSinceEpoch;
             await db.customUpdate(
               'UPDATE server_test_models SET created_at = ? WHERE id = ?',
@@ -2453,25 +2479,25 @@ void main() {
             expect(tempModel, isNotNull);
             expect(tempModel!.name, equals('Updated Model'));
 
-            // Step 5: Register repository for background sync
+            // Step 4: Register repository for background sync
             SynquillRepositoryProvider.register<ServerTestModel>(
               (db) => _TestServerTestRepository(db, mockAdapter),
             );
 
-            // Step 6: Trigger background sync which should perform the merge
+            // Step 5: Trigger background sync which should perform the merge
             // await SynquillStorage.instance
             //     .processBackgroundSyncTasks(forceSync: true);
 
             // Wait for async operations
             await Future.delayed(const Duration(milliseconds: 300));
 
-            // Step 7: Verify merge was successful
+            // Step 6: Verify merge was successful
             expect(
               mockAdapter.operationLog,
               contains('createOne(${newerModel.id})'),
             );
 
-            // Step 8: The merge should have succeeded - verify final state
+            // Step 7: The merge should have succeeded - verify final state
 
             // The original record should now have updated data
             // from newer record
@@ -2491,7 +2517,7 @@ void main() {
             final tempStillExists = await repository.findOne(newerModel.id);
             expect(tempStillExists, isNull);
 
-            // Step 9: Verify only one record exists with the target ID
+            // Step 8: Verify only one record exists with the target ID
             final allModels = await repository.findAll();
             final modelsWithTargetId =
                 allModels.where((m) => m.id == 'merge_target_id').toList();
@@ -2510,6 +2536,83 @@ void main() {
           },
         );
       });
+    });
+
+    group('Foreign key payload update in sync queue (REPLACE check)', () {
+      test(
+        'should update child sync queue payload parentId after parent '
+        'ID negotiation',
+        () async {
+          // 1. Create mock adapters and repositories
+          final parentAdapter = MockServerParentAdapter();
+          final childAdapter = MockServerChildAdapter();
+          final parentRepo = _TestServerParentRepository(db, parentAdapter);
+          final childRepo = _TestServerChildRepository(db, childAdapter);
+
+          // 2. Save parent and child with temporary IDs
+          final tempParentId = generateCuid();
+          final tempChildId = generateCuid();
+          final parent = ServerParentModel(
+            id: tempParentId,
+            name: 'Parent',
+            category: 'Test',
+          );
+          final child = ServerChildModel(
+            id: tempChildId,
+            name: 'Child',
+            parentId: tempParentId,
+            data: 'Child data',
+          );
+          await parentRepo.save(parent, savePolicy: DataSavePolicy.localFirst);
+          await childRepo.save(child, savePolicy: DataSavePolicy.localFirst);
+
+          // 3. Simulate negotiation: manually change the parent's ID
+          const newParentId = 'server_parent_123';
+          final queueDao = SyncQueueDao(db);
+          final parentQueueItems = await queueDao.getAllItems();
+          
+          // Find parent task - should exist since we're using repositories 
+          // with adapters
+          final parentTask = parentQueueItems.firstWhere(
+            (item) => item['model_id'] == tempParentId,
+            orElse: () => throw StateError(
+              'No parent queue item found for $tempParentId. '
+              'Available items: '
+              '${parentQueueItems.map((i) => i['model_id']).toList()}'
+            ),
+          );
+          await queueDao.replaceIdEverywhere(
+            taskId: parentTask['id'] as int,
+            oldId: tempParentId,
+            newId: newParentId,
+            modelType: 'ServerParentModel',
+          );
+
+          // 4. Check that the old parentId is no longer present in the
+          // child sync queue payload
+          final childQueueItems = await queueDao.getAllItems();
+          final childTask = childQueueItems.firstWhere(
+            (item) => item['model_id'] == tempChildId,
+            orElse: () => throw StateError(
+              'No child queue item found for $tempChildId. '
+              'Available items: '
+              '${childQueueItems.map((i) => i['model_id']).toList()}'
+            ),
+          );
+          final payload = childTask['payload'] as String;
+          expect(
+            payload.contains(tempParentId),
+            isFalse,
+            reason:
+                'Payload of child sync queue should not reference old parentId',
+          );
+          expect(
+            payload.contains(newParentId),
+            isTrue,
+            reason: 'Payload of child sync queue should reference new parentId',
+          );
+        },
+      );
     });
   });
 }

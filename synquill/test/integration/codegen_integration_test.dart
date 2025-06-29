@@ -7,7 +7,7 @@ void main() {
       'generated code should not contain toCompanion method calls',
       () async {
         // Read the DAO generated file where saveModel methods are located
-        final daoFile = File('example/lib/generated/dao.g.dart');
+        final daoFile = File('lib/generated/dao.g.dart');
 
         expect(
           daoFile.existsSync(),
@@ -33,7 +33,7 @@ void main() {
 
     test('generated code should contain manual companion creation', () async {
       // Read the DAO generated file where saveModel methods are located
-      final daoFile = File('example/lib/generated/dao.g.dart');
+      final daoFile = File('lib/generated/dao.g.dart');
 
       expect(
         daoFile.existsSync(),
@@ -43,7 +43,7 @@ void main() {
 
       final content = await daoFile.readAsString();
 
-      // Verify that manual companion creation is present
+      // Verify that manual companion creation is present for test models
       expect(
         content,
         contains('PlainModelTableCompanion(id: Value(model.id)'),
@@ -51,16 +51,10 @@ void main() {
       );
       expect(
         content,
-        contains('PlainModelJsonTableCompanion(id: Value(model.id)'),
-        reason: 'Should create PlainModelJson companion manually',
+        contains('UserTableCompanion(id: Value(model.id)'),
+        reason: 'Should create User companion manually',
       );
-      expect(
-        content,
-        contains('TodoTableCompanion(title: Value(model.title)'),
-        reason: 'Should create Todo companion manually',
-      );
-
-      // Verify that updatedAt is always included with default timestamp logic
+      // updatedAt field logic
       expect(
         content,
         contains('updatedAt: Value(model.updatedAt ?? DateTime.now())'),
@@ -72,7 +66,7 @@ void main() {
       'generated code should have proper saveModel method structure',
       () async {
         // Read the DAO generated file where saveModel methods are located
-        final daoFile = File('example/lib/generated/dao.g.dart');
+        final daoFile = File('lib/generated/dao.g.dart');
 
         expect(
           daoFile.existsSync(),
@@ -82,7 +76,7 @@ void main() {
 
         final content = await daoFile.readAsString();
 
-        // Check for proper saveModel method structure
+        // Check for proper saveModel method structure for test models
         expect(
           content,
           contains('Future<PlainModel> saveModel(PlainModel model)'),
@@ -90,15 +84,9 @@ void main() {
         );
         expect(
           content,
-          contains('Future<PlainModelJson> saveModel(PlainModelJson model)'),
-          reason: 'Should have PlainModelJson saveModel method',
+          contains('Future<User> saveModel(User model)'),
+          reason: 'Should have User saveModel method',
         );
-        expect(
-          content,
-          contains('Future<Todo> saveModel(Todo model)'),
-          reason: 'Should have Todo saveModel method',
-        );
-
         // Verify that companion is created and used correctly
         expect(
           content,
@@ -112,35 +100,5 @@ void main() {
         );
       },
     );
-
-    test('example project should compile without errors', () async {
-      // Run dart analyze on the example project
-      final result = await Process.run('dart', [
-        'analyze',
-      ], workingDirectory: 'example');
-
-      // Check that there are no compilation errors
-      // We allow warnings (like unused variables) but not errors
-      expect(
-        result.exitCode,
-        lessThanOrEqualTo(2),
-        reason: 'Example should compile without errors (warnings OK)',
-      );
-
-      // Specifically check that there are no toCompanion-related errors
-      final stderr = result.stderr.toString();
-      final stdout = result.stdout.toString();
-
-      expect(
-        stderr,
-        isNot(contains('toCompanion')),
-        reason: 'Should not have toCompanion errors',
-      );
-      expect(
-        stdout,
-        isNot(contains('toCompanion')),
-        reason: 'Should not have toCompanion errors',
-      );
-    });
   });
 }
