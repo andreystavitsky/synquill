@@ -360,5 +360,70 @@ void main() {
         expect(saved!.category, isNull);
       });
     });
+
+    group('Local-only Repository remoteFirst behavior', () {
+      test('remoteFirst delete works for localOnly repository', () async {
+        final note = LocalNote(
+          id: 'remotefirst-1',
+          content: 'Should be deleted with remoteFirst',
+          ownerId: 'user-remote',
+        );
+
+        // Save the note
+        await localRepo.save(note);
+
+        // Verify it exists
+        var saved = await localRepo.findOne('remotefirst-1');
+        expect(saved, isNotNull);
+
+        // Delete the note with remoteFirst policy
+        await localRepo.delete(
+          'remotefirst-1',
+          savePolicy: DataSavePolicy.remoteFirst,
+        );
+
+        // Verify it's gone
+        saved = await localRepo.findOne('remotefirst-1');
+        expect(saved, isNull);
+      });
+
+      test('remoteFirst save works for localOnly repository', () async {
+        final note = LocalNote(
+          id: 'remotefirst-save-1',
+          content: 'Should be saved with remoteFirst',
+          ownerId: 'user-remote',
+        );
+
+        // Save the note with remoteFirst policy
+        await localRepo.save(
+          note,
+          savePolicy: DataSavePolicy.remoteFirst,
+        );
+
+        // Verify it was saved
+        final saved = await localRepo.findOne('remotefirst-save-1');
+        expect(saved, isNotNull);
+        expect(saved!.content, equals('Should be saved with remoteFirst'));
+      });
+
+      test('remoteFirst find works for localOnly repository', () async {
+        final note = LocalNote(
+          id: 'remotefirst-find-1',
+          content: 'Should be found with remoteFirst',
+          ownerId: 'user-remote',
+        );
+
+        // Save the note
+        await localRepo.save(note);
+
+        // Find the note with remoteFirst load policy
+        final found = await localRepo.findOne(
+          'remotefirst-find-1',
+          loadPolicy: DataLoadPolicy.remoteFirst,
+        );
+        expect(found, isNotNull);
+        expect(found!.content, equals('Should be found with remoteFirst'));
+      });
+    });
   });
 }

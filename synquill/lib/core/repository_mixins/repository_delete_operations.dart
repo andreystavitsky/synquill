@@ -160,6 +160,23 @@ mixin RepositoryDeleteOperations<T extends SynquillDataModel<T>>
 
         return;
       case DataSavePolicy.remoteFirst:
+        if (isLocalOnly) {
+          log.fine('Policy: remoteFirst, but repository is local-only. '
+              'Performing local delete for '
+              '$T.');
+          await _handleSmartDelete(
+            modelId: id,
+            payload: payload,
+            scheduleDelete: true,
+            headers: headers,
+            extra: extra,
+          );
+          await removeFromLocalIfExists(id);
+          changeController.add(RepositoryChange.deleted(id));
+          log.fine('Local delete for $id successful '
+              '(local-only repository, remoteFirst policy).');
+          return;
+        }
         log.info('Policy: remoteFirst. Deleting $T from remote API first.');
         try {
           // Create a NetworkTask for remoteFirst delete operation

@@ -99,6 +99,27 @@ mixin RepositorySaveOperations<T extends SynquillDataModel<T>>
         );
 
       case DataSavePolicy.remoteFirst:
+        // Determine if this is a create or update operation before modifying
+        final isExisting = await isExistingItem(item);
+        // Check if this is a local-only repository
+        bool isLocalOnly = false;
+        try {
+          apiAdapter;
+        } on UnsupportedError {
+          isLocalOnly = true;
+          log.fine('Repository for $T is local-only, performing local save for '
+              'remoteFirst policy.');
+        }
+        if (isLocalOnly) {
+          // For local-only repositories, just perform a local save and return
+          await saveToLocal(item);
+          changeController.add(isExisting
+              ? RepositoryChange.updated(item)
+              : RepositoryChange.created(item));
+          log.fine('Local save for ${item.id} successful '
+              '(local-only repository, remoteFirst policy).');
+          return item;
+        }
         return await _handleRemoteFirstWithIdNegotiation(
           item,
           extra: extra,
@@ -282,6 +303,27 @@ mixin RepositorySaveOperations<T extends SynquillDataModel<T>>
 
       case DataSavePolicy.remoteFirst:
         log.info('Policy: remoteFirst. Saving $T to remote API first.');
+        // Determine if this is a create or update operation before modifying
+        final isExisting = await isExistingItem(item);
+        // Check if this is a local-only repository
+        bool isLocalOnly = false;
+        try {
+          apiAdapter;
+        } on UnsupportedError {
+          isLocalOnly = true;
+          log.fine('Repository for $T is local-only, performing local save for '
+              'remoteFirst policy.');
+        }
+        if (isLocalOnly) {
+          // For local-only repositories, just perform a local save and return
+          await saveToLocal(item);
+          changeController.add(isExisting
+              ? RepositoryChange.updated(item)
+              : RepositoryChange.created(item));
+          log.fine('Local save for ${item.id} successful '
+              '(local-only repository, remoteFirst policy).');
+          return item;
+        }
         try {
           // Create a NetworkTask for remoteFirst save operation
           final operation =

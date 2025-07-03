@@ -1,6 +1,6 @@
 name: synquill
 description: Offline-first Flutter data engine with background JSON API sync and custom retry logic.
-version: 0.5.3
+version: 0.5.4
 homepage: https://github.com/andreystavitsky/synquill
 repository: https://github.com/andreystavitsky/synquill
 
