@@ -26,5 +26,3 @@ dev_dependencies:
   synquill_gen:
     path: ../synquill_gen
   test: any
-
-publish_to: none
