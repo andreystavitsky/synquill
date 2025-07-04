@@ -547,6 +547,13 @@ class RetryExecutor {
     Map<String, String>? headers,
     Map<String, dynamic>? extra,
   ) async {
+    if (repository.localOnly == true) {
+      _log.fine(
+        'Repository ${repository.runtimeType} is local-only, '
+        'operation will not be performed',
+      );
+      return;
+    }
     // For create operations, check if model still exists locally
     final modelId = modelData['id'] as String;
     final existingModel = await repository.fetchFromLocal(modelId);
@@ -581,6 +588,13 @@ class RetryExecutor {
     Map<String, dynamic>? extra,
     int taskId,
   ) async {
+    if (repository.localOnly == true) {
+      _log.fine(
+        'Repository ${repository.runtimeType} is local-only, '
+        'operation will not be performed',
+      );
+      return;
+    }
     // For update operations, check if model still exists locally
     final modelId = modelData['id'] as String;
     final existingModel = await repository.fetchFromLocal(modelId);
@@ -627,6 +641,13 @@ class RetryExecutor {
     int taskId,
     ApiExceptionNotFound originalError,
   ) async {
+    if (repository.localOnly == true) {
+      _log.fine(
+        'Repository ${repository.runtimeType} is local-only, '
+        'operation will not be performed',
+      );
+      return;
+    }
     final modelId = modelData['id'] as String;
 
     _log.info(
@@ -706,6 +727,13 @@ class RetryExecutor {
   ) async {
     // For delete operations, we just need the ID
     // No need to check local existence - deletion should proceed
+    if (repository.localOnly == true) {
+      _log.fine(
+        'Repository ${repository.runtimeType} is local-only, '
+        'deletion operation will not be performed',
+      );
+      return;
+    }
     final id = modelData['id'] as String;
     await repository.apiAdapter.deleteOne(id, headers: headers, extra: extra);
   }
