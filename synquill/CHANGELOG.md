@@ -1,4 +1,4 @@
-## 0.5.5
+## 0.5.5+1
 * Correctly implemented `localOnly` repositories in mixins.
 > Note: code must be re-generated via build_runner
 
