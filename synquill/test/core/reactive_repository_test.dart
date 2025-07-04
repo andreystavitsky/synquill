@@ -35,10 +35,10 @@ class _TestDatabase extends GeneratedDatabase {
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
-    onCreate: (m) async {
-      // Not needed for this test
-    },
-  );
+        onCreate: (m) async {
+          // Not needed for this test
+        },
+      );
 }
 
 // Special repository implementation that uses controllable streams for testing
@@ -135,6 +135,9 @@ class TestReactiveRepository extends SynquillRepositoryBase<TestModel> {
     Map<String, dynamic>? extra,
   }) async {}
 
+  @override
+  bool get localOnly => false;
+
   // Methods for test control
   void emitSingleItem(TestModel? model) {
     _singleController.add(model);
@@ -175,9 +178,8 @@ void main() {
 
       // Collect emitted values into a list
       final emittedValues = <TestModel?>[];
-      final subscription = repository
-          .watchOne(testId)
-          .listen(emittedValues.add);
+      final subscription =
+          repository.watchOne(testId).listen(emittedValues.add);
 
       // Emit initial value
       repository.emitSingleItem(TestModel(id: testId, name: 'Initial'));
@@ -206,8 +208,8 @@ void main() {
         // Collect emitted collections into a list
         final emittedCollections = <List<TestModel>>[];
         final subscription = repository.watchAll().listen(
-          emittedCollections.add,
-        );
+              emittedCollections.add,
+            );
 
         // Emit initial collection
         repository.emitModelList([
@@ -247,12 +249,10 @@ void main() {
       final watcher1Values = <TestModel?>[];
       final watcher2Values = <TestModel?>[];
 
-      final subscription1 = repository
-          .watchOne(testId)
-          .listen(watcher1Values.add);
-      final subscription2 = repository
-          .watchOne(testId)
-          .listen(watcher2Values.add);
+      final subscription1 =
+          repository.watchOne(testId).listen(watcher1Values.add);
+      final subscription2 =
+          repository.watchOne(testId).listen(watcher2Values.add);
 
       // Emit a sequence of updates
       repository.emitSingleItem(TestModel(id: testId, name: 'First Update'));

@@ -115,4 +115,7 @@ mixin RepositoryLocalOperations<T extends SynquillDataModel<T>> {
 
   /// Logger for the repository - must be implemented by concrete classes
   Logger get log;
+
+  /// Whether this repository is local-only (no remote sync).
+  bool get localOnly;
 }

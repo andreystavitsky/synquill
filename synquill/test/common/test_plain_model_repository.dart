@@ -47,4 +47,7 @@ class TestPlainModelRepository extends SynquillRepositoryBase<PlainModel>
 
   @override
   DatabaseAccessor<GeneratedDatabase> get dao => _dao;
+
+  @override
+  bool get localOnly => false;
 }

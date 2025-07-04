@@ -87,8 +87,6 @@ mixin RepositorySaveOperations<T extends SynquillDataModel<T>>
       'using policy ${savePolicy.name}',
     );
 
-    // No need to set repository reference since we use service-based approach
-
     switch (savePolicy) {
       case DataSavePolicy.localFirst:
         return await _handleLocalFirstWithIdNegotiation(
@@ -101,16 +99,8 @@ mixin RepositorySaveOperations<T extends SynquillDataModel<T>>
       case DataSavePolicy.remoteFirst:
         // Determine if this is a create or update operation before modifying
         final isExisting = await isExistingItem(item);
-        // Check if this is a local-only repository
-        bool isLocalOnly = false;
-        try {
-          apiAdapter;
-        } on UnsupportedError {
-          isLocalOnly = true;
-          log.fine('Repository for $T is local-only, performing local save for '
-              'remoteFirst policy.');
-        }
-        if (isLocalOnly) {
+        // Use the new localOnly property
+        if (localOnly) {
           // For local-only repositories, just perform a local save and return
           await saveToLocal(item);
           changeController.add(isExisting
@@ -176,20 +166,8 @@ mixin RepositorySaveOperations<T extends SynquillDataModel<T>>
           'Local save for ${item.id} successful.',
         );
 
-        // Check if this is a local-only repository
-        bool isLocalOnly = false;
-        try {
-          // Try to access the apiAdapter - if it throws UnsupportedError,
-          // this is a local-only repository
-          apiAdapter;
-        } on UnsupportedError {
-          isLocalOnly = true;
-          log.fine(
-            'Repository for $T is local-only, skipping sync queue operations.',
-          );
-        }
-
-        if (isLocalOnly) {
+        // Use the new localOnly property
+        if (localOnly) {
           // For local-only repositories, just return the item without sync
           resultItem = item;
           break;
@@ -305,16 +283,8 @@ mixin RepositorySaveOperations<T extends SynquillDataModel<T>>
         log.info('Policy: remoteFirst. Saving $T to remote API first.');
         // Determine if this is a create or update operation before modifying
         final isExisting = await isExistingItem(item);
-        // Check if this is a local-only repository
-        bool isLocalOnly = false;
-        try {
-          apiAdapter;
-        } on UnsupportedError {
-          isLocalOnly = true;
-          log.fine('Repository for $T is local-only, performing local save for '
-              'remoteFirst policy.');
-        }
-        if (isLocalOnly) {
+
+        if (localOnly) {
           // For local-only repositories, just perform a local save and return
           await saveToLocal(item);
           changeController.add(isExisting
@@ -525,16 +495,7 @@ mixin RepositorySaveOperations<T extends SynquillDataModel<T>>
     changeController.add(RepositoryChange.created(item));
     log.fine('Local save with temporary ID ${item.id} successful');
 
-    // Check if this is a local-only repository
-    bool isLocalOnly = false;
-    try {
-      apiAdapter;
-    } on UnsupportedError {
-      isLocalOnly = true;
-      log.fine('Repository is local-only, skipping ID negotiation');
-    }
-
-    if (isLocalOnly) {
+    if (localOnly) {
       return item;
     }
 

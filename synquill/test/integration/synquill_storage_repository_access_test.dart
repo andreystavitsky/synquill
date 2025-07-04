@@ -121,4 +121,7 @@ class TestUserRepository extends SynquillRepositoryBase<TestUser> {
   }) async {
     // No-op for testing
   }
+
+  @override
+  bool get localOnly => false;
 }

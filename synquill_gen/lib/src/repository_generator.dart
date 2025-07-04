@@ -172,6 +172,9 @@ $constructorBody
   }
 
   @override
+  bool get localOnly => true;
+
+  @override
   Future<$className?> fetchFromRemote(
     String id, {
     QueryParams? queryParams, 
@@ -266,6 +269,9 @@ $constructorBody
   DatabaseAccessor get dao => _dao;
 
 $apiAdapterGetter
+
+  @override
+  bool get localOnly => false;
 
   @override
   Future<$className?> fetchFromRemote(

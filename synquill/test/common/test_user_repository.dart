@@ -147,4 +147,7 @@ class TestUserRepository extends SynquillRepositoryBase<TestUser> {
 
   /// Get local data count
   int get localCount => _localData.length;
+
+  @override
+  bool get localOnly => false;
 }

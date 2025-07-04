@@ -119,20 +119,14 @@ mixin RepositoryDeleteOperations<T extends SynquillDataModel<T>>
     final itemToDelete = await fetchFromLocal(id, queryParams: null);
 
     // Check if this is a local-only repository
-    bool isLocalOnly = false;
-    try {
-      // Try to access the apiAdapter - if it throws UnsupportedError,
-      // this is a local-only repository
-      apiAdapter;
-    } on UnsupportedError {
-      isLocalOnly = true;
+    if (localOnly) {
       log.fine(
         'Repository for $T is local-only, skipping sync operations for delete.',
       );
     }
 
     String payload;
-    if (isLocalOnly) {
+    if (localOnly) {
       // For local-only repositories, we don't need JSON payload
       payload = convert.jsonEncode({'id': id});
     } else {
@@ -160,7 +154,7 @@ mixin RepositoryDeleteOperations<T extends SynquillDataModel<T>>
 
         return;
       case DataSavePolicy.remoteFirst:
-        if (isLocalOnly) {
+        if (localOnly) {
           log.fine('Policy: remoteFirst, but repository is local-only. '
               'Performing local delete for '
               '$T.');

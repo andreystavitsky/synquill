@@ -146,10 +146,9 @@ void main() {
         );
 
         // Verify the specific sync queue entry for model-4 is still there
-        final model4SyncEntries =
-            syncQueueAfterTruncate
-                .where((task) => task['model_id'] == 'model-4')
-                .toList();
+        final model4SyncEntries = syncQueueAfterTruncate
+            .where((task) => task['model_id'] == 'model-4')
+            .toList();
         expect(model4SyncEntries.length, equals(1));
         expect(model4SyncEntries.first['op'], equals('create'));
       },
@@ -206,7 +205,8 @@ void main() {
       expect(allModelsAfter.length, equals(0));
     });
 
-    test('truncateLocal() does not affect sync queue entries for different '
+    test(
+        'truncateLocal() does not affect sync queue entries for different '
         'model types', () async {
       // This test simulates having sync queue entries for different model types
       // and verifies that truncateLocal() only affects the specific model type
@@ -250,16 +250,14 @@ void main() {
       final allSyncTasks = await syncQueueDao.getDueTasks();
       expect(allSyncTasks.length, equals(2));
 
-      final plainModelTasks =
-          allSyncTasks
-              .where((task) => task['model_type'] == 'PlainModel')
-              .toList();
+      final plainModelTasks = allSyncTasks
+          .where((task) => task['model_type'] == 'PlainModel')
+          .toList();
       expect(plainModelTasks.length, equals(1));
 
-      final differentModelTasks =
-          allSyncTasks
-              .where((task) => task['model_type'] == 'DifferentModel')
-              .toList();
+      final differentModelTasks = allSyncTasks
+          .where((task) => task['model_type'] == 'DifferentModel')
+          .toList();
       expect(differentModelTasks.length, equals(1));
 
       // Step 4: Call truncateLocal() for PlainModel repository
@@ -275,16 +273,14 @@ void main() {
       expect(syncTasksAfterTruncate.length, equals(2));
 
       // Both PlainModel and DifferentModel sync entries should still exist
-      final plainModelTasksAfter =
-          syncTasksAfterTruncate
-              .where((task) => task['model_type'] == 'PlainModel')
-              .toList();
+      final plainModelTasksAfter = syncTasksAfterTruncate
+          .where((task) => task['model_type'] == 'PlainModel')
+          .toList();
       expect(plainModelTasksAfter.length, equals(1));
 
-      final differentModelTasksAfter =
-          syncTasksAfterTruncate
-              .where((task) => task['model_type'] == 'DifferentModel')
-              .toList();
+      final differentModelTasksAfter = syncTasksAfterTruncate
+          .where((task) => task['model_type'] == 'DifferentModel')
+          .toList();
       expect(differentModelTasksAfter.length, equals(1));
     });
 
@@ -429,4 +425,7 @@ class _TestPlainModelRepository extends SynquillRepositoryBase<PlainModel>
 
   @override
   DatabaseAccessor<GeneratedDatabase> get dao => _dao;
+
+  @override
+  bool get localOnly => false;
 }

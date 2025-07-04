@@ -13,10 +13,10 @@ class _TestDatabase extends GeneratedDatabase {
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
-    onCreate: (m) async {
-      // Add required tables if needed for the test
-    },
-  );
+        onCreate: (m) async {
+          // Add required tables if needed for the test
+        },
+      );
 }
 
 // Mock model for testing
@@ -138,6 +138,9 @@ class TestRepository extends SynquillRepositoryBase<TestModel> {
   }) async {
     // Mock implementation
   }
+
+  @override
+  bool get localOnly => false;
 }
 
 void main() {

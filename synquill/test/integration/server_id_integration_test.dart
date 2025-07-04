@@ -1108,10 +1108,22 @@ void main() {
     });
 
     group('RemoteFirst Sync Queue Operations', () {
+      late MockServerIdAdapter mockAdapter;
+
+      setUp(() async {
+        // Set up mock adapter to simulate server behavior
+        mockAdapter = MockServerIdAdapter();
+
+        // Register custom repository factory for global system
+        SynquillRepositoryProvider.register<ServerTestModel>(
+          (db) => _TestServerTestRepository(db, mockAdapter),
+        );
+      });
+
       test('should handle sync queue operations with remoteFirst policy',
           () async {
-        // Create model with server ID (remoteFirst is implicitly handled)
-        final serverModel = ServerTestModel(
+        // Create a model with client-generated ID
+        final clientModel = ServerTestModel(
           id: generateCuid(),
           name: 'RemoteFirst Model',
           description: 'Test remoteFirst sync',
@@ -1120,24 +1132,30 @@ void main() {
         final serverRepo =
             SynquillStorage.instance.getRepository<ServerTestModel>();
 
-        // Save model - this should bypass the queue since it has a server ID
-        await serverRepo.save(serverModel);
+        // Save model with remoteFirst policy
+        // This should trigger ID negotiation and complete immediately
+        final savedModel = await serverRepo.save(
+          clientModel,
+          savePolicy: DataSavePolicy.remoteFirst,
+        );
 
-        // Check queue is empty (no pending operations for server ID models)
+        // Verify model was saved and got a server ID
+        expect(savedModel, isNotNull);
+        expect(savedModel.id, startsWith('server_'));
+        expect(savedModel.name, equals('RemoteFirst Model'));
+
+        // Verify model was saved to local database
+        final localModel = await serverRepo.findOne(savedModel.id);
+        expect(localModel, isNotNull);
+        expect(localModel!.name, equals('RemoteFirst Model'));
+
+        // For remoteFirst policy, ID negotiation should complete immediately
+        // so queue should be empty after save completes
         final queueDao = SyncQueueDao(db);
         final queueItems = await queueDao.getAllItems();
 
-        // With server IDs, direct saves should not create queue entries
-        // The model already has a valid server ID
-        expect(
-          queueItems.where((item) => item['model_id'] == serverModel.id),
-          isEmpty,
-        );
-
-        // Verify model was saved directly to database
-        final savedModel = await serverRepo.findOne(serverModel.id);
-        expect(savedModel, isNotNull);
-        expect(savedModel!.name, equals('RemoteFirst Model'));
+        // Queue should be empty since remoteFirst completes synchronously
+        expect(queueItems, isEmpty);
       });
 
       test('should handle updates to existing server ID models', () async {
@@ -1150,29 +1168,38 @@ void main() {
         final serverRepo =
             SynquillStorage.instance.getRepository<ServerTestModel>();
 
-        // Save original
-        await serverRepo.save(originalModel);
+        // Save original (this will trigger ID negotiation and get server ID)
+        final savedOriginal = await serverRepo.save(
+          originalModel,
+          savePolicy: DataSavePolicy.remoteFirst,
+        );
 
-        // Update the model
+        // Verify it got a server ID
+        expect(savedOriginal.id, startsWith('server_'));
+
+        // Update the model using the server ID
         final updatedModel = ServerTestModel(
-          id: originalModel.id,
+          id: savedOriginal.id, // Use the server ID, not the original client ID
           name: 'Updated Name',
           description: 'Updated Description',
         );
 
-        await serverRepo.save(updatedModel);
+        await serverRepo.save(
+          updatedModel,
+          savePolicy: DataSavePolicy.remoteFirst,
+        );
 
         // Verify update worked
-        final finalModel = await serverRepo.findOne(originalModel.id);
+        final finalModel = await serverRepo.findOne(savedOriginal.id);
         expect(finalModel, isNotNull);
         expect(finalModel!.name, equals('Updated Name'));
         expect(finalModel.description, equals('Updated Description'));
 
-        // Check that queue doesn't have stale entries
+        // Check that queue doesn't have stale entries for the server ID
         final queueDao = SyncQueueDao(db);
         final queueItems = await queueDao.getAllItems();
         expect(
-          queueItems.where((item) => item['model_id'] == originalModel.id),
+          queueItems.where((item) => item['model_id'] == savedOriginal.id),
           isEmpty,
         );
       });
@@ -2570,16 +2597,15 @@ void main() {
           const newParentId = 'server_parent_123';
           final queueDao = SyncQueueDao(db);
           final parentQueueItems = await queueDao.getAllItems();
-          
-          // Find parent task - should exist since we're using repositories 
+
+          // Find parent task - should exist since we're using repositories
           // with adapters
           final parentTask = parentQueueItems.firstWhere(
             (item) => item['model_id'] == tempParentId,
             orElse: () => throw StateError(
-              'No parent queue item found for $tempParentId. '
-              'Available items: '
-              '${parentQueueItems.map((i) => i['model_id']).toList()}'
-            ),
+                'No parent queue item found for $tempParentId. '
+                'Available items: '
+                '${parentQueueItems.map((i) => i['model_id']).toList()}'),
           );
           await queueDao.replaceIdEverywhere(
             taskId: parentTask['id'] as int,
@@ -2593,11 +2619,10 @@ void main() {
           final childQueueItems = await queueDao.getAllItems();
           final childTask = childQueueItems.firstWhere(
             (item) => item['model_id'] == tempChildId,
-            orElse: () => throw StateError(
-              'No child queue item found for $tempChildId. '
-              'Available items: '
-              '${childQueueItems.map((i) => i['model_id']).toList()}'
-            ),
+            orElse: () =>
+                throw StateError('No child queue item found for $tempChildId. '
+                    'Available items: '
+                    '${childQueueItems.map((i) => i['model_id']).toList()}'),
           );
           final payload = childTask['payload'] as String;
           expect(
@@ -2636,6 +2661,9 @@ class _TestServerParentRepository
 
   @override
   DatabaseAccessor<GeneratedDatabase> get dao => _dao;
+
+  @override
+  bool get localOnly => false;
 
   @override
   Future<ServerParentModel?> fetchFromRemote(
@@ -2678,6 +2706,9 @@ class _TestServerChildRepository
   DatabaseAccessor<GeneratedDatabase> get dao => _dao;
 
   @override
+  bool get localOnly => false;
+
+  @override
   Future<ServerChildModel?> fetchFromRemote(
     String id, {
     QueryParams? queryParams,
@@ -2715,6 +2746,9 @@ class _TestServerTestRepository extends SynquillRepositoryBase<ServerTestModel>
 
   @override
   DatabaseAccessor<GeneratedDatabase> get dao => _dao;
+
+  @override
+  bool get localOnly => false;
 
   @override
   Future<ServerTestModel?> fetchFromRemote(

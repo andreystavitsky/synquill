@@ -292,6 +292,9 @@ class MockTestRepository extends SynquillRepositoryBase<TestModel> {
         return await super.delete(id, savePolicy: savePolicy);
     }
   }
+
+  @override
+  bool get localOnly => false;
 }
 
 void main() {

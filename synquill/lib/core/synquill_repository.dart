@@ -105,8 +105,7 @@ abstract class SynquillRepositoryBase<T extends SynquillDataModel<T>>
   /// This needs to be implemented by the concrete generated repository.
   @override
   @protected
-  ApiAdapterBase<T> get apiAdapter =>
-      throw UnimplementedError(
+  ApiAdapterBase<T> get apiAdapter => throw UnimplementedError(
         'apiAdapter getter must be implemented by subclasses',
       );
 
@@ -139,6 +138,10 @@ abstract class SynquillRepositoryBase<T extends SynquillDataModel<T>>
     }
     return result;
   }
+
+  /// Whether this repository is local-only (no remote sync).
+  @override
+  bool get localOnly;
 
   /// Disposes of resources used by this repository.
   void dispose() {
