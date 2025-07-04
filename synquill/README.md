@@ -46,10 +46,10 @@ Add to your `pubspec.yaml`:
 ```yaml
 dependencies:
   json_annotation: ^4.9.0
-  synquill: ^0.5.0
+  synquill: ^0.5.5
 
 dev_dependencies:
-  synquill_gen: ^0.5.0
+  synquill_gen: ^0.5.1
   build_runner: ^2.4.14
 ```
 
