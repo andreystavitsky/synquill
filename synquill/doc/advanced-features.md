@@ -5,6 +5,7 @@ This section covers advanced Synquill features including field indexing, databas
 ## Table of Contents
 
 - [Custom Field Indexing](#custom-field-indexing)
+- [Query Parameters Adaptive Methods](#query-parameters-adaptive-methods)
 - [Database Migrations](#database-migrations)
 - [Error Handling](#error-handling)
 - [Offline Retry Mechanism](#offline-retry-mechanism)
@@ -22,11 +23,120 @@ class User extends SynquillDataModel<User> {
 }
 ```
 
-## Database Migrations
+## Query Parameters Adaptive Methods
+
+Synquill supports adaptive QueryParams parameter in `methodForFind` and `urlForFind*` methods to create adaptive API adapters that change their behavior based on query parameters. This allows for efficient handling of different query types without requiring separate endpoint definitions.
+
+### Smart Adapter Implementation
 
 ```dart
-TODO: describe
+/// Smart adapter that adapts method and URL based on QueryParams
+class SmartSearchAdapter extends BasicApiAdapter<SearchableModel> {
+  @override
+  Uri get baseUrl => Uri.parse('https://api.example.com/v1/');
+
+  /// Adaptive method selection based on query complexity
+  @override
+  String methodForFind({
+    QueryParams? queryParams,
+    Map<String, dynamic>? extra,
+  }) {
+    if (queryParams == null) return 'GET';
+
+    // Use POST for text search operations (complex queries)
+    final hasTextSearch = queryParams.filters.any((filter) =>
+        (filter.field == titleField || filter.field == contentField) &&
+        (filter.operator == FilterOperator.contains ||
+            filter.operator == FilterOperator.startsWith ||
+            filter.operator == FilterOperator.endsWith));
+
+    // Use POST for complex multi-field queries
+    final hasComplexQuery = queryParams.filters.length > 3;
+
+    return (hasTextSearch || hasComplexQuery) ? 'POST' : 'GET';
+  }
+
+  /// Adaptive URL selection based on query type
+  @override
+  FutureOr<Uri> urlForFindAll({
+    QueryParams? queryParams,
+    Map<String, dynamic>? extra,
+  }) async {
+    if (queryParams == null) {
+      return baseUrl.resolve('searchable-models');
+    }
+
+    // Use search endpoint for text search
+    final hasTextSearch = queryParams.filters.any((filter) =>
+        (filter.field == titleField || filter.field == contentField) &&
+        (filter.operator == FilterOperator.contains ||
+            filter.operator == FilterOperator.startsWith ||
+            filter.operator == FilterOperator.endsWith));
+
+    if (hasTextSearch) {
+      return baseUrl.resolve('searchable-models/search');
+    }
+
+    // Use advanced query endpoint for complex filtering
+    final hasComplexQuery = queryParams.filters.length > 3;
+    if (hasComplexQuery) {
+      return baseUrl.resolve('searchable-models/advanced-query');
+    }
+
+    // Use standard endpoint for simple queries
+    return baseUrl.resolve('searchable-models');
+  }
+
+  /// Adaptive method and URL for single item queries
+  @override
+  FutureOr<Uri> urlForFindOne(
+    String id, {
+    QueryParams? queryParams,
+    Map<String, dynamic>? extra,
+  }) async {
+    // If we have query params, treat it as a filtered search
+    if (queryParams?.filters.isNotEmpty ?? false) {
+      return baseUrl.resolve('searchable-models/find-by-criteria');
+    }
+
+    // Otherwise use standard single item endpoint
+    return baseUrl.resolve('searchable-models/$id');
+  }
+}
 ```
+
+## Database Migrations
+Database versioning in Synquill is set using the `@SynqillDatabaseVersion(1)` annotation above your database declaration, for example:
+
+```dart
+@SynqillDatabaseVersion(1)
+final database = SynquillDatabase(
+  ...,
+  onCustomMigration: _performMigration, // Pass your migration function here
+);
+```
+
+### Example: Custom Migration Function
+
+You can provide a custom migration function to handle schema changes between versions. Pass it as the `onCustomMigration` parameter when creating your `SynquillDatabase` instance. The migration format is subject to change in future releases.
+```dart
+Future<void> _performMigration(Migrator migrator, int from, int to) async {
+  final log = Logger('DatabaseMigration');
+  log.info('Performing custom migration from version $from to $to');
+
+  // Example migration logic
+  if (from < 2) {
+    log.info('Future migration logic would go here');
+    // Example: await migrator.addColumn(todos, todos.someNewColumn);
+  }
+
+  log.info('Custom migration completed');
+}
+```
+
+See also the official Drift documentation on migrations: [Drift - Manual Migrations](https://drift.simonbinder.eu/migrations/#manual-migrations)
+
+> **Note:** The migration API and format are subject to change as Synquill evolves.
 
 ## Error Handling
 

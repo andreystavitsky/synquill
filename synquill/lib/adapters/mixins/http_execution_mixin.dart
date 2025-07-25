@@ -64,10 +64,10 @@ mixin HttpExecutionMixin<TModel extends SynquillDataModel<TModel>>
   }) async {
     final mergedHeaders = await mergeHeaders(headers, extra: extra);
     final httpQueryParams = queryParamsToHttpParams(queryParams);
-    final uri = await urlForFindOne(id, extra: extra);
+    final uri = await urlForFindOne(id, queryParams: queryParams, extra: extra);
 
     final response = await executeRequest<dynamic>(
-      method: methodForFind(extra: extra),
+      method: methodForFind(queryParams: queryParams, extra: extra),
       uri: uri,
       headers: mergedHeaders,
       queryParameters: httpQueryParams.isNotEmpty ? httpQueryParams : null,
@@ -89,10 +89,10 @@ mixin HttpExecutionMixin<TModel extends SynquillDataModel<TModel>>
   }) async {
     final mergedHeaders = await mergeHeaders(headers, extra: extra);
     final httpQueryParams = queryParamsToHttpParams(queryParams);
-    final uri = await urlForFindAll(extra: extra);
+    final uri = await urlForFindAll(queryParams: queryParams, extra: extra);
 
     final response = await executeRequest<dynamic>(
-      method: methodForFind(extra: extra),
+      method: methodForFind(queryParams: queryParams, extra: extra),
       uri: uri,
       headers: mergedHeaders,
       queryParameters: httpQueryParams.isNotEmpty ? httpQueryParams : null,

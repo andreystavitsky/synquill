@@ -39,7 +39,7 @@ abstract class ApiAdapterBase<TModel extends SynquillDataModel<TModel>> {
   ///
   /// Example: if TModel is `UserEvent`, returns `userevent`.
   /// Example: if TModel is `TodoItem`, returns `todoitem`.
-  String get type => TModel.toString().toLowerCase();
+  String get type => PluralizationUtils.toSnakeCase(TModel.toString());
 
   /// Plural form of the entity name for collection endpoints.
   ///
@@ -55,7 +55,14 @@ abstract class ApiAdapterBase<TModel extends SynquillDataModel<TModel>> {
 
   /// HTTP method used by `findOne` / `findAll` operations.
   /// Default: 'GET'
-  String methodForFind({Map<String, dynamic>? extra}) => 'GET';
+  ///
+  /// [queryParams] can be used to determine the appropriate HTTP method
+  /// based on query complexity (e.g., POST for complex search queries).
+  String methodForFind({
+    QueryParams? queryParams,
+    Map<String, dynamic>? extra,
+  }) =>
+      'GET';
 
   /// HTTP method for creating a new entity.
   /// Default: 'POST'
@@ -79,14 +86,27 @@ abstract class ApiAdapterBase<TModel extends SynquillDataModel<TModel>> {
   ///
   /// Uses singular entity name + ID.
   /// Example: `baseUrl.resolve('event/some-id')`
-  FutureOr<Uri> urlForFindOne(String id, {Map<String, dynamic>? extra}) async =>
+  ///
+  /// [queryParams] can be used to determine the appropriate URL
+  /// based on query parameters (e.g., different endpoint for search).
+  FutureOr<Uri> urlForFindOne(
+    String id, {
+    QueryParams? queryParams,
+    Map<String, dynamic>? extra,
+  }) async =>
       baseUrl.resolve('$type/$id');
 
   /// Constructs the URL for fetching all model instances.
   ///
   /// Uses plural entity name as per REST conventions.
   /// Example: `baseUrl.resolve('events')`
-  FutureOr<Uri> urlForFindAll({Map<String, dynamic>? extra}) async =>
+  ///
+  /// [queryParams] can be used to determine the appropriate URL
+  /// based on query parameters (e.g., '/search' endpoint for text search).
+  FutureOr<Uri> urlForFindAll({
+    QueryParams? queryParams,
+    Map<String, dynamic>? extra,
+  }) async =>
       baseUrl.resolve(pluralType);
 
   /// Constructs the URL for creating a new model instance.
@@ -132,6 +152,7 @@ abstract class ApiAdapterBase<TModel extends SynquillDataModel<TModel>> {
   /// Fetches a single item by its ID from the remote API.
   ///
   /// Uses [methodForFind] and [urlForFindOne] for the HTTP request.
+  /// Both methods receive [queryParams] to allow URL and method customization.
   /// Throws a [NotFoundException] if no item is found with the given ID.
   ///
   /// [headers] can override default headers for this specific request.
@@ -146,6 +167,7 @@ abstract class ApiAdapterBase<TModel extends SynquillDataModel<TModel>> {
   /// Fetches all items from the remote API.
   ///
   /// Uses [methodForFind] and [urlForFindAll] for the HTTP request.
+  /// Both methods receive [queryParams] to allow URL and method customization.
   /// [headers] can override default headers for this specific request.
   /// [queryParams] can be used to filter, sort, and paginate the results
   /// on the server side.

@@ -23,7 +23,10 @@ mixin PostApiAdapter on BasicApiAdapter<Post> {
       baseUrl.resolve('$pluralType/$id');
 
   @override
-  FutureOr<Uri> urlForFindAll({Map<String, dynamic>? extra}) async {
+  FutureOr<Uri> urlForFindAll({
+    QueryParams? queryParams,
+    Map<String, dynamic>? extra,
+  }) async {
     final users = await SynquillStorage.instance.users
         .findAll(loadPolicy: DataLoadPolicy.localOnly);
 
