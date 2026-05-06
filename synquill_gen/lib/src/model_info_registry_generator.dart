@@ -1,4 +1,6 @@
-part of synquill_gen;
+import 'package:synquill_utils/synquill_utils.dart';
+
+import 'package:synquill_gen/src/model_info.dart';
 
 /// Generates model info registry code for cascade delete and foreign key
 class ModelInfoRegistryGenerator {

@@ -1,6 +1,19 @@
 // ignore_for_file: deprecated_member_use, depend_on_referenced_packages
 
-part of synquill_gen;
+import 'package:analyzer/dart/element/element.dart';
+import 'package:build/build.dart';
+import 'package:glob/glob.dart';
+
+import 'package:synquill_gen/src/table_generator.dart';
+import 'package:synquill_gen/src/dao_generator.dart';
+import 'package:synquill_gen/src/model_extension_generator.dart';
+import 'package:synquill_gen/src/database_generator.dart';
+import 'package:synquill_gen/src/model_analyzer.dart';
+import 'package:synquill_gen/src/model_info.dart';
+import 'package:synquill_gen/src/model_info_registry_generator.dart';
+import 'package:synquill_gen/src/repository_generator.dart';
+import 'package:synquill_gen/src/file_aggregator.dart';
+import 'package:synquill_gen/src/field_validator.dart';
 
 /// Builder for generating the aggregate synced_storage.generated.dart file
 Builder aggregateBuilder(BuilderOptions options) => AggregateBuilder();

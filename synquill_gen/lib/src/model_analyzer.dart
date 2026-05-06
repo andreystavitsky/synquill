@@ -1,6 +1,14 @@
 // ignore_for_file: deprecated_member_use, depend_on_referenced_packages
 
-part of synquill_gen;
+import 'package:analyzer/dart/constant/value.dart';
+import 'package:analyzer/dart/element/element.dart';
+import 'package:build/build.dart';
+import 'package:glob/glob.dart';
+import 'package:source_gen/source_gen.dart';
+import 'package:synquill_utils/synquill_utils.dart';
+
+import 'package:synquill_gen/src/model_info.dart';
+import 'package:synquill_gen/src/adapter_info.dart';
 
 // TypeCheckers for relation annotations
 const _oneToManyChecker = TypeChecker.fromRuntime(OneToMany);

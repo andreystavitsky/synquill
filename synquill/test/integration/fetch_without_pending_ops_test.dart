@@ -133,8 +133,7 @@ void main() {
 
     // -----------------------------------------------------------------------
 
-    test(
-        'pagination via queryParams is applied at SQL level (not post-filter)',
+    test('pagination via queryParams is applied at SQL level (not post-filter)',
         () async {
       // Arrange: 5 items, 2 of them pending
       for (var i = 1; i <= 5; i++) {
@@ -162,14 +161,14 @@ void main() {
       // item-3, item-4, item-5 are clean
 
       // Act: request limit=2 sorted ascending by value
-      final queryParams = QueryParams(
+      const queryParams = QueryParams(
         sorts: [
           SortCondition(
             field: PlainModelFields.value,
             direction: SortDirection.ascending,
           ),
         ],
-        pagination: const PaginationParams(limit: 2, offset: 0),
+        pagination: PaginationParams(limit: 2, offset: 0),
       );
 
       final result = await repo.fetchAllFromLocalWithoutPendingSyncOps(
@@ -185,8 +184,7 @@ void main() {
 
     // -----------------------------------------------------------------------
 
-    test('only excludes pending ops for this model type, not others',
-        () async {
+    test('only excludes pending ops for this model type, not others', () async {
       // Arrange: 2 PlainModel items
       await repo.saveToLocal(PlainModel(id: 'a', name: 'Alpha', value: 1));
       await repo.saveToLocal(PlainModel(id: 'b', name: 'Beta', value: 2));

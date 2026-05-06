@@ -532,6 +532,19 @@ class PostDao extends DatabaseAccessor<SynquillDatabase>
     return watchAll(queryParams: queryParams);
   }
 
+  /// Returns all posts whose IDs are not in [excludedIds].
+  @override
+  Future<List<Post>> getAllExcludingIds(
+    Set<String> excludedIds, {
+    QueryParams? queryParams,
+  }) async {
+    queryParams ??= QueryParams.empty;
+    final query = select(postTable)
+      ..where((t) => t.id.isNotIn(excludedIds.toList()));
+    applyQueryParams(query, queryParams);
+    return query.get();
+  }
+
   /// Delete all posts from the table
   @override
   Future<int> deleteAll() =>
@@ -749,6 +762,19 @@ class LocalNoteDao extends DatabaseAccessor<SynquillDatabase>
     return watchAll(queryParams: queryParams);
   }
 
+  /// Returns all localnotes whose IDs are not in [excludedIds].
+  @override
+  Future<List<LocalNote>> getAllExcludingIds(
+    Set<String> excludedIds, {
+    QueryParams? queryParams,
+  }) async {
+    queryParams ??= QueryParams.empty;
+    final query = select(localNoteTable)
+      ..where((t) => t.id.isNotIn(excludedIds.toList()));
+    applyQueryParams(query, queryParams);
+    return query.get();
+  }
+
   /// Delete all localnotes from the table
   @override
   Future<int> deleteAll() =>
@@ -957,6 +983,19 @@ class PlainModelDao extends DatabaseAccessor<SynquillDatabase>
     return watchAll(queryParams: queryParams);
   }
 
+  /// Returns all plainmodels whose IDs are not in [excludedIds].
+  @override
+  Future<List<PlainModel>> getAllExcludingIds(
+    Set<String> excludedIds, {
+    QueryParams? queryParams,
+  }) async {
+    queryParams ??= QueryParams.empty;
+    final query = select(plainModelTable)
+      ..where((t) => t.id.isNotIn(excludedIds.toList()));
+    applyQueryParams(query, queryParams);
+    return query.get();
+  }
+
   /// Delete all plainmodels from the table
   @override
   Future<int> deleteAll() =>
@@ -1154,6 +1193,19 @@ class UserDao extends DatabaseAccessor<SynquillDatabase>
   @override
   Stream<List<User>> watchAllTyped({QueryParams? queryParams}) {
     return watchAll(queryParams: queryParams);
+  }
+
+  /// Returns all users whose IDs are not in [excludedIds].
+  @override
+  Future<List<User>> getAllExcludingIds(
+    Set<String> excludedIds, {
+    QueryParams? queryParams,
+  }) async {
+    queryParams ??= QueryParams.empty;
+    final query = select(userTable)
+      ..where((t) => t.id.isNotIn(excludedIds.toList()));
+    applyQueryParams(query, queryParams);
+    return query.get();
   }
 
   /// Delete all users from the table
@@ -1425,6 +1477,19 @@ class TodoDao extends DatabaseAccessor<SynquillDatabase>
   @override
   Stream<List<Todo>> watchAllTyped({QueryParams? queryParams}) {
     return watchAll(queryParams: queryParams);
+  }
+
+  /// Returns all todos whose IDs are not in [excludedIds].
+  @override
+  Future<List<Todo>> getAllExcludingIds(
+    Set<String> excludedIds, {
+    QueryParams? queryParams,
+  }) async {
+    queryParams ??= QueryParams.empty;
+    final query = select(todoTable)
+      ..where((t) => t.id.isNotIn(excludedIds.toList()));
+    applyQueryParams(query, queryParams);
+    return query.get();
   }
 
   /// Delete all todos from the table

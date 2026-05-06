@@ -1,6 +1,7 @@
 // ignore_for_file: deprecated_member_use
 
-part of synquill_gen;
+import 'package:analyzer/dart/element/type.dart';
+
 
 /// Information about an adapter that can be applied to models
 class AdapterInfo {

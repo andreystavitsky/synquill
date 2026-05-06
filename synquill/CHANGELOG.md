@@ -1,6 +1,7 @@
 ## 0.7.0
 ### Breaking Changes
 - `BaseDaoMixin<T>` interface now requires implementations for `saveModel`, `deleteById`, `deleteAll`, and `getAllExcludingIds`. Custom DAOs must be updated.
+- Migrated the monolithic `part`/`part of` structure to modular libraries using `import`/`export`. Internal code moved to `lib/src/` for true compile-time encapsulation. Consumers relying on internal package visibility or private members will need to update their code.
 
 ### Improvements & Optimizations
 - **Type Safety**: Eliminated all `dynamic` dispatch in `RepositoryHelpersMixin` by leveraging `BaseDaoMixin` interface.

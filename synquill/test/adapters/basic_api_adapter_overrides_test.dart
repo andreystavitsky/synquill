@@ -16,7 +16,7 @@ void main() {
     setUp(() {
       mockDio = MockDio();
       testModel = TestModel(id: '123', name: 'Test Model', value: 42);
-      
+
       // Configure SynquillStorage to use our mock Dio
       SynquillStorage.setConfigForTesting(
         SynquillStorageConfig(dio: mockDio),
@@ -192,9 +192,8 @@ void main() {
               options: anyNamed('options'),
             ),
           ).thenAnswer((invocation) async {
-            final queryParams =
-                invocation.namedArguments[#queryParameters]
-                    as Map<String, dynamic>?;
+            final queryParams = invocation.namedArguments[#queryParameters]
+                as Map<String, dynamic>?;
             final offset =
                 int.tryParse(queryParams?['offset']?.toString() ?? '0') ?? 0;
             return offset == 0 ? page1Response : page2Response;
@@ -257,7 +256,7 @@ void main() {
             requiredFields: ['name', 'value'],
             mockDio: mockDio,
           );
-          
+
           // Create a special test model that will fail validation
           final invalidModel = TestModelWithMissingFields(
             id: '456',
@@ -630,7 +629,7 @@ void main() {
           final options = invocation.namedArguments[#options] as Options;
           final method = options.method;
           final uri = invocation.positionalArguments[0] as String;
-          
+
           if (method == 'GET') {
             if (uri.contains('/testmodel/123')) {
               // findOne request
@@ -965,19 +964,21 @@ class CustomCreateAdapter extends TestBasicApiAdapter {
 
     // Custom validation
     final modelJson = toJson(model);
-    final missingFields =
-        requiredFields
-            .where(
-              (field) =>
-                  !modelJson.containsKey(field) || modelJson[field] == null,
-            )
-            .toList();
+    final missingFields = requiredFields
+        .where(
+          (field) => !modelJson.containsKey(field) || modelJson[field] == null,
+        )
+        .toList();
 
     if (missingFields.isNotEmpty) {
       capturedData['validationErrors'] = missingFields;
-      throw ValidationException('Missing required fields', {
-        for (final field in missingFields) field: ['This field is required'],
-      }, null);
+      throw ValidationException(
+          'Missing required fields',
+          {
+            for (final field in missingFields)
+              field: ['This field is required'],
+          },
+          null);
     }
 
     capturedData['validationPassed'] = true;

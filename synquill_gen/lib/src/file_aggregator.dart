@@ -1,6 +1,8 @@
-part of synquill_gen;
-
 // ignore_for_file: deprecated_member_use, depend_on_referenced_packages
+
+
+import 'package:synquill_gen/src/model_info.dart';
+import 'package:synquill_gen/src/builder_utils.dart';
 
 /// Generates the complete synced_storage.generated.dart file content
 class FileAggregator {

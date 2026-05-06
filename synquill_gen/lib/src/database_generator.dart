@@ -1,5 +1,12 @@
 // ignore_for_file: deprecated_member_use, depend_on_referenced_packages
-part of synquill_gen;
+
+import 'package:analyzer/dart/element/element.dart';
+import 'package:build/build.dart';
+import 'package:glob/glob.dart';
+import 'package:source_gen/source_gen.dart';
+import 'package:synquill_utils/synquill_utils.dart';
+
+import 'package:synquill_gen/src/model_info.dart';
 
 /// Generates the main SynquillDatabase class
 class DatabaseGenerator {

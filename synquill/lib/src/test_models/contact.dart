@@ -1,8 +1,8 @@
 // ignore_for_file: public_member_api_docs
 
-import 'package:json_annotation/json_annotation.dart';
-
 import 'package:synquill/src/test_models/index.dart';
+
+import 'package:json_annotation/json_annotation.dart';
 
 part 'contact.g.dart';
 

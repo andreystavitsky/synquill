@@ -1,4 +1,5 @@
 ## 0.7.0
+- **Breaking Change**: Migrated the generator's internal `part`/`part of` structure to independent modular libraries and moved internal files to `lib/src/`.
 - Generate implementation for `getAllExcludingIds` in DAOs.
 - Explicitly add `@override` to `saveModel`, `deleteById`, and `deleteAll` in generated code.
 - Synchronized version with `synquill`.

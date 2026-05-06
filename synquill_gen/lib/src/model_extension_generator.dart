@@ -1,6 +1,8 @@
 // ignore_for_file: deprecated_member_use, depend_on_referenced_packages
 
-part of synquill_gen;
+import 'package:synquill_utils/synquill_utils.dart';
+
+import 'package:synquill_gen/src/model_info.dart';
 
 /// Generates model extension methods for loading related objects
 class ModelExtensionGenerator {

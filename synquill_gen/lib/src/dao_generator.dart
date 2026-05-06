@@ -1,6 +1,9 @@
 // ignore_for_file: deprecated_member_use, depend_on_referenced_packages
 
-part of synquill_gen;
+import 'package:analyzer/dart/element/nullability_suffix.dart';
+
+import 'package:synquill_gen/src/model_info.dart';
+import 'package:synquill_gen/src/builder_utils.dart';
 
 /// Generates DAO classes for Drift database operations
 class DaoGenerator {
