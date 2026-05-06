@@ -41,19 +41,6 @@ class OfflineException extends SynquillStorageException {
   OfflineException(super.message, [super.stackTrace]);
 }
 
-/// Base class for errors originating from the remote API interaction.
-class ApiError extends SynquillStorageException {
-  /// The HTTP status code, if available.
-  final int? statusCode;
-
-  /// Creates an [ApiError] with an optional [statusCode] and [stackTrace].
-  ApiError(String message, {this.statusCode, StackTrace? stackTrace})
-      : super(message, stackTrace);
-
-  @override
-  String toString() =>
-      'ApiError: $message${statusCode != null ? ' (Status: $statusCode)' : ''}';
-}
 
 /// Thrown when a network connection error occurs.
 class NetworkException extends SynquillStorageException {

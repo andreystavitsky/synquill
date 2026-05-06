@@ -102,7 +102,7 @@ mixin RepositoryQueryOperations<T extends SynquillDataModel<T>>
           );
           result = null;
         } catch (e, stackTrace) {
-          // Other ApiErrors or network issues.
+          // Other ApiExceptions or network issues.
           log.warning(
             'Failed to get $T $id from API, or API error. Falling back '
             'to local.',
