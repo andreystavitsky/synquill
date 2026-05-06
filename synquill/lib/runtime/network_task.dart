@@ -46,15 +46,20 @@ class NetworkTask<T> {
     this.taskName,
   }) : completer = Completer<T>();
 
+  /// Internal flag tracking whether this task was explicitly cancelled.
+  bool _wasCancelled = false;
+
   /// Returns the future that completes when this task finishes.
   Future<T> get future => completer.future;
 
-  /// Returns true if this task has been cancelled.
-  bool get isCancelled => completer.isCompleted;
+  /// Returns true only if [cancel] was explicitly called on this task.
+  /// A successfully completed or failed task returns false.
+  bool get isCancelled => _wasCancelled;
 
   /// Cancels this task with a QueueCancelledException.
   void cancel() {
     if (!completer.isCompleted) {
+      _wasCancelled = true;
       completer.completeError(QueueCancelledException());
     }
   }

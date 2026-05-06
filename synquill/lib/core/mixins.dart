@@ -31,6 +31,32 @@ mixin BaseDaoMixin<T> {
   /// or pagination.
   /// Returns a stream that emits the list of models when any change occurs.
   Stream<List<T>> watchAllTyped({QueryParams? queryParams});
+
+  /// Saves (inserts or updates) the given model in local storage.
+  ///
+  /// Returns the saved model instance.
+  Future<T> saveModel(T item);
+
+  /// Deletes the model with the given [id] from local storage.
+  ///
+  /// Returns the number of rows affected.
+  Future<int> deleteById(String id);
+
+  /// Deletes all models of this type from local storage.
+  ///
+  /// Returns the number of rows affected.
+  Future<int> deleteAll();
+
+  /// Retrieves all models whose IDs are NOT in [excludedIds],
+  /// applying [queryParams] (filters, sorting, pagination) at the SQL level.
+  ///
+  /// This is used by [RepositoryHelpersMixin.fetchAllFromLocalWithoutPendingSyncOps]
+  /// to perform a single query instead of N+1 per-item checks.
+  /// When [excludedIds] is empty, this is equivalent to [getAllTyped].
+  Future<List<T>> getAllExcludingIds(
+    Set<String> excludedIds, {
+    QueryParams? queryParams,
+  });
 }
 
 /// Mixin that provides common repository operations to reduce code duplication
@@ -110,26 +136,31 @@ mixin RepositoryHelpersMixin<T extends SynquillDataModel<T>> {
   /// This method is used when we want to get local data but filter out
   /// items that have local changes that haven't been synced to remote yet.
   /// [queryParams] Query parameters for filtering, sorting, and pagination.
+  ///
+  /// Implementation uses 2 queries at most:
+  /// 1. `SELECT DISTINCT model_id FROM sync_queue_items WHERE …` — get IDs
+  ///    of items with pending operations (fast path: 0 queries for the model
+  ///    table when there are no pending ops).
+  /// 2. `SELECT … FROM model_table WHERE id NOT IN (…)` — get items,
+  ///    with [queryParams] applied at the SQL level, so pagination is correct.
   Future<List<T>> fetchAllFromLocalWithoutPendingSyncOps({
     QueryParams? queryParams,
   }) async {
-    final allItems = await fetchAllFromLocal(queryParams: queryParams);
     final syncQueueDao = SyncQueueDao(db);
-    final filteredItems = <T>[];
+    final pendingIds = await syncQueueDao.getModelIdsWithPendingOps(
+      T.toString(),
+    );
 
-    for (final item in allItems) {
-      final pendingTasks = await syncQueueDao.getTasksForModelId(
-        T.toString(),
-        item.id,
-      );
-
-      // Include only items without pending sync operations
-      if (pendingTasks.isEmpty) {
-        filteredItems.add(item);
-      }
+    // Fast path: nothing pending → return all items (1 query total)
+    if (pendingIds.isEmpty) {
+      return fetchAllFromLocal(queryParams: queryParams);
     }
 
-    return filteredItems;
+    // Slow path: exclude pending IDs via a single NOT IN SQL query (2 queries)
+    return (dao as BaseDaoMixin<T>).getAllExcludingIds(
+      pendingIds,
+      queryParams: queryParams,
+    );
   }
 
   /// Watches a model from local storage by its unique identifier.
@@ -171,8 +202,7 @@ mixin RepositoryHelpersMixin<T extends SynquillDataModel<T>> {
   /// [item] The model to save.
   /// [extra] Optional extra data to associate with the save operation.
   Future<void> saveToLocal(T item, {Map<String, dynamic>? extra}) async {
-    // Use dynamic call since we don't have a common interface
-    await (dao as dynamic).saveModel(item);
+    await (dao as BaseDaoMixin<T>).saveModel(item);
   }
 
   /// Removes a model from local storage if it exists.
@@ -181,7 +211,7 @@ mixin RepositoryHelpersMixin<T extends SynquillDataModel<T>> {
   Future<void> removeFromLocalIfExists(String id) async {
     final existing = await fetchFromLocal(id, queryParams: null);
     if (existing != null) {
-      await (dao as dynamic).deleteById(id);
+      await (dao as BaseDaoMixin<T>).deleteById(id);
     }
   }
 
@@ -190,8 +220,7 @@ mixin RepositoryHelpersMixin<T extends SynquillDataModel<T>> {
   /// Deletes all records from the table associated with the model type [T]
   /// without firing a remote sync operations.
   Future<void> truncateLocalStorage() async {
-    // Use dynamic call to delete all records from the table
-    await (dao as dynamic).deleteAll();
+    await (dao as BaseDaoMixin<T>).deleteAll();
   }
 
   /// Checks if a model exists in local storage.

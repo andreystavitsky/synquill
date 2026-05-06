@@ -268,6 +268,42 @@ class SyncQueueDao {
     return result;
   }
 
+  /// Deletes all sync queue tasks in a single atomic SQL statement.
+  ///
+  /// Unlike [deleteTask], this method does NOT update the [SyncStatus] of
+  /// individual models. It is intended for bulk-obliteration scenarios
+  /// (e.g., [SynquillStorage.obliterateLocalStorage]) where all model data
+  /// is deleted immediately afterward, making per-row status updates
+  /// unnecessary and wasteful.
+  ///
+  /// Returns the number of rows deleted.
+  Future<int> deleteAllTasks() async {
+    final result = await _db.customUpdate(
+      'DELETE FROM sync_queue_items',
+      variables: [],
+    );
+    _log.fine('deleteAllTasks: removed $result sync queue entries');
+    return result;
+  }
+
+  /// Returns the set of model IDs that have at least one non-dead pending
+  /// sync operation for the given [modelType].
+  ///
+  /// Uses a single `SELECT DISTINCT` query — O(1) queries regardless of
+  /// the number of models — intended to replace per-item [getTasksForModelId]
+  /// calls in bulk-filtering scenarios.
+  Future<Set<String>> getModelIdsWithPendingOps(String modelType) async {
+    final results = await _db.customSelect(
+      'SELECT DISTINCT model_id FROM sync_queue_items '
+      'WHERE model_type = ? AND status != ?',
+      variables: [
+        Variable.withString(modelType),
+        Variable.withString(SyncStatus.dead.name),
+      ],
+    ).get();
+    return results.map((r) => r.read<String>('model_id')).toSet();
+  }
+
   /// Marks a task as 'dead' and records the final error.
   /// This prevents the task from being retried indefinitely.
   Future<int> markTaskAsDead(int id, String error) async {

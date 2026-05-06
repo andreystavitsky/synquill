@@ -46,10 +46,10 @@ Add to your `pubspec.yaml`:
 ```yaml
 dependencies:
   json_annotation: ^4.9.0
-  synquill: ^0.6.0
+  synquill: ^0.7.0
 
 dev_dependencies:
-  synquill_gen: ^0.5.1
+  synquill_gen: ^0.7.0
   build_runner: ^2.4.14
 ```
 
@@ -189,7 +189,19 @@ mixin TodoApiAdapter on BasicApiAdapter<Todo> {
 }
 ```
 
-### 3. Initialize the Storage System
+### 3. Generate the Code
+
+After defining your models and adapters, run the code generator to produce repositories and DAOs:
+
+```sh
+# Run once
+dart run build_runner build --delete-conflicting-outputs
+
+# Or watch for changes
+dart run build_runner watch --delete-conflicting-outputs
+```
+
+### 4. Initialize the Storage System
 
 ```dart
 import 'package:path_provider/path_provider.dart';

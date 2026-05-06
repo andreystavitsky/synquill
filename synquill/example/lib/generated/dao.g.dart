@@ -404,6 +404,7 @@ class PostDao extends DatabaseAccessor<SynquillDatabase>
       into(postTable).insertOnConflictUpdate(entry);
 
   /// Save post model
+  @override
   Future<Post> saveModel(Post model) async {
     final companion = 
      PostTableCompanion(id: Value(model.id),
@@ -419,6 +420,7 @@ class PostDao extends DatabaseAccessor<SynquillDatabase>
   }
 
   /// Delete post by ID
+  @override
   Future<int> deleteById(String id) =>
       (delete(postTable)..where((t) => t.id.equals(id))).go();
 
@@ -531,6 +533,7 @@ class PostDao extends DatabaseAccessor<SynquillDatabase>
   }
 
   /// Delete all posts from the table
+  @override
   Future<int> deleteAll() =>
       delete(postTable).go();
 
@@ -618,6 +621,7 @@ class LocalNoteDao extends DatabaseAccessor<SynquillDatabase>
       into(localNoteTable).insertOnConflictUpdate(entry);
 
   /// Save localnote model
+  @override
   Future<LocalNote> saveModel(LocalNote model) async {
     final companion = 
      LocalNoteTableCompanion(id: Value(model.id),
@@ -633,6 +637,7 @@ class LocalNoteDao extends DatabaseAccessor<SynquillDatabase>
   }
 
   /// Delete localnote by ID
+  @override
   Future<int> deleteById(String id) =>
       (delete(localNoteTable)..where((t) => t.id.equals(id))).go();
 
@@ -745,6 +750,7 @@ class LocalNoteDao extends DatabaseAccessor<SynquillDatabase>
   }
 
   /// Delete all localnotes from the table
+  @override
   Future<int> deleteAll() =>
       delete(localNoteTable).go();
 
@@ -828,6 +834,7 @@ class PlainModelDao extends DatabaseAccessor<SynquillDatabase>
       into(plainModelTable).insertOnConflictUpdate(entry);
 
   /// Save plainmodel model
+  @override
   Future<PlainModel> saveModel(PlainModel model) async {
     final companion = 
      PlainModelTableCompanion(id: Value(model.id),
@@ -842,6 +849,7 @@ class PlainModelDao extends DatabaseAccessor<SynquillDatabase>
   }
 
   /// Delete plainmodel by ID
+  @override
   Future<int> deleteById(String id) =>
       (delete(plainModelTable)..where((t) => t.id.equals(id))).go();
 
@@ -950,6 +958,7 @@ class PlainModelDao extends DatabaseAccessor<SynquillDatabase>
   }
 
   /// Delete all plainmodels from the table
+  @override
   Future<int> deleteAll() =>
       delete(plainModelTable).go();
 
@@ -1029,6 +1038,7 @@ class UserDao extends DatabaseAccessor<SynquillDatabase>
       into(userTable).insertOnConflictUpdate(entry);
 
   /// Save user model
+  @override
   Future<User> saveModel(User model) async {
     final companion = 
      UserTableCompanion(id: Value(model.id),
@@ -1042,6 +1052,7 @@ class UserDao extends DatabaseAccessor<SynquillDatabase>
   }
 
   /// Delete user by ID
+  @override
   Future<int> deleteById(String id) =>
       (delete(userTable)..where((t) => t.id.equals(id))).go();
 
@@ -1146,6 +1157,7 @@ class UserDao extends DatabaseAccessor<SynquillDatabase>
   }
 
   /// Delete all users from the table
+  @override
   Future<int> deleteAll() =>
       delete(userTable).go();
 
@@ -1257,6 +1269,7 @@ class TodoDao extends DatabaseAccessor<SynquillDatabase>
       into(todoTable).insertOnConflictUpdate(entry);
 
   /// Save todo model
+  @override
   Future<Todo> saveModel(Todo model) async {
     final companion = 
      TodoTableCompanion(title: Value(model.title),
@@ -1278,6 +1291,7 @@ class TodoDao extends DatabaseAccessor<SynquillDatabase>
   }
 
   /// Delete todo by ID
+  @override
   Future<int> deleteById(String id) =>
       (delete(todoTable)..where((t) => t.id.equals(id))).go();
 
@@ -1414,6 +1428,7 @@ class TodoDao extends DatabaseAccessor<SynquillDatabase>
   }
 
   /// Delete all todos from the table
+  @override
   Future<int> deleteAll() =>
       delete(todoTable).go();
 

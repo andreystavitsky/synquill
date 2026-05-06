@@ -4,7 +4,9 @@ part of synquill;
 class SynquillStorageConfig {
   /// Optional Dio client for network requests.
   /// If null, an internal default client will be configured.
-  final dynamic dio; // Using dynamic for now, will be Dio? later
+  /// Optional Dio client for network requests.
+  /// If null, an internal default client will be configured.
+  final Dio? dio;
 
   /// The concurrency level for the remoteFirst request queue. Defaults to 1.
   final int foregroundQueueConcurrency;
@@ -95,7 +97,7 @@ class SynquillStorageConfig {
   final int maxBackgroundQueueCapacity;
 
   /// Maximum network timeout for HTTP requests.
-  final dynamic maximumNetworkTimeout;
+  final Duration maximumNetworkTimeout;
 
   /// Creates a new [SynquillStorageConfig].
   const SynquillStorageConfig({
@@ -144,8 +146,9 @@ class SynquillStorage {
   static BackgroundSyncManager? _backgroundSyncManager;
   static SyncQueueDao? _syncQueueDao;
 
-  /// Default logger implementation that writes to developer.log.
-  static Logger get _defaultLogger => Logger('SynquillStorage')
+  /// Default logger — initialized once as a static final to prevent
+  /// listener accumulation on re-initialization cycles (e.g. in tests).
+  static final Logger _defaultLogger = Logger('SynquillStorage')
     ..onRecord.listen((record) {
       developer.log(
         record.message,
@@ -195,7 +198,7 @@ class SynquillStorage {
   ///
   /// Throws [StateError] if [init] has not been called.
   static Logger get logger {
-    if (_database == null) {
+    if (_logger == null) {
       throw StateError(
         'SynquillStorage has not been initialized. '
         'Call SynquillStorage.init() first.',
@@ -247,7 +250,7 @@ class SynquillStorage {
   ///
   /// Throws [StateError] if [init] has not been called.
   static BackgroundSyncManager get backgroundSyncManager {
-    if (_instance == null) {
+    if (_backgroundSyncManager == null) {
       throw StateError(
         'SynquillStorage has not been initialized. '
         'Call SynquillStorage.init() first.',
@@ -406,13 +409,18 @@ class SynquillStorage {
       _logger!.info('Resetting background sync manager');
       await BackgroundSyncManager.reset();
 
-      // 3. Clear all sync queue data from the database
-      _logger!.info('Clearing sync queue data');
-      await _clearSyncQueueData();
-
-      // 4. Truncate local storage in all registered repositories
-      _logger!.info('Truncating local storage for all repositories');
-      await _truncateAllRepositoryData();
+      // 3 + 4. Clear sync queue and all model data atomically in one transaction.
+      // This guarantees consistency if the device loses power mid-operation:
+      // SQLite's WAL ensures the transaction is either fully committed or fully
+      // rolled back on the next startup.
+      // Without this, a crash between step 3 and 4 would leave model rows with
+      // no corresponding sync queue entries — unsynced data that would never
+      // be retried.
+      _logger!.info('Clearing sync queue and model data (atomic transaction)');
+      await _database!.transaction(() async {
+        await _clearSyncQueueData();
+        await _truncateAllRepositoryData();
+      });
 
       // 5. Clear all cached repository instances (but preserve registrations)
       _logger!.info('Clearing cached repository instances');
@@ -436,15 +444,13 @@ class SynquillStorage {
   /// Clears all sync queue data from the database.
   static Future<void> _clearSyncQueueData() async {
     try {
-      // Get all sync tasks
-      final allTasks = await _syncQueueDao!.getAllItems();
-
-      // Delete each task
-      for (final task in allTasks) {
-        await _syncQueueDao!.deleteTask(task['id'] as int);
-      }
-
-      _logger!.info('Cleared ${allTasks.length} sync queue tasks');
+      // Delete all tasks in a single atomic statement.
+      // We intentionally use deleteAllTasks() here instead of the per-row
+      // deleteTask(), which additionally updates each model's syncStatus.
+      // That side-effect is unnecessary during obliteration because
+      // _truncateAllRepositoryData() deletes all model data immediately after.
+      final count = await _syncQueueDao!.deleteAllTasks();
+      _logger!.info('Cleared $count sync queue tasks');
     } catch (e) {
       _logger!.warning('Error clearing sync queue data: $e');
       // Continue execution - this is not critical enough to stop obliteration
