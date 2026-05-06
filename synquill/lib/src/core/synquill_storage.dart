@@ -415,7 +415,8 @@ class SynquillStorage {
       _logger!.info('Resetting background sync manager');
       await BackgroundSyncManager.reset();
 
-      // 3 + 4. Clear sync queue and all model data atomically in one transaction.
+      // 3 + 4. Clear sync queue and all model data atomically in
+      // one transaction.
       // This guarantees consistency if the device loses power mid-operation:
       // SQLite's WAL ensures the transaction is either fully committed or fully
       // rolled back on the next startup.

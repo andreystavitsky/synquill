@@ -7,7 +7,10 @@ import 'package:synquill_gen/src/builder_utils.dart';
 /// Generates the complete synced_storage.generated.dart file content
 class FileAggregator {
   /// Generate the complete synced_storage.generated.dart file
-  static String generateAggregateFile(List<ModelInfo> models) {
+  static String generateAggregateFile(
+    List<ModelInfo> models,
+    String packageName,
+  ) {
     final buffer = StringBuffer();
 
     // File header
@@ -23,17 +26,13 @@ class FileAggregator {
 
     final aggregatedImports = <String>{};
     for (final model in models) {
-      final relativePath = BuilderUtils.makeRelativePath(model.importPath);
-      aggregatedImports.add(relativePath);
+      aggregatedImports.add(model.importPath);
     }
     for (final model in models) {
       if (model.adapters != null) {
         for (final adapter in model.adapters!) {
-          // Use the import path from AdapterInfo
-          final adapterPath = adapter.importPath;
-
-          final relativePath = BuilderUtils.makeRelativePath(adapterPath);
-          aggregatedImports.add(relativePath);
+          // Use the import path from AdapterInfo directly
+          aggregatedImports.add(adapter.importPath);
         }
       }
     }
@@ -42,8 +41,8 @@ class FileAggregator {
     }
 
     // Add part directives for generated files
-    buffer.writeln('import \'generated/database.generated.dart\';');
-    buffer.writeln('export \'generated/database.generated.dart\';');
+    buffer.writeln('import \'package:$packageName/generated/database.generated.dart\';');
+    buffer.writeln('export \'package:$packageName/generated/database.generated.dart\';');
     buffer.writeln();
     buffer.writeln('part \'generated/repositories.g.dart\';');
     buffer.writeln('part \'generated/api_adapters.g.dart\';');
@@ -69,13 +68,13 @@ class FileAggregator {
     // their .g.dart parts)
     final aggregatedImports = <String>{};
     for (final model in models) {
-      final relativePath = BuilderUtils.makeRelativePath(model.importPath);
-      aggregatedImports.add(relativePath);
+      aggregatedImports.add(model.importPath);
     }
 
     // Add unique adapter imports
     for (final aggregatedImport in aggregatedImports) {
-      buffer.writeln('import \'../$aggregatedImport\';');
+      // aggregatedImport is now a package: URI
+      buffer.writeln('import \'$aggregatedImport\';');
     }
     buffer.writeln();
 

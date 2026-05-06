@@ -371,14 +371,32 @@ class ModelAnalyzer {
       final sourceUri = source.uri;
 
       if (sourceUri.scheme == 'package') {
-        // It's a package import
+        // It's already a package import
         importPath = sourceUri.toString();
+      } else if (sourceUri.scheme == 'asset') {
+        // Convert asset:package_name/lib/path to package:package_name/path
+        final path = sourceUri.path;
+        final parts = path.split('/');
+        if (parts.length >= 3 && parts[1] == 'lib') {
+          final pkg = parts[0];
+          final rest = parts.skip(2).join('/');
+          importPath = 'package:$pkg/$rest';
+        } else {
+          importPath = sourceUri.toString();
+        }
       } else if (sourceUri.scheme == 'file') {
-        // It's a local file, we need to make it relative to the current package
-        final currentUri = buildStep.inputId.uri;
-        importPath = _makeRelativeImport(currentUri, sourceUri);
+        // Convert local file path to package import
+        final path = sourceUri.path;
+        final libIndex = path.lastIndexOf('/lib/');
+        if (libIndex != -1) {
+           final relativeToLib = path.substring(libIndex + 5);
+           importPath = 'package:${buildStep.inputId.package}/$relativeToLib';
+        } else {
+           // Fallback
+           importPath = _makeRelativeImport(buildStep.inputId.uri, sourceUri);
+        }
       } else {
-        // Fallback - use the URI as is
+        // Fallback
         importPath = sourceUri.toString();
       }
 

@@ -54,7 +54,8 @@ mixin BaseDaoMixin<T> {
   /// Retrieves all models whose IDs are NOT in [excludedIds],
   /// applying [queryParams] (filters, sorting, pagination) at the SQL level.
   ///
-  /// This is used by [RepositoryHelpersMixin.fetchAllFromLocalWithoutPendingSyncOps]
+  /// This is used by
+  /// [RepositoryHelpersMixin.fetchAllFromLocalWithoutPendingSyncOps]
   /// to perform a single query instead of N+1 per-item checks.
   /// When [excludedIds] is empty, this is equivalent to [getAllTyped].
   Future<List<T>> getAllExcludingIds(

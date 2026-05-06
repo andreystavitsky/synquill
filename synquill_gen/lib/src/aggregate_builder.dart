@@ -87,7 +87,10 @@ class AggregateBuilder implements Builder {
       buildStep.inputId.package,
       'lib/generated/database.generated.dart',
     );
-    final mainContent = FileAggregator.generateAggregateFile(models);
+    final mainContent = FileAggregator.generateAggregateFile(
+      models,
+      buildStep.inputId.package,
+    );
     await buildStep.writeAsString(mainAssetId, mainContent);
 
     final generatedDatabaseContent = FileAggregator.generateDatabaseFile(

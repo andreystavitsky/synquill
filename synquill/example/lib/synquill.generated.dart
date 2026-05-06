@@ -4,14 +4,14 @@
 import 'package:synquill/synquill.dart';
 import 'package:synquill/synquill_core.dart' show 
   DatabaseAccessor, GeneratedDatabase;
-import 'models/post.dart';
-import 'models/local_note.dart';
-import 'models/plain_model.dart';
-import 'models/user.dart';
-import 'models/todo.dart';
-import 'adapters/json_api_adapter.dart';
-import 'generated/database.generated.dart';
-export 'generated/database.generated.dart';
+import 'package:synquill_example/models/post.dart';
+import 'package:synquill_example/models/local_note.dart';
+import 'package:synquill_example/models/plain_model.dart';
+import 'package:synquill_example/models/user.dart';
+import 'package:synquill_example/models/todo.dart';
+import 'package:synquill_example/adapters/json_api_adapter.dart';
+import 'package:synquill_example/generated/database.generated.dart';
+export 'package:synquill_example/generated/database.generated.dart';
 
 part 'generated/repositories.g.dart';
 part 'generated/api_adapters.g.dart';
