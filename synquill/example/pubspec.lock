@@ -779,14 +779,14 @@ packages:
       path: ".."
       relative: true
     source: path
-    version: "0.6.0"
+    version: "0.7.0"
   synquill_gen:
     dependency: "direct dev"
     description:
       path: "../../synquill_gen"
       relative: true
     source: path
-    version: "0.5.1"
+    version: "0.7.0"
   synquill_utils:
     dependency: transitive
     description:

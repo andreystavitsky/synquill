@@ -113,7 +113,30 @@ Database versioning in Synquill is set using the `@SynqillDatabaseVersion(1)` an
 final database = SynquillDatabase(
   ...,
   onCustomMigration: _performMigration, // Pass your migration function here
+  onDatabaseCreated: _setupInitialData, // Optional initial data setup
 );
+```
+
+> [!IMPORTANT]
+> **Build Required After Version Change**: After you change the database version in the `@SynqillDatabaseVersion` annotation, you MUST run `dart run build_runner build` to regenerate the database schema and initialization code.
+
+### Background Isolate Configuration
+
+If you are using background sync (e.g., with Workmanager), you must provide the same migration and initialization parameters in your background isolate's database setup:
+
+```dart
+@pragma('vm:entry-point')
+void callbackDispatcher() {
+  Workmanager().executeTask((task, inputData) async {
+    final database = SynquillDatabase(
+      ...,
+      onCustomMigration: _performMigration, // REQUIRED: Must match foreground setup
+      onDatabaseCreated: _setupInitialData, // Optional: Must match foreground setup
+    );
+    
+    // ... initialize SynquillStorage and process sync
+  });
+}
 ```
 
 ### Example: Custom Migration Function

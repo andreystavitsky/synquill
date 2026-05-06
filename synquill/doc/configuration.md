@@ -99,7 +99,8 @@ void callbackDispatcher() {
               databaseDirectory: getApplicationSupportDirectory,
             ),
           ),
-        ),
+        onCustomMigration: _performMigration, // Pass your migration function here
+        onDatabaseCreated: _setupInitialData, // Optional initial data setup
       );
 
       // Initialize SynquillStorage in background isolate

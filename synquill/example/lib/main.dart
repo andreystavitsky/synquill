@@ -29,7 +29,7 @@ void main() async {
   );
 
   // Initialize the SynquillStorage system
-  @SynqillDatabaseVersion(1)
+  @SynqillDatabaseVersion(2)
   final database = SynquillDatabase(
     LazyDatabase(
       () => driftDatabase(
@@ -109,10 +109,18 @@ Future<void> _performMigration(Migrator migrator, int from, int to) async {
   final log = Logger('DatabaseMigration');
   log.info('Performing custom migration from version $from to $to');
 
-  // Example migration logic (currently no schema changes needed)
   if (from < 2) {
-    log.info('Future migration logic would go here');
-    // Example: await migrator.addColumn(todos, todos.someNewColumn);
+    log.info('Adding missing columns to sync_queue_items table');
+    // We need to cast the database to access the specific tables
+    final db = migrator.database as SynquillDatabase;
+
+    await migrator.addColumn(
+        db.syncQueueItems, db.syncQueueItems.temporaryClientId);
+    await migrator.addColumn(
+        db.syncQueueItems, db.syncQueueItems.idNegotiationStatus);
+
+    await migrator.createIndex(db.idxTemporaryClientId);
+    await migrator.createIndex(db.idxIdNegotiationStatus);
   }
 
   log.info('Custom migration completed');
@@ -155,6 +163,8 @@ void callbackDispatcher() {
             ),
           ),
         ),
+        onCustomMigration: _performMigration,
+        onDatabaseCreated: _setupInitialData,
       );
 
       // Initialize SynquillStorage in background isolate
