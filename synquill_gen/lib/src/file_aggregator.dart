@@ -1,8 +1,6 @@
 // ignore_for_file: deprecated_member_use, depend_on_referenced_packages
 
-
 import 'package:synquill_gen/src/model_info.dart';
-import 'package:synquill_gen/src/builder_utils.dart';
 
 /// Generates the complete synced_storage.generated.dart file content
 class FileAggregator {
@@ -41,8 +39,10 @@ class FileAggregator {
     }
 
     // Add part directives for generated files
-    buffer.writeln('import \'package:$packageName/generated/database.generated.dart\';');
-    buffer.writeln('export \'package:$packageName/generated/database.generated.dart\';');
+    buffer.writeln(
+        'import \'package:$packageName/generated/database.generated.dart\';');
+    buffer.writeln(
+        'export \'package:$packageName/generated/database.generated.dart\';');
     buffer.writeln();
     buffer.writeln('part \'generated/repositories.g.dart\';');
     buffer.writeln('part \'generated/api_adapters.g.dart\';');
