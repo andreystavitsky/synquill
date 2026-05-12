@@ -31,6 +31,9 @@ class PostRepository extends SynquillRepositoryBase<Post>
   }
 
   @override
+  bool get localOnly => false;
+
+  @override
   Future<Post?> fetchFromRemote(
     String id, {
     QueryParams? queryParams, 
@@ -135,6 +138,9 @@ class LocalNoteRepository extends SynquillRepositoryBase<LocalNote>
   }
 
   @override
+  bool get localOnly => true;
+
+  @override
   Future<LocalNote?> fetchFromRemote(
     String id, {
     QueryParams? queryParams, 
@@ -189,6 +195,9 @@ class PlainModelRepository extends SynquillRepositoryBase<PlainModel>
   ApiAdapterBase<PlainModel> get apiAdapter {
     throw UnimplementedError('No adapters specified for PlainModel');
   }
+
+  @override
+  bool get localOnly => false;
 
   @override
   Future<PlainModel?> fetchFromRemote(
@@ -289,6 +298,9 @@ class UserRepository extends SynquillRepositoryBase<User>
   }
 
   @override
+  bool get localOnly => false;
+
+  @override
   Future<User?> fetchFromRemote(
     String id, {
     QueryParams? queryParams, 
@@ -385,6 +397,9 @@ class TodoRepository extends SynquillRepositoryBase<Todo>
   ApiAdapterBase<Todo> get apiAdapter {
     return _TodoAdapter();
   }
+
+  @override
+  bool get localOnly => false;
 
   @override
   Future<Todo?> fetchFromRemote(

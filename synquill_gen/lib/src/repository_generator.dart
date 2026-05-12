@@ -1,4 +1,6 @@
-part of synquill_gen;
+
+import 'package:synquill_gen/src/model_info.dart';
+import 'package:synquill_gen/src/builder_utils.dart';
 
 /// Generates concrete repository implementations that extend
 /// SynquillRepositoryBase

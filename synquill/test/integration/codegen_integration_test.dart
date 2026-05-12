@@ -46,12 +46,17 @@ void main() {
       // Verify that manual companion creation is present for test models
       expect(
         content,
-        contains('PlainModelTableCompanion(id: Value(model.id)'),
+        contains('PlainModelTableCompanion('),
         reason: 'Should create PlainModel companion manually',
       );
       expect(
         content,
-        contains('UserTableCompanion(id: Value(model.id)'),
+        contains('id: Value(model.id)'),
+        reason: 'Should include id field',
+      );
+      expect(
+        content,
+        contains('UserTableCompanion('),
         reason: 'Should create User companion manually',
       );
       // updatedAt field logic

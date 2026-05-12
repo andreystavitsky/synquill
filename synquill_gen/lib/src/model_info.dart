@@ -1,6 +1,8 @@
 // ignore_for_file: deprecated_member_use, depend_on_referenced_packages
 
-part of synquill_gen;
+import 'package:analyzer/dart/element/type.dart';
+
+import 'package:synquill_gen/src/adapter_info.dart';
 
 /// Information about a model with @SynquillDataRepository annotation
 class ModelInfo {

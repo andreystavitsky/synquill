@@ -1,5 +1,6 @@
 // ignore_for_file: public_member_api_docs
 
+import 'package:synquill/src/core/synquill_data_model.dart';
 import 'package:synquill/src/test_models/index.dart';
 
 abstract class ContactBase<T extends ContactBase<T>>

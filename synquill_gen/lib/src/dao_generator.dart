@@ -1,6 +1,9 @@
 // ignore_for_file: deprecated_member_use, depend_on_referenced_packages
 
-part of synquill_gen;
+import 'package:analyzer/dart/element/nullability_suffix.dart';
+
+import 'package:synquill_gen/src/model_info.dart';
+import 'package:synquill_gen/src/builder_utils.dart';
 
 /// Generates DAO classes for Drift database operations
 class DaoGenerator {
@@ -169,6 +172,7 @@ class DaoGenerator {
     buffer.writeln();
 
     buffer.writeln('  /// Save ${model.className.toLowerCase()} model');
+    buffer.writeln('  @override');
     buffer.writeln(
       '  Future<${model.className}> saveModel(${model.className} model) '
       'async {',
@@ -181,6 +185,7 @@ class DaoGenerator {
     buffer.writeln();
 
     buffer.writeln('  /// Delete ${model.className.toLowerCase()} by ID');
+    buffer.writeln('  @override');
     buffer.writeln('  Future<int> deleteById(String id) =>');
     buffer.writeln(
       '      (delete($tableVariableName)..where((t) => t.id.equals(id))).go();',
@@ -502,10 +507,33 @@ class DaoGenerator {
     buffer.writeln('  }');
     buffer.writeln();
 
+    // getAllExcludingIds: single NOT IN query, avoids N+1 per-item checks
+    buffer.writeln(
+      '  /// Returns all ${model.className.toLowerCase()}s whose IDs are '
+      'not in [excludedIds].',
+    );
+    buffer.writeln('  @override');
+    buffer.writeln(
+      '  Future<List<${model.className}>> getAllExcludingIds(',
+    );
+    buffer.writeln('    Set<String> excludedIds, {');
+    buffer.writeln('    QueryParams? queryParams,');
+    buffer.writeln('  }) async {');
+    buffer.writeln('    queryParams ??= QueryParams.empty;');
+    buffer.writeln('    final query = select($tableVariableName)');
+    buffer.writeln(
+      '      ..where((t) => t.id.isNotIn(excludedIds.toList()));',
+    );
+    buffer.writeln('    applyQueryParams(query, queryParams);');
+    buffer.writeln('    return query.get();');
+    buffer.writeln('  }');
+    buffer.writeln();
+
     // Add deleteAll method for bulk deletion
     buffer.writeln(
       '  /// Delete all ${model.className.toLowerCase()}s from the table',
     );
+    buffer.writeln('  @override');
     buffer.writeln('  Future<int> deleteAll() =>');
     buffer.writeln('      delete($tableVariableName).go();');
     buffer.writeln();

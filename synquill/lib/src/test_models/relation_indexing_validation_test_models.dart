@@ -1,5 +1,7 @@
 // ignore_for_file: public_member_api_docs
 
+import 'package:synquill/src/test_models/index.dart';
+
 import 'package:synquill/synquill.dart';
 
 /// Test model with a ManyToOne relation that should be automatically indexed

@@ -138,7 +138,7 @@ class SynquillDatabase extends _$SynquillDatabase {
   late final SyncQueueDao _syncQueueDao = SyncQueueDao(this);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   /// Provides migration strategy for schema upgrades.
   ///

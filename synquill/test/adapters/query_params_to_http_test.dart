@@ -50,9 +50,9 @@ class TestApiAdapter extends ApiAdapterBase<TestModel> {
 
   @override
   Future<Map<String, String>> get baseHeaders async => {
-    'Content-Type': 'application/json',
-    'Accept': 'application/json',
-  };
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      };
 
   @override
   String get type => 'testmodel';

@@ -1,6 +1,7 @@
 // ignore_for_file: strict_top_level_inference
 
-part of synquill_gen;
+import 'package:build/build.dart';
+
 
 /// Creates a no-op builder that does nothing during the build process.
 ///

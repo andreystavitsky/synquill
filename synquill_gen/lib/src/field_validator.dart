@@ -1,6 +1,9 @@
 // ignore_for_file: deprecated_member_use, depend_on_referenced_packages
 
-part of synquill_gen;
+import 'package:analyzer/dart/element/element.dart';
+import 'package:source_gen/source_gen.dart';
+
+import 'package:synquill_gen/src/model_info.dart';
 
 /// Validates that models meet the requirements for code generation
 class FieldValidator {

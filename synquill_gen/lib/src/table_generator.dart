@@ -1,5 +1,8 @@
 // ignore_for_file: deprecated_member_use, depend_on_referenced_packages
-part of synquill_gen;
+
+import 'package:analyzer/dart/element/nullability_suffix.dart';
+
+import 'package:synquill_gen/src/model_info.dart';
 
 /// Generates Drift table classes from model information
 class TableGenerator {
