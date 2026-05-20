@@ -4,8 +4,7 @@ import 'dart:math' as math;
 import 'package:cuid2/cuid2.dart';
 import 'package:drift/drift.dart';
 import 'package:meta/meta.dart';
-
-import 'package:synquill/src/test_models/index.dart';
+import 'package:synquill/synquill.dart';
 
 /// Mixin providing save operations for repositories.
 mixin RepositorySaveOperations<T extends SynquillDataModel<T>>

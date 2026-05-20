@@ -1,6 +1,5 @@
 import 'dart:async';
-
-import 'package:synquill/src/test_models/index.dart';
+import 'package:synquill/synquill.dart';
 
 /// {@template api_adapter}
 /// Abstract interface for REST API adapters used by SynquillStorage.

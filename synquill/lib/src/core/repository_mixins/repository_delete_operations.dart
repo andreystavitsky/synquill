@@ -1,8 +1,7 @@
 import 'dart:async';
 import 'dart:convert' as convert;
 import 'package:cuid2/cuid2.dart';
-
-import 'package:synquill/src/test_models/index.dart';
+import 'package:synquill/synquill.dart';
 
 /// Mixin providing delete and cascade delete operations for repositories.
 ///

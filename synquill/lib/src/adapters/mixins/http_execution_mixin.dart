@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:meta/meta.dart';
-
-import 'package:synquill/src/test_models/index.dart';
+import 'package:synquill/synquill.dart';
 
 /// {@template http_execution_mixin}
 /// Mixin that provides HTTP execution functionality for API adapters.

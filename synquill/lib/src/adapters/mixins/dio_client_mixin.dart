@@ -1,6 +1,5 @@
 import 'package:meta/meta.dart';
-
-import 'package:synquill/src/test_models/index.dart';
+import 'package:synquill/synquill.dart';
 
 /// {@template dio_client_mixin}
 /// Mixin that provides Dio client management functionality for API adapters.

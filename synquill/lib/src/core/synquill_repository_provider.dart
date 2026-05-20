@@ -1,6 +1,5 @@
 import 'package:drift/drift.dart';
-
-import 'package:synquill/src/test_models/index.dart';
+import 'package:synquill/synquill.dart';
 
 /// Enum representing different data store policies.
 enum DataSavePolicy {

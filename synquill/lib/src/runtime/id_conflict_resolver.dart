@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:drift/drift.dart';
-
-import 'package:synquill/src/test_models/index.dart';
+import 'package:synquill/synquill.dart';
 
 /// Service for resolving ID conflicts during server ID negotiation.
 ///

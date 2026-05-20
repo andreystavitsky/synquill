@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:drift/drift.dart';
-
-import 'package:synquill/src/test_models/index.dart';
+import 'package:synquill/synquill.dart';
 
 /// Function type for getting column name using DAO's getColumnForField method
 typedef GetColumnForFieldFunction = String? Function(

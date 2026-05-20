@@ -1,6 +1,5 @@
 import 'package:cuid2/cuid2.dart';
-
-import 'package:synquill/src/test_models/index.dart';
+import 'package:synquill/synquill.dart';
 
 /// Generates a new CUID (Collision-resistant Universal Identifier).
 ///

@@ -1,6 +1,5 @@
 import 'package:meta/meta.dart';
-
-import 'package:synquill/src/test_models/index.dart';
+import 'package:synquill/synquill.dart';
 
 /// {@template error_handling_mixin}
 /// Mixin that provides error handling functionality for API adapters.

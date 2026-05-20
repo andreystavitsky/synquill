@@ -1,4 +1,4 @@
-import 'package:synquill/src/test_models/index.dart';
+import 'package:synquill/synquill.dart';
 
 /// Represents a foreign key relationship where this model references another
 class ForeignKeyRelation {

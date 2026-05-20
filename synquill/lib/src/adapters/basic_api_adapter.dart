@@ -1,6 +1,5 @@
 import 'dart:async';
-
-import 'package:synquill/src/test_models/index.dart';
+import 'package:synquill/synquill.dart';
 
 /// {@template base_api_adapter}
 /// Concrete implementation of [ApiAdapterBase] using Dio for HTTP requests.

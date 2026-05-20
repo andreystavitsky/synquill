@@ -1,8 +1,7 @@
 import 'dart:async';
 import 'package:drift/drift.dart';
 import 'package:meta/meta.dart';
-
-import 'package:synquill/src/test_models/index.dart';
+import 'package:synquill/synquill.dart';
 
 /// Base class for synchronized repositories.
 ///

@@ -79,7 +79,7 @@ class ModelExtensionGenerator {
   ) {
     final targetClassName = relation.targetType;
     final methodName =
-        'load${PluralizationUtils.PascalCasePlural(targetClassName)}';
+        'load${PluralizationUtils.toPascalCasePlural(targetClassName)}';
     final mappedBy = relation.mappedBy;
 
     if (mappedBy == null) {
@@ -88,7 +88,7 @@ class ModelExtensionGenerator {
     }
 
     buffer.writeln(
-      '  /// Load related ${PluralizationUtils.PascalCasePlural(targetClassName)} objects',
+      '  /// Load related ${PluralizationUtils.toPascalCasePlural(targetClassName)} objects',
     );
     buffer.writeln(
       '  /// Uses mappedBy field \'$mappedBy\' in $targetClassName',
@@ -130,7 +130,7 @@ class ModelExtensionGenerator {
     buffer.writeln('      _log.severe(');
     buffer.writeln(
       '        \'Failed to load '
-      '${PluralizationUtils.PascalCasePlural(targetClassName)} '
+      '${PluralizationUtils.toPascalCasePlural(targetClassName)} '
       'for \$runtimeType[\$id]\', e, stackTrace);',
     );
     buffer.writeln('      rethrow;');
@@ -147,7 +147,7 @@ class ModelExtensionGenerator {
   ) {
     final targetClassName = relation.targetType;
     final methodName = 'watch'
-        '${PluralizationUtils.PascalCasePlural(targetClassName)}';
+        '${PluralizationUtils.toPascalCasePlural(targetClassName)}';
     final mappedBy = relation.mappedBy;
 
     if (mappedBy == null) {
@@ -157,7 +157,7 @@ class ModelExtensionGenerator {
 
     buffer.writeln(
       '  /// Watch related '
-      '${PluralizationUtils.PascalCasePlural(targetClassName)} '
+      '${PluralizationUtils.toPascalCasePlural(targetClassName)} '
       'objects as a stream',
     );
     buffer.writeln(
@@ -192,7 +192,7 @@ class ModelExtensionGenerator {
     buffer.writeln('      _log.severe(');
     buffer.writeln(
       '        \'Failed to watch'
-      '${PluralizationUtils.PascalCasePlural(targetClassName)} '
+      '${PluralizationUtils.toPascalCasePlural(targetClassName)} '
       'for \$runtimeType[\$id]\', e, stackTrace);',
     );
     buffer.writeln('      rethrow;');

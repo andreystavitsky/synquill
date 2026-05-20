@@ -1,8 +1,7 @@
 import 'dart:async';
 import 'package:cuid2/cuid2.dart';
 import 'package:meta/meta.dart';
-
-import 'package:synquill/src/test_models/index.dart';
+import 'package:synquill/synquill.dart';
 
 /// Mixin providing query operations for repositories.
 mixin RepositoryQueryOperations<T extends SynquillDataModel<T>>

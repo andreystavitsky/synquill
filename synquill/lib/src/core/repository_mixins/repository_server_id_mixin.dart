@@ -1,6 +1,5 @@
 import 'package:meta/meta.dart';
-
-import 'package:synquill/src/test_models/index.dart';
+import 'package:synquill/synquill.dart';
 
 /// Mixin providing server ID negotiation capabilities to repositories.
 ///

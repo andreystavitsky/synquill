@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'package:queue/queue.dart';
+import 'package:synquill/synquill.dart';
 
 import 'package:synquill/src/core/repository_mixins/repository_types.dart';
-import 'package:synquill/src/test_models/index.dart';
 
 /// Represents a network operation task that can be executed
 /// by the RequestQueue.

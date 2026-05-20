@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:queue/queue.dart';
-
-import 'package:synquill/src/test_models/index.dart';
+import 'package:synquill/synquill.dart';
 
 /// Queue types for different API operations.
 enum QueueType {

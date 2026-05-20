@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:meta/meta.dart';
-
-import 'package:synquill/src/test_models/index.dart';
+import 'package:synquill/synquill.dart';
 
 /// Mixin providing abstract local storage operations for repositories.
 mixin RepositoryLocalOperations<T extends SynquillDataModel<T>> {

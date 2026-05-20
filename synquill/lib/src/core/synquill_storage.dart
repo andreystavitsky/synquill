@@ -3,8 +3,7 @@ import 'dart:async';
 import 'dart:developer' as developer;
 import 'package:drift/drift.dart';
 import 'package:queue/queue.dart';
-
-import 'package:synquill/src/test_models/index.dart';
+import 'package:synquill/synquill.dart';
 
 /// Base class for synced data storage configuration.
 class SynquillStorageConfig {

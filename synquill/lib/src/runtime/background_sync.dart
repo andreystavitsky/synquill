@@ -1,6 +1,5 @@
 import 'dart:async';
-
-import 'package:synquill/src/test_models/index.dart';
+import 'package:synquill/synquill.dart';
 
 /// Background sync manager for handling platform-specific background tasks.
 ///

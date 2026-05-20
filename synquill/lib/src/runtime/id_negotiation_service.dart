@@ -1,4 +1,4 @@
-import 'package:synquill/src/test_models/index.dart';
+import 'package:synquill/synquill.dart';
 
 /// Status of ID negotiation process for server-generated IDs.
 enum IdNegotiationStatus {

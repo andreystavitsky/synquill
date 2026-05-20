@@ -1,6 +1,5 @@
 import 'package:meta/meta.dart';
-
-import 'package:synquill/src/test_models/index.dart';
+import 'package:synquill/synquill.dart';
 
 /// {@template response_parsing_mixin}
 /// Mixin that provides response parsing functionality for API adapters.

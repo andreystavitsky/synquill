@@ -1,6 +1,5 @@
 import 'package:logging/logging.dart';
-
-import 'package:synquill/src/test_models/index.dart';
+import 'package:synquill/synquill.dart';
 
 /// Manages dependency resolution for hierarchical sync ordering.
 ///
