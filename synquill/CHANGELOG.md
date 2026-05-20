@@ -1,3 +1,6 @@
+## 0.7.2
+* Fixes imports.
+
 ## 0.7.1
 * Fixes imports. Fixes typos in `synquill_gen`
 
