@@ -1,5 +1,9 @@
+import 'dart:async';
+import 'dart:convert';
+
 import 'package:meta/meta.dart';
 import 'package:synquill/synquill.dart';
+import 'package:synquill_graphql/src/graphql_batch_options.dart';
 import 'package:synquill_graphql/src/mixins/graphql_error_handling_mixin.dart';
 import 'package:synquill_graphql/src/mixins/graphql_response_parsing_mixin.dart';
 
@@ -10,6 +14,28 @@ mixin GraphQLExecutionMixin<TModel extends SynquillDataModel<TModel>>
         DioClientMixin<TModel>,
         GraphQLErrorHandlingMixin<TModel>,
         GraphQLResponseParsingMixin<TModel> {
+  final Map<_GraphQLBatchKey, _GraphQLBatch> _graphqlBatches =
+      <_GraphQLBatchKey, _GraphQLBatch>{};
+
+  /// Configuration for GraphQL HTTP query batching.
+  GraphQLBatchOptions get batchOptions => const GraphQLBatchOptions.disabled();
+
+  /// Determines whether a GraphQL operation should use the batch queue.
+  @protected
+  bool shouldBatchGraphQLOperation({
+    required String operation,
+    Map<String, dynamic>? variables,
+    Map<String, String>? headers,
+    String? operationName,
+    Map<String, dynamic>? extra,
+  }) {
+    if (!batchOptions.enabled || extra != null) return false;
+
+    final trimmedOperation = operation.trimLeft();
+    return trimmedOperation.startsWith('{') ||
+        trimmedOperation.startsWith(RegExp(r'query\b'));
+  }
+
   /// Core method: sends a GraphQL operation via POST to the endpoint.
   @protected
   Future<Map<String, dynamic>> executeGraphQLOperation({
@@ -19,25 +45,35 @@ mixin GraphQLExecutionMixin<TModel extends SynquillDataModel<TModel>>
     String? operationName,
     Map<String, dynamic>? extra,
   }) async {
+    final operationBody = _GraphQLTransportOperation(
+      operation: operation,
+      variables: variables,
+      operationName: operationName,
+    );
+
     try {
       final mergedHeaders = await mergeHeadersWithContentType(
         headers,
         extra: extra,
       );
 
-      final body = {
-        'query': operation,
-        if (variables != null) 'variables': variables,
-        if (operationName != null) 'operationName': operationName,
-      };
-
-      final response = await dio.post<dynamic>(
-        baseUrl.toString(),
-        data: body,
-        options: Options(
+      if (shouldBatchGraphQLOperation(
+        operation: operation,
+        variables: variables,
+        headers: headers,
+        operationName: operationName,
+        extra: extra,
+      )) {
+        return _enqueueGraphQLOperation(
+          operation: operationBody,
           headers: mergedHeaders,
-          extra: extra,
-        ),
+        );
+      }
+
+      final response = await _postGraphQLOperation(
+        data: operationBody.toJson(),
+        headers: mergedHeaders,
+        extra: extra,
       );
 
       final responseData = response.data;
@@ -62,6 +98,119 @@ mixin GraphQLExecutionMixin<TModel extends SynquillDataModel<TModel>>
       logger.severe('Unexpected error executing GraphQL operation', e, st);
       throw ApiException('GraphQL execution failed: $e');
     }
+  }
+
+  Future<Response<dynamic>> _postGraphQLOperation({
+    required Object data,
+    required Map<String, String> headers,
+    Map<String, dynamic>? extra,
+  }) {
+    return dio.post<dynamic>(
+      baseUrl.toString(),
+      data: data,
+      options: Options(
+        headers: headers,
+        extra: extra,
+      ),
+    );
+  }
+
+  Future<Map<String, dynamic>> _enqueueGraphQLOperation({
+    required _GraphQLTransportOperation operation,
+    required Map<String, String> headers,
+  }) {
+    final key = _GraphQLBatchKey(
+      endpoint: baseUrl.toString(),
+      headersKey: _canonicalHeadersKey(headers),
+    );
+    final batch = _graphqlBatches.putIfAbsent(
+      key,
+      () => _GraphQLBatch(
+        timer: Timer(batchOptions.window, () => _flushGraphQLBatch(key)),
+      ),
+    );
+
+    final completer = Completer<Map<String, dynamic>>();
+    batch.items.add(
+      _GraphQLBatchItem(
+        operation: operation,
+        headers: headers,
+        completer: completer,
+      ),
+    );
+
+    if (batch.items.length >= batchOptions.maxBatchSize) {
+      _flushGraphQLBatch(key);
+    }
+
+    return completer.future;
+  }
+
+  void _flushGraphQLBatch(_GraphQLBatchKey key) {
+    final batch = _graphqlBatches.remove(key);
+    if (batch == null || batch.items.isEmpty) return;
+
+    batch.timer.cancel();
+    unawaited(_executeGraphQLBatch(batch.items));
+  }
+
+  Future<void> _executeGraphQLBatch(List<_GraphQLBatchItem> items) async {
+    try {
+      final response = await _postGraphQLOperation(
+        data: items.map((item) => item.operation.toJson()).toList(),
+        headers: items.first.headers,
+      );
+
+      final responseData = response.data;
+      if (responseData is! List || responseData.length != items.length) {
+        throw ApiException(
+          'Invalid GraphQL batch response format. Expected JSON Array with '
+          '${items.length} entries.',
+          statusCode: response.statusCode,
+        );
+      }
+
+      for (var i = 0; i < items.length; i++) {
+        final item = items[i];
+        try {
+          final entry = responseData[i];
+          if (entry is! Map<String, dynamic>) {
+            throw ApiException(
+              'Invalid GraphQL batch response format. Expected JSON Object.',
+              statusCode: response.statusCode,
+            );
+          }
+
+          checkGraphQLErrors(entry, response.statusCode);
+
+          final data = entry['data'];
+          item.completer.complete(
+            data is Map<String, dynamic> ? data : const <String, dynamic>{},
+          );
+        } catch (e, st) {
+          item.completer.completeError(e, st);
+        }
+      }
+    } on DioException catch (e, st) {
+      final exception = mapDioErrorToSynquillStorageException(e);
+      for (final item in items) {
+        item.completer.completeError(exception, st);
+      }
+    } catch (e, st) {
+      final exception = e is SynquillStorageException
+          ? e
+          : ApiException('GraphQL batch execution failed: $e');
+      for (final item in items) {
+        item.completer.completeError(exception, st);
+      }
+    }
+  }
+
+  String _canonicalHeadersKey(Map<String, String> headers) {
+    final sortedKeys = headers.keys.toList()..sort();
+    return jsonEncode({
+      for (final key in sortedKeys) key: headers[key],
+    });
   }
 
   /// Converts [QueryParams] to GraphQL variables.
@@ -260,4 +409,63 @@ mixin GraphQLExecutionMixin<TModel extends SynquillDataModel<TModel>>
       extra: extra,
     );
   }
+}
+
+class _GraphQLTransportOperation {
+  const _GraphQLTransportOperation({
+    required this.operation,
+    this.variables,
+    this.operationName,
+  });
+
+  final String operation;
+  final Map<String, dynamic>? variables;
+  final String? operationName;
+
+  Map<String, dynamic> toJson() {
+    return {
+      'query': operation,
+      if (variables != null) 'variables': variables,
+      if (operationName != null) 'operationName': operationName,
+    };
+  }
+}
+
+class _GraphQLBatchKey {
+  const _GraphQLBatchKey({
+    required this.endpoint,
+    required this.headersKey,
+  });
+
+  final String endpoint;
+  final String headersKey;
+
+  @override
+  bool operator ==(Object other) {
+    return other is _GraphQLBatchKey &&
+        endpoint == other.endpoint &&
+        headersKey == other.headersKey;
+  }
+
+  @override
+  int get hashCode => Object.hash(endpoint, headersKey);
+}
+
+class _GraphQLBatch {
+  _GraphQLBatch({required this.timer});
+
+  final Timer timer;
+  final List<_GraphQLBatchItem> items = <_GraphQLBatchItem>[];
+}
+
+class _GraphQLBatchItem {
+  _GraphQLBatchItem({
+    required this.operation,
+    required this.headers,
+    required this.completer,
+  });
+
+  final _GraphQLTransportOperation operation;
+  final Map<String, String> headers;
+  final Completer<Map<String, dynamic>> completer;
 }
