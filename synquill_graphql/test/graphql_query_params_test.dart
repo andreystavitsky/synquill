@@ -62,8 +62,7 @@ class ParamsTestingAdapter extends ApiAdapterBase<TestModel>
 // Custom format overrides for testing extensibility
 class HasuraParamsTestingAdapter extends ParamsTestingAdapter {
   @override
-  Map<String, dynamic> queryParamsToGraphQLVariables(
-      QueryParams? queryParams) {
+  Map<String, dynamic> queryParamsToGraphQLVariables(QueryParams? queryParams) {
     if (queryParams == null || !queryParams.hasParameters) {
       return {};
     }
@@ -203,7 +202,9 @@ void main() {
 
       test('converts inList filter', () {
         final queryParams = QueryParams(
-          filters: [nameField.inList(['John', 'Jane'])],
+          filters: [
+            nameField.inList(['John', 'Jane'])
+          ],
         );
         final vars = adapter.testQueryParamsToGraphQLVariables(queryParams);
         expect(

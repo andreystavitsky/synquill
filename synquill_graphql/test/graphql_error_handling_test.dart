@@ -125,8 +125,7 @@ void main() {
 
       test(
           'maps BAD_USER_INPUT with field errors to '
-          'ValidationException with fieldErrors',
-          () {
+          'ValidationException with fieldErrors', () {
         final error = {
           'message': 'Validation failed',
           'extensions': {
@@ -137,8 +136,8 @@ void main() {
             },
           },
         };
-        final exception = adapter.testMapGraphQLError(error, 200)
-            as ValidationException;
+        final exception =
+            adapter.testMapGraphQLError(error, 200) as ValidationException;
         expect(exception, isA<ValidationException>());
         expect(exception.fieldErrors, isNotNull);
         expect(exception.fieldErrors!['age'],
@@ -198,8 +197,7 @@ void main() {
           type: DioExceptionType.connectionTimeout,
           message: 'Timeout occurred',
         );
-        final exception =
-            adapter.testMapDioError(dioException);
+        final exception = adapter.testMapDioError(dioException);
         expect(exception, isA<NetworkException>());
         expect(exception.message, contains('Timeout occurred'));
       });
@@ -210,8 +208,7 @@ void main() {
           type: DioExceptionType.connectionError,
           message: 'Offline',
         );
-        final exception =
-            adapter.testMapDioError(dioException);
+        final exception = adapter.testMapDioError(dioException);
         expect(exception, isA<NetworkException>());
         expect(exception.message, contains('Offline'));
       });
@@ -226,8 +223,7 @@ void main() {
             statusMessage: 'Unauthorized',
           ),
         );
-        final exception =
-            adapter.testMapDioError(dioException);
+        final exception = adapter.testMapDioError(dioException);
         expect(exception, isA<AuthenticationException>());
       });
 
@@ -240,8 +236,7 @@ void main() {
             statusCode: 404,
           ),
         );
-        final exception =
-            adapter.testMapDioError(dioException);
+        final exception = adapter.testMapDioError(dioException);
         expect(exception, isA<ApiExceptionNotFound>());
       });
 
@@ -254,8 +249,7 @@ void main() {
             statusCode: 500,
           ),
         );
-        final exception =
-            adapter.testMapDioError(dioException);
+        final exception = adapter.testMapDioError(dioException);
         expect(exception, isA<ServerException>());
       });
     });
@@ -263,8 +257,7 @@ void main() {
     group('Multiple Errors', () {
       test(
           'checkGraphQLErrors throws validation exception '
-          'aggregated from multiple entries',
-          () {
+          'aggregated from multiple entries', () {
         final response = {
           'data': null,
           'errors': [
@@ -306,8 +299,7 @@ void main() {
 
       test(
           'checkGraphQLErrors uses first error for non-validation '
-          'multiple errors',
-          () {
+          'multiple errors', () {
         final response = {
           'data': null,
           'errors': [
@@ -333,8 +325,7 @@ void main() {
     group('Partial Errors Flow', () {
       test(
           'checkGraphQLErrors throws even when data is present '
-          '(default partial error strategy)',
-          () {
+          '(default partial error strategy)', () {
         final response = {
           'data': {
             'test_model': {'id': '1', 'name': 'Partially Good'}

@@ -36,17 +36,15 @@ mixin GraphQLResponseParsingMixin<TModel extends SynquillDataModel<TModel>>
           'under key "$fieldName", got ${value.runtimeType}',
         );
       }
-      return value
-          .map((item) {
-            if (item is! Map<String, dynamic>) {
-              throw ApiException(
-                'Failed to parse findAll response: Expected list item of type '
-                'Map<String, dynamic>, got ${item.runtimeType}',
-              );
-            }
-            return fromJson(item);
-          })
-          .toList();
+      return value.map((item) {
+        if (item is! Map<String, dynamic>) {
+          throw ApiException(
+            'Failed to parse findAll response: Expected list item of type '
+            'Map<String, dynamic>, got ${item.runtimeType}',
+          );
+        }
+        return fromJson(item);
+      }).toList();
     } catch (e, st) {
       if (e is SynquillStorageException) rethrow;
       logger.severe('Error parsing findAll response', e, st);

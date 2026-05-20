@@ -83,17 +83,15 @@ class RelayParsingAdapter extends ParsingTestingAdapter {
     }
     final edges = fieldVal['edges'];
     if (edges is! List) return [];
-    return edges
-        .map((edge) {
-          if (edge is Map<String, dynamic> && edge.containsKey('node')) {
-            final node = edge['node'];
-            if (node is Map<String, dynamic>) {
-              return fromJson(node);
-            }
-          }
-          throw ApiException('Invalid edge structure');
-        })
-        .toList();
+    return edges.map((edge) {
+      if (edge is Map<String, dynamic> && edge.containsKey('node')) {
+        final node = edge['node'];
+        if (node is Map<String, dynamic>) {
+          return fromJson(node);
+        }
+      }
+      throw ApiException('Invalid edge structure');
+    }).toList();
   }
 }
 
@@ -215,14 +213,13 @@ void main() {
 
       test(
           'parseReplaceGraphQLResponse extracts model '
-          'from mutation field',
-          () {
+          'from mutation field', () {
         final data = {
           'updateTestModel': {'id': '1', 'name': 'Replaced', 'value': 300}
         };
         final result = adapter.testParseReplace(data, 'updateTestModel');
-        expect(result,
-            equals(TestModel(id: '1', name: 'Replaced', value: 300)));
+        expect(
+            result, equals(TestModel(id: '1', name: 'Replaced', value: 300)));
       });
 
       test('parseCreateGraphQLResponse returns null for null field', () {

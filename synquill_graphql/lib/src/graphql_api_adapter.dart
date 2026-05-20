@@ -2,6 +2,7 @@ import 'package:synquill/synquill.dart';
 import 'package:synquill_graphql/src/mixins/graphql_error_handling_mixin.dart';
 import 'package:synquill_graphql/src/mixins/graphql_execution_mixin.dart';
 import 'package:synquill_graphql/src/mixins/graphql_response_parsing_mixin.dart';
+import 'package:synquill_graphql/src/mixins/graphql_subscription_mixin.dart';
 
 /// Base class for implementing GraphQL API adapters in Synquill.
 abstract class GraphQLApiAdapter<TModel extends SynquillDataModel<TModel>>
@@ -10,7 +11,8 @@ abstract class GraphQLApiAdapter<TModel extends SynquillDataModel<TModel>>
         DioClientMixin<TModel>,
         GraphQLErrorHandlingMixin<TModel>,
         GraphQLResponseParsingMixin<TModel>,
-        GraphQLExecutionMixin<TModel> {
+        GraphQLExecutionMixin<TModel>,
+        GraphQLSubscriptionMixin<TModel> {
   /// The GraphQL endpoint URL (e.g. `https://api.example.com/graphql`).
   Uri get graphqlEndpoint;
 
@@ -40,9 +42,11 @@ abstract class GraphQLApiAdapter<TModel extends SynquillDataModel<TModel>>
   String get replaceMutation => updateMutation;
 
   /// Response JSON key for findOne queries.
+  @override
   String get findOneResponseField => type;
 
   /// Response JSON key for findAll queries.
+  @override
   String get findAllResponseField => pluralType;
 
   /// Response JSON key for createOne mutations.
@@ -67,6 +71,7 @@ abstract class GraphQLApiAdapter<TModel extends SynquillDataModel<TModel>>
   /// ignored for operations already completed during disposal.
   void dispose() {
     disposeGraphQLBatching();
+    disposeGraphQLSubscriptions();
   }
 
   @override

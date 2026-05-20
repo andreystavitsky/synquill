@@ -428,6 +428,33 @@ subscription WatchTestModel {
       expect(posts.single.body, isA<Map<String, dynamic>>());
     });
 
+    test('invalid GraphQL document fails before a Dio call', () async {
+      final adapter = BatchingTestAdapter();
+
+      await expectLater(
+        adapter.executeTestOperation(operation: 'query Broken {'),
+        throwsA(
+          isA<ApiException>().having(
+            (e) => e.message,
+            'message',
+            contains('Invalid GraphQL document'),
+          ),
+        ),
+      );
+
+      verifyNever(
+        mockDio.post<dynamic>(
+          any,
+          data: anyNamed('data'),
+          queryParameters: anyNamed('queryParameters'),
+          options: anyNamed('options'),
+          cancelToken: anyNamed('cancelToken'),
+          onSendProgress: anyNamed('onSendProgress'),
+          onReceiveProgress: anyNamed('onReceiveProgress'),
+        ),
+      );
+    });
+
     test('does not batch requests with non-null extra by default', () async {
       final adapter = BatchingTestAdapter();
       stubPost(

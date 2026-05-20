@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:gql/ast.dart' as gql_ast;
+import 'package:gql/language.dart' as gql_language;
 import 'package:meta/meta.dart';
 import 'package:synquill/synquill.dart';
 import 'package:synquill_graphql/src/graphql_batch_options.dart';
@@ -17,6 +19,8 @@ mixin GraphQLExecutionMixin<TModel extends SynquillDataModel<TModel>>
   final Map<_GraphQLBatchKey, _GraphQLBatch> _pendingBatches =
       <_GraphQLBatchKey, _GraphQLBatch>{};
   final Set<_GraphQLBatchItem> _inFlightBatchItems = <_GraphQLBatchItem>{};
+  final Map<String, gql_ast.DocumentNode> _documentCache =
+      <String, gql_ast.DocumentNode>{};
   bool _disposed = false;
 
   /// Configuration for GraphQL HTTP query batching.
@@ -37,11 +41,73 @@ mixin GraphQLExecutionMixin<TModel extends SynquillDataModel<TModel>>
   }) {
     if (!batchOptions.enabled || extra != null) return false;
 
-    final operationStart = _firstGraphQLOperationTokenIndex(operation);
-    if (operationStart == null) return false;
+    final document = documentFromOperation(operation);
+    final operationDefinition = resolveGraphQLOperation(
+      document,
+      operationName: operationName,
+    );
+    return operationDefinition.type == gql_ast.OperationType.query;
+  }
 
-    return operation[operationStart] == '{' ||
-        _startsWithGraphQLKeyword(operation, operationStart, 'query');
+  /// Parses [operation] into a GraphQL [gql_ast.DocumentNode].
+  ///
+  /// Results are cached by exact operation string. Parser errors are wrapped
+  /// into [ApiException] so callers do not need to depend on `gql` exceptions.
+  @protected
+  gql_ast.DocumentNode documentFromOperation(String operation) {
+    final cached = _documentCache[operation];
+    if (cached != null) {
+      return cached;
+    }
+
+    try {
+      final document = gql_language.parseString(operation);
+      _documentCache[operation] = document;
+      return document;
+    } catch (e) {
+      throw ApiException('Invalid GraphQL document: $e');
+    }
+  }
+
+  /// Resolves the executable operation from [document].
+  ///
+  /// If [operationName] is null, the document must contain exactly one
+  /// operation. Fragment-only documents and ambiguous multi-operation
+  /// documents are rejected before transport execution.
+  @protected
+  gql_ast.OperationDefinitionNode resolveGraphQLOperation(
+    gql_ast.DocumentNode document, {
+    String? operationName,
+  }) {
+    final operations =
+        document.definitions.whereType<gql_ast.OperationDefinitionNode>();
+    final operationList = operations.toList();
+
+    if (operationList.isEmpty) {
+      throw ApiException(
+        'Invalid GraphQL document: expected an executable operation.',
+      );
+    }
+
+    if (operationName != null) {
+      for (final operation in operationList) {
+        if (operation.name?.value == operationName) {
+          return operation;
+        }
+      }
+      throw ApiException(
+        'Invalid GraphQL document: operation "$operationName" was not found.',
+      );
+    }
+
+    if (operationList.length == 1) {
+      return operationList.single;
+    }
+
+    throw ApiException(
+      'Invalid GraphQL document: operationName is required when a document '
+      'contains multiple operations.',
+    );
   }
 
   /// Cancels pending GraphQL batches and fails queued batch operations.
@@ -80,6 +146,10 @@ mixin GraphQLExecutionMixin<TModel extends SynquillDataModel<TModel>>
     if (_disposed) {
       throw ApiException('GraphQL adapter has been disposed.');
     }
+    resolveGraphQLOperation(
+      documentFromOperation(operation),
+      operationName: operationName,
+    );
 
     final operationBody = _GraphQLTransportOperation(
       operation: operation,
@@ -277,57 +347,6 @@ mixin GraphQLExecutionMixin<TModel extends SynquillDataModel<TModel>>
     } else {
       completer.completeError(valueOrError, stackTrace);
     }
-  }
-
-  int? _firstGraphQLOperationTokenIndex(String operation) {
-    var index = 0;
-    while (index < operation.length) {
-      final codeUnit = operation.codeUnitAt(index);
-      if (_isIgnoredGraphQLCodeUnit(codeUnit)) {
-        index++;
-        continue;
-      }
-
-      if (codeUnit == 0x23) {
-        index++;
-        while (index < operation.length) {
-          final commentCodeUnit = operation.codeUnitAt(index);
-          if (commentCodeUnit == 0x0A || commentCodeUnit == 0x0D) break;
-          index++;
-        }
-        continue;
-      }
-
-      return index;
-    }
-    return null;
-  }
-
-  bool _startsWithGraphQLKeyword(
-    String operation,
-    int index,
-    String keyword,
-  ) {
-    if (!operation.startsWith(keyword, index)) return false;
-
-    final afterKeyword = index + keyword.length;
-    if (afterKeyword >= operation.length) return true;
-    return !_isGraphQLNameCodeUnit(operation.codeUnitAt(afterKeyword));
-  }
-
-  bool _isIgnoredGraphQLCodeUnit(int codeUnit) {
-    return codeUnit == 0x09 ||
-        codeUnit == 0x0A ||
-        codeUnit == 0x0D ||
-        codeUnit == 0x20 ||
-        codeUnit == 0x2C;
-  }
-
-  bool _isGraphQLNameCodeUnit(int codeUnit) {
-    return codeUnit == 0x5F ||
-        (codeUnit >= 0x30 && codeUnit <= 0x39) ||
-        (codeUnit >= 0x41 && codeUnit <= 0x5A) ||
-        (codeUnit >= 0x61 && codeUnit <= 0x7A);
   }
 
   /// Converts [QueryParams] to GraphQL variables.

@@ -6,3 +6,4 @@ export 'package:synquill_graphql/src/graphql_api_adapter.dart';
 export 'package:synquill_graphql/src/mixins/graphql_error_handling_mixin.dart';
 export 'package:synquill_graphql/src/mixins/graphql_execution_mixin.dart';
 export 'package:synquill_graphql/src/mixins/graphql_response_parsing_mixin.dart';
+export 'package:synquill_graphql/src/mixins/graphql_subscription_mixin.dart';
