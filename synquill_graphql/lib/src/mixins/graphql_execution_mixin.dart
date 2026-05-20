@@ -14,13 +14,19 @@ mixin GraphQLExecutionMixin<TModel extends SynquillDataModel<TModel>>
         DioClientMixin<TModel>,
         GraphQLErrorHandlingMixin<TModel>,
         GraphQLResponseParsingMixin<TModel> {
-  final Map<_GraphQLBatchKey, _GraphQLBatch> _graphqlBatches =
+  final Map<_GraphQLBatchKey, _GraphQLBatch> _pendingBatches =
       <_GraphQLBatchKey, _GraphQLBatch>{};
+  final Set<_GraphQLBatchItem> _inFlightBatchItems = <_GraphQLBatchItem>{};
+  bool _disposed = false;
 
   /// Configuration for GraphQL HTTP query batching.
   GraphQLBatchOptions get batchOptions => const GraphQLBatchOptions.disabled();
 
   /// Determines whether a GraphQL operation should use the batch queue.
+  ///
+  /// Override this to customize batching eligibility. The default
+  /// implementation uses only [operation] and [extra]; [variables], [headers],
+  /// and [operationName] are provided for subclass-specific decisions.
   @protected
   bool shouldBatchGraphQLOperation({
     required String operation,
@@ -31,9 +37,35 @@ mixin GraphQLExecutionMixin<TModel extends SynquillDataModel<TModel>>
   }) {
     if (!batchOptions.enabled || extra != null) return false;
 
-    final trimmedOperation = operation.trimLeft();
-    return trimmedOperation.startsWith('{') ||
-        trimmedOperation.startsWith(RegExp(r'query\b'));
+    final operationStart = _firstGraphQLOperationTokenIndex(operation);
+    if (operationStart == null) return false;
+
+    return operation[operationStart] == '{' ||
+        _startsWithGraphQLKeyword(operation, operationStart, 'query');
+  }
+
+  /// Cancels pending GraphQL batches and fails queued batch operations.
+  ///
+  /// In-flight HTTP requests are not cancelled. Their responses are ignored for
+  /// operations that were already completed during disposal.
+  @protected
+  void disposeGraphQLBatching() {
+    if (_disposed) return;
+    _disposed = true;
+
+    final exception = ApiException('GraphQL adapter has been disposed.');
+    for (final batch in _pendingBatches.values) {
+      batch.timer.cancel();
+      for (final item in batch.items) {
+        _completeIfPending(item.completer, exception);
+      }
+    }
+    _pendingBatches.clear();
+
+    for (final item in _inFlightBatchItems.toList()) {
+      _completeIfPending(item.completer, exception);
+    }
+    _inFlightBatchItems.clear();
   }
 
   /// Core method: sends a GraphQL operation via POST to the endpoint.
@@ -45,6 +77,10 @@ mixin GraphQLExecutionMixin<TModel extends SynquillDataModel<TModel>>
     String? operationName,
     Map<String, dynamic>? extra,
   }) async {
+    if (_disposed) {
+      throw ApiException('GraphQL adapter has been disposed.');
+    }
+
     final operationBody = _GraphQLTransportOperation(
       operation: operation,
       variables: variables,
@@ -52,18 +88,24 @@ mixin GraphQLExecutionMixin<TModel extends SynquillDataModel<TModel>>
     );
 
     try {
-      final mergedHeaders = await mergeHeadersWithContentType(
-        headers,
-        extra: extra,
-      );
-
-      if (shouldBatchGraphQLOperation(
+      final shouldBatch = shouldBatchGraphQLOperation(
         operation: operation,
         variables: variables,
         headers: headers,
         operationName: operationName,
         extra: extra,
-      )) {
+      );
+
+      final mergedHeaders = await mergeHeadersWithContentType(
+        headers,
+        extra: extra,
+      );
+
+      if (_disposed) {
+        throw ApiException('GraphQL adapter has been disposed.');
+      }
+
+      if (shouldBatch) {
         return _enqueueGraphQLOperation(
           operation: operationBody,
           headers: mergedHeaders,
@@ -119,11 +161,17 @@ mixin GraphQLExecutionMixin<TModel extends SynquillDataModel<TModel>>
     required _GraphQLTransportOperation operation,
     required Map<String, String> headers,
   }) {
+    if (_disposed) {
+      return Future<Map<String, dynamic>>.error(
+        ApiException('GraphQL adapter has been disposed.'),
+      );
+    }
+
     final key = _GraphQLBatchKey(
       endpoint: baseUrl.toString(),
       headersKey: _canonicalHeadersKey(headers),
     );
-    final batch = _graphqlBatches.putIfAbsent(
+    final batch = _pendingBatches.putIfAbsent(
       key,
       () => _GraphQLBatch(
         timer: Timer(batchOptions.window, () => _flushGraphQLBatch(key)),
@@ -147,7 +195,7 @@ mixin GraphQLExecutionMixin<TModel extends SynquillDataModel<TModel>>
   }
 
   void _flushGraphQLBatch(_GraphQLBatchKey key) {
-    final batch = _graphqlBatches.remove(key);
+    final batch = _pendingBatches.remove(key);
     if (batch == null || batch.items.isEmpty) return;
 
     batch.timer.cancel();
@@ -155,6 +203,8 @@ mixin GraphQLExecutionMixin<TModel extends SynquillDataModel<TModel>>
   }
 
   Future<void> _executeGraphQLBatch(List<_GraphQLBatchItem> items) async {
+    _inFlightBatchItems.addAll(items);
+
     try {
       final response = await _postGraphQLOperation(
         data: items.map((item) => item.operation.toJson()).toList(),
@@ -184,33 +234,100 @@ mixin GraphQLExecutionMixin<TModel extends SynquillDataModel<TModel>>
           checkGraphQLErrors(entry, response.statusCode);
 
           final data = entry['data'];
-          item.completer.complete(
+          _completeIfPending(
+            item.completer,
             data is Map<String, dynamic> ? data : const <String, dynamic>{},
           );
         } catch (e, st) {
-          item.completer.completeError(e, st);
+          _completeIfPending(item.completer, e, st);
         }
       }
     } on DioException catch (e, st) {
       final exception = mapDioErrorToSynquillStorageException(e);
       for (final item in items) {
-        item.completer.completeError(exception, st);
+        _completeIfPending(item.completer, exception, st);
       }
     } catch (e, st) {
       final exception = e is SynquillStorageException
           ? e
           : ApiException('GraphQL batch execution failed: $e');
       for (final item in items) {
-        item.completer.completeError(exception, st);
+        _completeIfPending(item.completer, exception, st);
       }
+    } finally {
+      _inFlightBatchItems.removeAll(items);
     }
   }
 
   String _canonicalHeadersKey(Map<String, String> headers) {
     final sortedKeys = headers.keys.toList()..sort();
     return jsonEncode({
-      for (final key in sortedKeys) key: headers[key],
+      for (final key in sortedKeys) key: headers[key]!,
     });
+  }
+
+  void _completeIfPending(
+    Completer<Map<String, dynamic>> completer,
+    Object valueOrError, [
+    StackTrace? stackTrace,
+  ]) {
+    if (completer.isCompleted) return;
+    if (valueOrError is Map<String, dynamic>) {
+      completer.complete(valueOrError);
+    } else {
+      completer.completeError(valueOrError, stackTrace);
+    }
+  }
+
+  int? _firstGraphQLOperationTokenIndex(String operation) {
+    var index = 0;
+    while (index < operation.length) {
+      final codeUnit = operation.codeUnitAt(index);
+      if (_isIgnoredGraphQLCodeUnit(codeUnit)) {
+        index++;
+        continue;
+      }
+
+      if (codeUnit == 0x23) {
+        index++;
+        while (index < operation.length) {
+          final commentCodeUnit = operation.codeUnitAt(index);
+          if (commentCodeUnit == 0x0A || commentCodeUnit == 0x0D) break;
+          index++;
+        }
+        continue;
+      }
+
+      return index;
+    }
+    return null;
+  }
+
+  bool _startsWithGraphQLKeyword(
+    String operation,
+    int index,
+    String keyword,
+  ) {
+    if (!operation.startsWith(keyword, index)) return false;
+
+    final afterKeyword = index + keyword.length;
+    if (afterKeyword >= operation.length) return true;
+    return !_isGraphQLNameCodeUnit(operation.codeUnitAt(afterKeyword));
+  }
+
+  bool _isIgnoredGraphQLCodeUnit(int codeUnit) {
+    return codeUnit == 0x09 ||
+        codeUnit == 0x0A ||
+        codeUnit == 0x0D ||
+        codeUnit == 0x20 ||
+        codeUnit == 0x2C;
+  }
+
+  bool _isGraphQLNameCodeUnit(int codeUnit) {
+    return codeUnit == 0x5F ||
+        (codeUnit >= 0x30 && codeUnit <= 0x39) ||
+        (codeUnit >= 0x41 && codeUnit <= 0x5A) ||
+        (codeUnit >= 0x61 && codeUnit <= 0x7A);
   }
 
   /// Converts [QueryParams] to GraphQL variables.

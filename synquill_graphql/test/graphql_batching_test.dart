@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:fake_async/fake_async.dart';
 import 'package:mockito/mockito.dart';
 import 'package:synquill/synquill.dart';
 import 'package:synquill_graphql/synquill_graphql.dart';
@@ -21,6 +24,22 @@ class BatchingTestAdapter extends TestGraphQLAdapter {
 
   @override
   GraphQLBatchOptions get batchOptions => options;
+
+  Future<Map<String, dynamic>> executeTestOperation({
+    required String operation,
+    Map<String, dynamic>? variables,
+    Map<String, String>? headers,
+    String? operationName,
+    Map<String, dynamic>? extra,
+  }) {
+    return executeGraphQLOperation(
+      operation: operation,
+      variables: variables,
+      headers: headers,
+      operationName: operationName,
+      extra: extra,
+    );
+  }
 }
 
 class CapturedPost {
@@ -126,74 +145,118 @@ void main() {
       );
     });
 
-    test('batches concurrent findOne queries within the configured window',
-        () async {
-      final adapter = BatchingTestAdapter();
-      stubPost([
-        graphqlSuccess('test_model', {
-          'id': '1',
-          'name': 'One',
-          'value': 1,
-        }),
-        graphqlSuccess('test_model', {
-          'id': '2',
-          'name': 'Two',
-          'value': 2,
-        }),
-      ]);
-
-      final results = await Future.wait([
-        adapter.findOne('1'),
-        adapter.findOne('2'),
-      ]);
-
-      expect(results[0], equals(TestModel(id: '1', name: 'One', value: 1)));
-      expect(results[1], equals(TestModel(id: '2', name: 'Two', value: 2)));
-
-      final posts = capturePosts();
-      expect(posts, hasLength(1));
-      expect(posts.single.path, equals('https://api.test.com/graphql'));
-      expect(posts.single.body, isA<List<Map<String, dynamic>>>());
-      expect(
-        posts.single.body,
-        equals([
-          {
-            'query': adapter.findOneQuery,
-            'variables': {'id': '1'},
-          },
-          {
-            'query': adapter.findOneQuery,
-            'variables': {'id': '2'},
-          },
-        ]),
-      );
-    });
-
-    test('flushes by timer when below max batch size', () async {
-      final adapter = BatchingTestAdapter(
-        options: const GraphQLBatchOptions(
-          enabled: true,
-          window: Duration(milliseconds: 5),
-          maxBatchSize: 10,
-        ),
-      );
-      stubPost(
-        [
+    test('batches concurrent findOne queries within the configured window', () {
+      fakeAsync((async) {
+        final adapter = BatchingTestAdapter();
+        stubPost([
           graphqlSuccess('test_model', {
             'id': '1',
             'name': 'One',
             'value': 1,
           }),
-        ],
-      );
+          graphqlSuccess('test_model', {
+            'id': '2',
+            'name': 'Two',
+            'value': 2,
+          }),
+        ]);
 
-      final result = await adapter.findOne('1');
+        List<TestModel?>? results;
+        Object? error;
+        Future.wait([
+          adapter.findOne('1'),
+          adapter.findOne('2'),
+        ]).then(
+          (value) => results = value,
+          onError: (Object e) {
+            error = e;
+          },
+        );
 
-      expect(result, equals(TestModel(id: '1', name: 'One', value: 1)));
-      final posts = capturePosts();
-      expect(posts, hasLength(1));
-      expect(posts.single.body, isA<List<Map<String, dynamic>>>());
-      expect(posts.single.body, hasLength(1));
+        async.flushMicrotasks();
+        async.elapse(const Duration(milliseconds: 5));
+        async.flushMicrotasks();
+
+        expect(error, isNull);
+        expect(
+          results,
+          equals([
+            TestModel(id: '1', name: 'One', value: 1),
+            TestModel(id: '2', name: 'Two', value: 2),
+          ]),
+        );
+
+        final posts = capturePosts();
+        expect(posts, hasLength(1));
+        expect(posts.single.path, equals('https://api.test.com/graphql'));
+        expect(posts.single.body, isA<List<Map<String, dynamic>>>());
+        expect(
+          posts.single.body,
+          equals([
+            {
+              'query': adapter.findOneQuery,
+              'variables': {'id': '1'},
+            },
+            {
+              'query': adapter.findOneQuery,
+              'variables': {'id': '2'},
+            },
+          ]),
+        );
+      });
+    });
+
+    test('flushes by timer when below max batch size', () {
+      fakeAsync((async) {
+        final adapter = BatchingTestAdapter(
+          options: const GraphQLBatchOptions(
+            enabled: true,
+            window: Duration(milliseconds: 5),
+            maxBatchSize: 10,
+          ),
+        );
+        stubPost(
+          [
+            graphqlSuccess('test_model', {
+              'id': '1',
+              'name': 'One',
+              'value': 1,
+            }),
+          ],
+        );
+
+        TestModel? result;
+        Object? error;
+        adapter.findOne('1').then(
+          (value) => result = value,
+          onError: (Object e) {
+            error = e;
+          },
+        );
+
+        async.flushMicrotasks();
+        verifyNever(
+          mockDio.post<dynamic>(
+            any,
+            data: anyNamed('data'),
+            queryParameters: anyNamed('queryParameters'),
+            options: anyNamed('options'),
+            cancelToken: anyNamed('cancelToken'),
+            onSendProgress: anyNamed('onSendProgress'),
+            onReceiveProgress: anyNamed('onReceiveProgress'),
+          ),
+        );
+
+        async.elapse(const Duration(milliseconds: 5));
+        async.flushMicrotasks();
+
+        expect(error, isNull);
+        expect(result, equals(TestModel(id: '1', name: 'One', value: 1)));
+        final posts = capturePosts();
+        expect(posts, hasLength(1));
+        expect(posts.single.body, isA<List<Map<String, dynamic>>>());
+        expect(posts.single.body, hasLength(1));
+      });
     });
 
     test('flushes immediately when maxBatchSize is reached', () async {
@@ -273,6 +336,96 @@ void main() {
       expect(posts.single.body, isA<Map<String, dynamic>>());
       expect((posts.single.body as Map<String, dynamic>)['query'],
           equals(adapter.createMutation));
+    });
+
+    test('batches explicit query with leading comments', () {
+      fakeAsync((async) {
+        final adapter = BatchingTestAdapter();
+        const operation = '''
+# Fetch one model
+query GetTestModel(\$id: ID!) {
+  testModel(id: \$id) { id name value }
+}
+''';
+        stubPost([
+          graphqlSuccess('test_model', {
+            'id': '1',
+            'name': 'One',
+            'value': 1,
+          }),
+        ]);
+
+        Map<String, dynamic>? result;
+        Object? error;
+        adapter.executeTestOperation(
+          operation: operation,
+          variables: {'id': '1'},
+        ).then(
+          (value) => result = value,
+          onError: (Object e) {
+            error = e;
+          },
+        );
+
+        async.flushMicrotasks();
+        async.elapse(const Duration(milliseconds: 5));
+        async.flushMicrotasks();
+
+        expect(error, isNull);
+        expect(
+            result,
+            equals({
+              'test_model': {'id': '1', 'name': 'One', 'value': 1}
+            }));
+        final posts = capturePosts();
+        expect(posts, hasLength(1));
+        expect(posts.single.body, isA<List<Map<String, dynamic>>>());
+      });
+    });
+
+    test('does not batch mutation with leading comments', () async {
+      final adapter = BatchingTestAdapter();
+      const operation = '''
+# Create one model
+mutation CreateTestModel(\$input: CreateInput!) {
+  createTestModel(input: \$input) { id name value }
+}
+''';
+      stubPost(
+        graphqlSuccess('createTest_model', {
+          'id': '1',
+          'name': 'One',
+          'value': 1,
+        }),
+      );
+
+      await adapter.executeTestOperation(operation: operation);
+
+      final posts = capturePosts();
+      expect(posts, hasLength(1));
+      expect(posts.single.body, isA<Map<String, dynamic>>());
+    });
+
+    test('does not batch subscriptions', () async {
+      final adapter = BatchingTestAdapter();
+      const operation = '''
+subscription WatchTestModel {
+  testModelUpdated { id name value }
+}
+''';
+      stubPost(
+        graphqlSuccess('testModelUpdated', {
+          'id': '1',
+          'name': 'One',
+          'value': 1,
+        }),
+      );
+
+      await adapter.executeTestOperation(operation: operation);
+
+      final posts = capturePosts();
+      expect(posts, hasLength(1));
+      expect(posts.single.body, isA<Map<String, dynamic>>());
     });
 
     test('does not batch requests with non-null extra by default', () async {
@@ -361,6 +514,135 @@ void main() {
         ),
       );
       await expectLater(second, throwsA(isA<ApiException>()));
+    });
+
+    test('dispose cancels pending timer and fails queued operations', () {
+      fakeAsync((async) {
+        final adapter = BatchingTestAdapter(
+          options: const GraphQLBatchOptions(
+            enabled: true,
+            window: Duration(hours: 1),
+            maxBatchSize: 10,
+          ),
+        );
+        stubPost([
+          graphqlSuccess('test_model', {
+            'id': '1',
+            'name': 'One',
+            'value': 1,
+          }),
+        ]);
+
+        Object? error;
+        adapter.findOne('1').then(
+          (_) {},
+          onError: (Object e) {
+            error = e;
+          },
+        );
+        async.flushMicrotasks();
+
+        adapter.dispose();
+        async.elapse(const Duration(hours: 1));
+        async.flushMicrotasks();
+
+        expect(error, isA<ApiException>());
+        verifyNever(
+          mockDio.post<dynamic>(
+            any,
+            data: anyNamed('data'),
+            queryParameters: anyNamed('queryParameters'),
+            options: anyNamed('options'),
+            cancelToken: anyNamed('cancelToken'),
+            onSendProgress: anyNamed('onSendProgress'),
+            onReceiveProgress: anyNamed('onReceiveProgress'),
+          ),
+        );
+      });
+    });
+
+    test('dispose is idempotent', () {
+      final adapter = BatchingTestAdapter();
+
+      adapter.dispose();
+      expect(adapter.dispose, returnsNormally);
+    });
+
+    test('requests after dispose fail immediately without a Dio call',
+        () async {
+      final adapter = BatchingTestAdapter();
+
+      adapter.dispose();
+
+      await expectLater(
+        adapter.findOne('1'),
+        throwsA(isA<ApiException>()),
+      );
+      verifyNever(
+        mockDio.post<dynamic>(
+          any,
+          data: anyNamed('data'),
+          queryParameters: anyNamed('queryParameters'),
+          options: anyNamed('options'),
+          cancelToken: anyNamed('cancelToken'),
+          onSendProgress: anyNamed('onSendProgress'),
+          onReceiveProgress: anyNamed('onReceiveProgress'),
+        ),
+      );
+    });
+
+    test('dispose during in-flight batch fails futures and ignores response',
+        () async {
+      final adapter = BatchingTestAdapter(
+        options: const GraphQLBatchOptions(
+          enabled: true,
+          window: Duration(milliseconds: 1),
+          maxBatchSize: 2,
+        ),
+      );
+      final responseCompleter = Completer<Response<dynamic>>();
+      when(
+        mockDio.post<dynamic>(
+          any,
+          data: anyNamed('data'),
+          queryParameters: anyNamed('queryParameters'),
+          options: anyNamed('options'),
+          cancelToken: anyNamed('cancelToken'),
+          onSendProgress: anyNamed('onSendProgress'),
+          onReceiveProgress: anyNamed('onReceiveProgress'),
+        ),
+      ).thenAnswer((_) => responseCompleter.future);
+
+      final first = adapter.findOne('1');
+      final second = adapter.findOne('2');
+      await Future<void>.delayed(Duration.zero);
+
+      adapter.dispose();
+      await expectLater(first, throwsA(isA<ApiException>()));
+      await expectLater(second, throwsA(isA<ApiException>()));
+
+      responseCompleter.complete(
+        Response<dynamic>(
+          data: [
+            graphqlSuccess('test_model', {
+              'id': '1',
+              'name': 'One',
+              'value': 1,
+            }),
+            graphqlSuccess('test_model', {
+              'id': '2',
+              'name': 'Two',
+              'value': 2,
+            }),
+          ],
+          statusCode: 200,
+          requestOptions: RequestOptions(path: ''),
+        ),
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      final posts = capturePosts();
+      expect(posts, hasLength(1));
     });
   });
 }

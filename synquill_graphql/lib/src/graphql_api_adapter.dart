@@ -60,6 +60,15 @@ abstract class GraphQLApiAdapter<TModel extends SynquillDataModel<TModel>>
   String _capitalize(String s) =>
       s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
 
+  /// Disposes resources owned by this adapter.
+  ///
+  /// Pending GraphQL batch operations are completed with an [ApiException].
+  /// In-flight HTTP requests are allowed to finish, but their responses are
+  /// ignored for operations already completed during disposal.
+  void dispose() {
+    disposeGraphQLBatching();
+  }
+
   @override
   Future<TModel?> findOne(
     String id, {
