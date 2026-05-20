@@ -1,9 +1,19 @@
 // ignore_for_file: invalid_use_of_protected_member
 import 'dart:async';
 import 'dart:developer' as developer;
+import 'package:dio/dio.dart';
 import 'package:drift/drift.dart';
+import 'package:logging/logging.dart';
 import 'package:queue/queue.dart';
-import 'package:synquill/synquill.dart';
+import 'package:synquill/src/core/database_provider.dart';
+import 'package:synquill/src/core/synquill_data_model.dart';
+import 'package:synquill/src/core/synquill_repository.dart';
+import 'package:synquill/src/core/synquill_repository_provider.dart';
+import 'package:synquill/src/drift/sync_queue_dao.dart';
+import 'package:synquill/src/runtime/background_sync.dart';
+import 'package:synquill/src/runtime/dependency_resolver.dart';
+import 'package:synquill/src/runtime/request_queue.dart';
+import 'package:synquill/src/runtime/retry_executor.dart';
 
 /// Base class for synced data storage configuration.
 class SynquillStorageConfig {

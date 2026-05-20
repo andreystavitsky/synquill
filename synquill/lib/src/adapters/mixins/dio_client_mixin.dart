@@ -1,5 +1,9 @@
+import 'package:dio/dio.dart';
+import 'package:logging/logging.dart';
 import 'package:meta/meta.dart';
-import 'package:synquill/synquill.dart';
+import 'package:synquill/src/adapters/api_adapter.dart';
+import 'package:synquill/src/core/synquill_data_model.dart';
+import 'package:synquill/src/core/synquill_storage.dart';
 
 /// {@template dio_client_mixin}
 /// Mixin that provides Dio client management functionality for API adapters.

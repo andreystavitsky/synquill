@@ -1,7 +1,12 @@
 import 'dart:async';
 import 'dart:convert' as convert;
 import 'package:drift/drift.dart';
-import 'package:synquill/synquill.dart';
+import 'package:logging/logging.dart';
+import 'package:synquill/src/adapters/api_adapter.dart';
+import 'package:synquill/src/core/query_parameters.dart';
+import 'package:synquill/src/core/repository_mixins/repository_types.dart';
+import 'package:synquill/src/core/synquill_data_model.dart';
+import 'package:synquill/src/drift/sync_queue_dao.dart';
 
 /// Base mixin for common DAO operations to reduce code duplication
 mixin BaseDaoMixin<T> {

@@ -1,5 +1,11 @@
 import 'dart:async';
-import 'package:synquill/synquill.dart';
+import 'package:synquill/src/adapters/api_adapter.dart';
+import 'package:synquill/src/adapters/mixins/dio_client_mixin.dart';
+import 'package:synquill/src/adapters/mixins/error_handling_mixin.dart';
+import 'package:synquill/src/adapters/mixins/http_execution_mixin.dart';
+import 'package:synquill/src/adapters/mixins/response_parsing_mixin.dart';
+import 'package:synquill/src/core/query_parameters.dart';
+import 'package:synquill/src/core/synquill_data_model.dart';
 
 /// {@template base_api_adapter}
 /// Concrete implementation of [ApiAdapterBase] using Dio for HTTP requests.

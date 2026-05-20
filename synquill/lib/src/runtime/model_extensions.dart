@@ -1,6 +1,11 @@
 import 'dart:async';
 import 'package:drift/drift.dart';
-import 'package:synquill/synquill.dart';
+import 'package:logging/logging.dart';
+import 'package:synquill/src/core/database_provider.dart';
+import 'package:synquill/src/core/sync_status.dart';
+import 'package:synquill/src/core/synquill_data_model.dart';
+import 'package:synquill/src/core/synquill_repository_provider.dart';
+import 'package:synquill/src/core/synquill_storage.dart';
 
 /// Runtime extensions for [SynquillDataModel] instances.
 ///

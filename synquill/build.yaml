@@ -1,0 +1,10 @@
+targets:
+  $default:
+    sources:
+      include:
+        - lib/**
+        - test/**
+        - pubspec.*
+        - $package$
+      exclude:
+        - example/**

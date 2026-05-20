@@ -1,5 +1,9 @@
+import 'package:dio/dio.dart';
+import 'package:logging/logging.dart';
 import 'package:meta/meta.dart';
-import 'package:synquill/synquill.dart';
+import 'package:synquill/src/adapters/api_adapter.dart';
+import 'package:synquill/src/core/exceptions.dart';
+import 'package:synquill/src/core/synquill_data_model.dart';
 
 /// {@template response_parsing_mixin}
 /// Mixin that provides response parsing functionality for API adapters.

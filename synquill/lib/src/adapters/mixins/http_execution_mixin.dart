@@ -1,6 +1,11 @@
 import 'dart:async';
+import 'package:dio/dio.dart';
 import 'package:meta/meta.dart';
-import 'package:synquill/synquill.dart';
+import 'package:synquill/src/adapters/api_adapter.dart';
+import 'package:synquill/src/adapters/mixins/dio_client_mixin.dart';
+import 'package:synquill/src/adapters/mixins/error_handling_mixin.dart';
+import 'package:synquill/src/core/query_parameters.dart';
+import 'package:synquill/src/core/synquill_data_model.dart';
 
 /// {@template http_execution_mixin}
 /// Mixin that provides HTTP execution functionality for API adapters.

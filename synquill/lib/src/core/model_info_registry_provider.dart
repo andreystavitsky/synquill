@@ -1,4 +1,5 @@
-import 'package:synquill/synquill.dart';
+import 'package:logging/logging.dart';
+import 'package:synquill/src/core/synquill_storage.dart';
 
 /// Represents a foreign key relationship where this model references another
 class ForeignKeyRelation {

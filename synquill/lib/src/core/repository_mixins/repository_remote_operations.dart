@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'package:logging/logging.dart';
 import 'package:meta/meta.dart';
-import 'package:synquill/synquill.dart';
+import 'package:synquill/src/core/query_parameters.dart';
+import 'package:synquill/src/core/synquill_data_model.dart';
 
 /// Mixin providing remote operations for repositories.
 mixin RepositoryRemoteOperations<T extends SynquillDataModel<T>> {

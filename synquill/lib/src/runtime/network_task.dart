@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:queue/queue.dart';
-import 'package:synquill/synquill.dart';
 
 import 'package:synquill/src/core/repository_mixins/repository_types.dart';
 
