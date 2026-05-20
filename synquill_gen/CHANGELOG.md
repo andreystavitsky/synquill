@@ -1,3 +1,6 @@
+## 0.7.1
+* Fixes typos in `synquill_gen`
+
 ## 0.7.0
 - **Breaking Change**: Migrated the generator's internal `part`/`part of` structure to independent modular libraries and moved internal files to `lib/src/`.
 - Generate implementation for `getAllExcludingIds` in DAOs.

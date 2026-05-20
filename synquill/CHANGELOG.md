@@ -1,3 +1,6 @@
+## 0.7.1
+* Fixes imports. Fixes typos in `synquill_gen`
+
 ## 0.7.0
 ### Breaking Changes
 - `BaseDaoMixin<T>` interface now requires implementations for `saveModel`, `deleteById`, `deleteAll`, and `getAllExcludingIds`. Custom DAOs must be updated.
