@@ -3,6 +3,37 @@
 
 part of 'database.generated.dart';
 
+/// Drift table definition for GraphqlPost entities
+/// 
+/// This table stores GraphqlPost data with automatic sync metadata
+/// and supports offline storage with eventual consistency.
+@UseRowClass(GraphqlPost, constructor: 'fromDb')
+class GraphqlPostTable extends Table {
+  @override
+  String get tableName => 'graphql_posts';
+
+  /// id column for GraphqlPost
+  TextColumn get id => text().named('id')();
+  /// title column for GraphqlPost
+  TextColumn get title => text()();
+  /// body column for GraphqlPost
+  TextColumn get body => text()();
+  /// userId column for GraphqlPost
+  IntColumn get userId => integer()();
+  /// lastSyncedAt column for GraphqlPost
+  DateTimeColumn get lastSyncedAt => dateTime().nullable()();
+  /// createdAt column for GraphqlPost
+  DateTimeColumn get createdAt => dateTime().nullable()();
+  /// updatedAt column for GraphqlPost
+  DateTimeColumn get updatedAt => dateTime().nullable()();
+  /// syncStatus column for GraphqlPost
+  TextColumn get syncStatus => text().nullable().withDefault(const Constant('synced')).map(const SyncStatusConverter())();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+
 /// Drift table definition for Post entities
 /// 
 /// This table stores Post data with automatic sync metadata

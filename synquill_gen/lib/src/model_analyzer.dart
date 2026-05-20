@@ -389,11 +389,11 @@ class ModelAnalyzer {
         final path = sourceUri.path;
         final libIndex = path.lastIndexOf('/lib/');
         if (libIndex != -1) {
-           final relativeToLib = path.substring(libIndex + 5);
-           importPath = 'package:${buildStep.inputId.package}/$relativeToLib';
+          final relativeToLib = path.substring(libIndex + 5);
+          importPath = 'package:${buildStep.inputId.package}/$relativeToLib';
         } else {
-           // Fallback
-           importPath = _makeRelativeImport(buildStep.inputId.uri, sourceUri);
+          // Fallback
+          importPath = _makeRelativeImport(buildStep.inputId.uri, sourceUri);
         }
       } else {
         // Fallback
@@ -405,12 +405,23 @@ class ModelAnalyzer {
           (element is ClassElement && element.typeParameters.isNotEmpty) ||
               (element is MixinElement && element.typeParameters.isNotEmpty);
 
+      final superclassConstraints = <String>[];
+      if (element is MixinElement) {
+        for (final constraint in element.superclassConstraints) {
+          final constraintName = constraint.element.name;
+          if (constraintName.isNotEmpty) {
+            superclassConstraints.add(constraintName);
+          }
+        }
+      }
+
       adapterInfoList.add(
         AdapterInfo(
           adapterName: element.name!,
           importPath: importPath,
           dartType: adapterType,
           isGeneric: isGeneric,
+          superclassConstraints: superclassConstraints,
         ),
       );
     }

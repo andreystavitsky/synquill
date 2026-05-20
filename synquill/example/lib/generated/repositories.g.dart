@@ -3,6 +3,107 @@
 
 part of '../synquill.generated.dart';
 
+/// Concrete repository implementation for GraphqlPost
+class GraphqlPostRepository extends SynquillRepositoryBase<GraphqlPost> 
+    with RepositoryHelpersMixin<GraphqlPost> {
+  late final GraphqlPostDao _dao;
+  static Logger get _log {
+    try {
+      return SynquillStorage.logger;
+    } catch (_) {
+      return Logger('GraphqlPostRepository');
+    }
+  }
+
+  /// Creates a new GraphqlPost repository instance
+  /// 
+  /// [db] The database instance to use for data operations
+  GraphqlPostRepository(super.db) {
+    _dao = GraphqlPostDao(db as SynquillDatabase);
+  }
+
+  @override
+  DatabaseAccessor get dao => _dao;
+
+  @override
+  ApiAdapterBase<GraphqlPost> get apiAdapter {
+    return _GraphqlPostAdapter();
+  }
+
+  @override
+  bool get localOnly => false;
+
+  @override
+  Future<GraphqlPost?> fetchFromRemote(
+    String id, {
+    QueryParams? queryParams, 
+    Map<String, String>? headers, 
+    Map<String, dynamic>? extra
+  }) async {
+    try {
+      final result = await apiAdapter.findOne(
+        id, 
+        queryParams: queryParams,
+        extra: extra
+      );
+      _log.fine(
+        'fetchFromRemote() for GraphqlPost successful: found item with id $id'
+      );
+      return result;
+    } on ApiExceptionNotFound {
+      _log.fine(
+        'fetchFromRemote() for GraphqlPost: item with id $id not found in '
+        'remote API'
+      );
+      // Rethrow the exception so SynquillRepositoryBase can remove the 
+      // item from local storage
+      rethrow;
+    } on ApiExceptionGone {
+      _log.fine(
+        'fetchFromRemote() for GraphqlPost: item with id $id is gone from '
+        'remote API'
+      );
+      // Rethrow the exception so SynquillRepositoryBase can remove the 
+      // item from local storage
+      rethrow;
+    } catch (e, stackTrace) {
+      _log.warning(
+        'fetchFromRemote() for GraphqlPost failed for id $id', 
+        e, 
+        stackTrace
+      );
+      rethrow;
+    }
+  }
+
+  @override
+  Future<List<GraphqlPost>> fetchAllFromRemote({
+    QueryParams? queryParams, 
+    Map<String, String>? headers, 
+    Map<String, dynamic>? extra
+  }) async {
+    try {
+      final result = await apiAdapter.findAll(
+        queryParams: queryParams, 
+        extra: extra
+      );
+      _log.fine(
+        'fetchAllFromRemote() for GraphqlPost successful: '
+        'found ${result.length} items'
+      );
+      return result;
+    } catch (e, stackTrace) {
+      _log.warning(
+        'fetchAllFromRemote() for GraphqlPost failed', 
+        e, 
+        stackTrace
+      );
+      rethrow;
+    }
+  }
+}
+
+
 /// Concrete repository implementation for Post
 class PostRepository extends SynquillRepositoryBase<Post> 
     with RepositoryHelpersMixin<Post> {
@@ -474,6 +575,9 @@ class TodoRepository extends SynquillRepositoryBase<Todo>
 
 /// Register all repository factories with SynquillRepositoryProvider
 void registerAllRepositories() {
+  SynquillRepositoryProvider.register<GraphqlPost>(
+    (db) => GraphqlPostRepository(db),
+  );
   SynquillRepositoryProvider.register<Post>(
     (db) => PostRepository(db),
   );
@@ -564,6 +668,11 @@ void registerModelRelations() {
 
 /// Extension providing convenient repository access on SynquillStorage
 extension SynquillStorageRepositories on SynquillStorage {
+  /// Access repository for GraphqlPost models
+  GraphqlPostRepository get graphqlPosts {
+    return getRepository<GraphqlPost>() as GraphqlPostRepository;
+  }
+
   /// Access repository for Post models
   PostRepository get posts {
     return getRepository<Post>() as PostRepository;

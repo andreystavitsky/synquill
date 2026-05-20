@@ -90,6 +90,7 @@ class SyncQueueItems extends Table {
 @DriftDatabase(
   tables: [
     SyncQueueItems,
+    GraphqlPostTable,
     PostTable,
     LocalNoteTable,
     PlainModelTable,
@@ -97,6 +98,7 @@ class SyncQueueItems extends Table {
     TodoTable,
   ],
   daos: [
+    GraphqlPostDao,
     PostDao,
     LocalNoteDao,
     PlainModelDao,
@@ -138,7 +140,7 @@ class SynquillDatabase extends _$SynquillDatabase {
   late final SyncQueueDao _syncQueueDao = SyncQueueDao(this);
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   /// Provides migration strategy for schema upgrades.
   ///
@@ -200,6 +202,7 @@ class SynquillDatabase extends _$SynquillDatabase {
 
   /// Returns user-defined table types
   List<Type> get userDefinedTables => [
+    GraphqlPostTable,
     PostTable,
     LocalNoteTable,
     PlainModelTable,
@@ -209,6 +212,7 @@ class SynquillDatabase extends _$SynquillDatabase {
 
   /// Returns user-defined DAO types
   List<Type> get userDefinedDaos => [
+    GraphqlPostDao,
     PostDao,
     LocalNoteDao,
     PlainModelDao,

@@ -22,6 +22,9 @@ dependencies:
   
   synquill:
     path: ../
+
+  synquill_graphql:
+    path: ../../synquill_graphql
   
   # Required for generated database logging
   logging: ^1.2.0

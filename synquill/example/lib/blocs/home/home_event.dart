@@ -14,11 +14,13 @@ class HomeUserDataChanged extends HomeEvent {
   final User user;
   final List<Todo> todos;
   final List<Post> posts;
+  final List<GraphqlPost> graphqlPosts;
 
   HomeUserDataChanged({
     required this.user,
     required this.todos,
     required this.posts,
+    required this.graphqlPosts,
   });
 }
 
@@ -34,6 +36,13 @@ class HomePostsChanged extends HomeEvent {
   final List<Post> posts;
 
   HomePostsChanged(this.posts);
+}
+
+/// Event when GraphQL posts change
+class HomeGraphqlPostsChanged extends HomeEvent {
+  final List<GraphqlPost> graphqlPosts;
+
+  HomeGraphqlPostsChanged(this.graphqlPosts);
 }
 
 /// Event when users change

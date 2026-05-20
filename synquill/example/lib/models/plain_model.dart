@@ -14,7 +14,6 @@ class PlainModel extends SynquillDataModel<PlainModel> {
   });
 
   // Constructor for Drift to use
-  @override
   PlainModel.fromDb({
     required this.id,
     required this.name,
@@ -43,7 +42,6 @@ class PlainModel extends SynquillDataModel<PlainModel> {
         // core model serialization to general API unless API expects them.
       };
 
-  @override
   factory PlainModel.fromJson(Map<String, dynamic> json) {
     return PlainModel(
       id: json['id'] as String,

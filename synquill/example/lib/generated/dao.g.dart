@@ -323,6 +323,236 @@ mixin DaoHelpersMixin<Tbl extends Table, D>
 }
 
 
+/// Typed field selectors for GraphqlPost model
+class GraphqlPostFields {
+  /// Field selector for id
+  static const FieldSelector<String> id = 
+      FieldSelector<String>('id', String);
+
+  /// Field selector for title
+  static const FieldSelector<String> title = 
+      FieldSelector<String>('title', String);
+
+  /// Field selector for body
+  static const FieldSelector<String> body = 
+      FieldSelector<String>('body', String);
+
+  /// Field selector for userId
+  static const FieldSelector<int> userId = 
+      FieldSelector<int>('userId', int);
+
+  /// Field selector for lastSyncedAt
+  static const FieldSelector<DateTime> lastSyncedAt = 
+      FieldSelector<DateTime>('lastSyncedAt', DateTime);
+
+  /// Field selector for createdAt
+  static const FieldSelector<DateTime> createdAt = 
+      FieldSelector<DateTime>('createdAt', DateTime);
+
+  /// Field selector for updatedAt
+  static const FieldSelector<DateTime> updatedAt = 
+      FieldSelector<DateTime>('updatedAt', DateTime);
+
+  /// Field selector for syncStatus
+  static const FieldSelector<SyncStatus> syncStatus = 
+      FieldSelector<SyncStatus>('syncStatus', SyncStatus);
+
+}
+
+
+
+/// Data Access Object for GraphqlPost operations
+/// 
+/// Provides CRUD operations and query methods for GraphqlPost entities
+/// in the SQLite database using Drift ORM.
+@DriftAccessor(tables: [GraphqlPostTable])
+class GraphqlPostDao extends DatabaseAccessor<SynquillDatabase>
+    with _$GraphqlPostDaoMixin,
+       DaoHelpersMixin<GraphqlPostTable, GraphqlPost>, 
+       BaseDaoMixin<GraphqlPost> {
+  /// Creates a new GraphqlPost DAO instance
+  GraphqlPostDao(super.attachedDatabase);
+
+  /// Get all graphqlposts as Drift data
+  Future<List<GraphqlPost>> getAllData() => select(graphqlPostTable).get();
+
+  /// Get graphqlpost data by ID
+  Future<GraphqlPost?> getDataById(String id) =>
+      (select(graphqlPostTable)..where((t) =>
+        t.id.equals(id))).getSingleOrNull();
+
+  /// Get all graphqlposts as model objects
+  Future<List<GraphqlPost>> getAll({QueryParams? queryParams}) async {
+    queryParams ??= QueryParams.empty;
+    final query = select(graphqlPostTable);
+    applyQueryParams(query, queryParams);
+    final dataList = await query.get();
+    return dataList;
+  }
+
+  /// Get graphqlpost by ID as model object
+  Future<GraphqlPost?> getById(String id, {QueryParams? queryParams}) async {
+    queryParams ??= QueryParams.empty;
+    final query = select(graphqlPostTable)..where((t) => t.id.equals(id));
+    applyQueryParams(query, queryParams);
+    final data = await query.getSingleOrNull();
+    return data;
+  }
+
+  /// Insert or update graphqlpost
+  Future<int> insertOrUpdate(GraphqlPostTableCompanion entry) =>
+      into(graphqlPostTable).insertOnConflictUpdate(entry);
+
+  /// Save graphqlpost model
+  @override
+  Future<GraphqlPost> saveModel(GraphqlPost model) async {
+    final companion = 
+     GraphqlPostTableCompanion(id: Value(model.id),
+        title: Value(model.title),
+        body: Value(model.body),
+        userId: Value(model.userId),
+        lastSyncedAt: Value(model.lastSyncedAt),
+        createdAt: Value(model.createdAt ?? DateTime.now()),
+        updatedAt: Value(model.updatedAt ?? DateTime.now()),
+        syncStatus: Value(model.syncStatus ?? SyncStatus.synced));
+    await insertOrUpdate(companion);
+    return model;
+  }
+
+  /// Delete graphqlpost by ID
+  @override
+  Future<int> deleteById(String id) =>
+      (delete(graphqlPostTable)..where((t) => t.id.equals(id))).go();
+
+  /// Watch all graphqlposts as a stream
+  Stream<List<GraphqlPost>> watchAll({QueryParams? queryParams}) {
+    queryParams ??= QueryParams.empty;
+    final query = select(graphqlPostTable);
+    applyQueryParams(query, queryParams);
+    return query.watch();
+  }
+
+  /// Watch graphqlpost by ID as a stream
+  Stream<GraphqlPost?> watchById(String id, {QueryParams? queryParams}) {
+    queryParams ??= QueryParams.empty;
+    final query = select(graphqlPostTable)..where((t) => t.id.equals(id));
+    applyQueryParams(query, queryParams);
+    return query.watchSingleOrNull();
+  }
+
+  /// The primary table this DAO operates on.
+  @override
+  TableInfo<GraphqlPostTable, GraphqlPost> get table => graphqlPostTable;
+
+  /// Get column expression for a field name
+  @override
+  Expression<Object>? getColumnForField(String fieldName) {
+    switch (fieldName) {
+      case 'id':
+        return graphqlPostTable.id;
+      case 'title':
+        return graphqlPostTable.title;
+      case 'body':
+        return graphqlPostTable.body;
+      case 'userId':
+        return graphqlPostTable.userId;
+      case 'lastSyncedAt':
+        return graphqlPostTable.lastSyncedAt;
+      case 'createdAt':
+        return graphqlPostTable.createdAt;
+      case 'updatedAt':
+        return graphqlPostTable.updatedAt;
+      case 'syncStatus':
+        return graphqlPostTable.syncStatus;
+      default:
+        return null;
+    }
+  }
+
+  /// Get the data type for a field name
+  @override
+  String? getFieldType(String fieldName) {
+    switch (fieldName) {
+      case 'id':
+        return 'String';
+      case 'title':
+        return 'String';
+      case 'body':
+        return 'String';
+      case 'userId':
+        return 'int';
+      case 'lastSyncedAt':
+        return 'DateTime';
+      case 'createdAt':
+        return 'DateTime';
+      case 'updatedAt':
+        return 'DateTime';
+      case 'syncStatus':
+        return 'SyncStatus';
+      default:
+        return null;
+    }
+  }
+
+  /// Create ordering term for sorting
+  @override
+  OrderingTerm createOrderingTerm(SortCondition sort, GraphqlPostTable table) {
+    final column = getColumnForField(sort.field.fieldName);
+    if (column == null) {
+      throw ArgumentError('Unknown field for sorting: ${sort.field.fieldName}');
+    }
+
+    return OrderingTerm(
+      expression: column,
+      mode: sort.direction == SortDirection.ascending
+          ? OrderingMode.asc
+          : OrderingMode.desc,
+    );
+  }
+
+  // Implementation of BaseDaoMixin methods
+  @override
+  Future<GraphqlPost?> getByIdTyped(String id, 
+   {QueryParams? queryParams}) async {
+    return await getById(id, queryParams: queryParams);
+  }
+
+  @override
+  Future<List<GraphqlPost>> getAllTyped({QueryParams? queryParams}) async {
+    return await getAll(queryParams: queryParams);
+  }
+
+  @override
+  Stream<GraphqlPost?> watchByIdTyped(String id, {QueryParams? queryParams}) {
+    return watchById(id, queryParams: queryParams);
+  }
+
+  @override
+  Stream<List<GraphqlPost>> watchAllTyped({QueryParams? queryParams}) {
+    return watchAll(queryParams: queryParams);
+  }
+
+  /// Returns all graphqlposts whose IDs are not in [excludedIds].
+  @override
+  Future<List<GraphqlPost>> getAllExcludingIds(
+    Set<String> excludedIds, {
+    QueryParams? queryParams,
+  }) async {
+    queryParams ??= QueryParams.empty;
+    final query = select(graphqlPostTable)
+      ..where((t) => t.id.isNotIn(excludedIds.toList()));
+    applyQueryParams(query, queryParams);
+    return query.get();
+  }
+
+  /// Delete all graphqlposts from the table
+  @override
+  Future<int> deleteAll() =>
+      delete(graphqlPostTable).go();
+
+}
+
+
 /// Typed field selectors for Post model
 class PostFields {
   /// Field selector for id

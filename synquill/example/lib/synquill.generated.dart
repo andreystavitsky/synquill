@@ -4,6 +4,8 @@
 import 'package:synquill/synquill.dart';
 import 'package:synquill/synquill_core.dart' show 
   DatabaseAccessor, GeneratedDatabase;
+import 'package:synquill_graphql/synquill_graphql.dart';
+import 'package:synquill_example/models/graphql_post.dart';
 import 'package:synquill_example/models/post.dart';
 import 'package:synquill_example/models/local_note.dart';
 import 'package:synquill_example/models/plain_model.dart';

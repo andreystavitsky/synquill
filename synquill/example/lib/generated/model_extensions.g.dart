@@ -3,6 +3,32 @@
 
 part of '../synquill.generated.dart';
 
+/// Generated ID management extension for GraphqlPost
+extension GraphqlPostIdManagement on GraphqlPost {
+  /// Whether this model uses server-generated IDs
+  bool get $usesServerGeneratedId => 
+      false;
+
+  /// Create a new model instance with a different ID
+  /// This is used during ID negotiation when server assigns a different ID
+  GraphqlPost $replaceIdEverywhere(String newId) {
+    final json = toJson();
+    json['id'] = newId;
+    return fromJson(json);
+  }
+
+  /// Whether this model currently has a temporary ID 
+  /// (always false for client-generated IDs)
+  bool get $hasTemporaryId => false;
+
+  /// Get temporary client ID for this model 
+  /// (always null for client-generated IDs)
+  String? get $temporaryClientId => null;
+}
+
+
+
+
 /// Generated ID management extension for Post
 extension PostIdManagement on Post {
   /// Whether this model uses server-generated IDs
