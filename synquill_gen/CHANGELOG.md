@@ -1,3 +1,9 @@
+## 0.8.1
+
+### Fixes
+- Generated repositories now reuse their adapter instance so stateful adapter
+  features such as GraphQL HTTP query batching keep their per-adapter state.
+
 ## 0.8.0
 
 ### Improvements

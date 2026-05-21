@@ -1,6 +1,6 @@
 name: synquill_gen
 description: Code generator for the Synquill library.
-version: 0.8.0
+version: 0.8.1
 homepage: https://synquill.dev
 repository: https://github.com/andreystavitsky/synquill
 

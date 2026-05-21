@@ -63,6 +63,66 @@ void main() {
     });
   });
 
+  group('RepositoryGenerator.generateRepositoryClass', () {
+    test('caches the generated adapter for adapter-backed repositories', () {
+      final code = RepositoryGenerator.generateRepositoryClass(
+        _modelWithAdapters([
+          _adapter('RestTodoAdapter'),
+        ]),
+      );
+
+      expect(
+        code,
+        contains(
+          'late final ApiAdapterBase<Todo> _apiAdapter = _TodoAdapter();',
+        ),
+      );
+      expect(
+        code,
+        contains('''
+  ApiAdapterBase<Todo> get apiAdapter {
+    return _apiAdapter;
+  }'''),
+      );
+      expect(
+        code,
+        isNot(
+          contains('''
+  ApiAdapterBase<Todo> get apiAdapter {
+    return _TodoAdapter();
+  }'''),
+        ),
+      );
+    });
+
+    test('throws for sync repositories without adapters', () {
+      final code = RepositoryGenerator.generateRepositoryClass(
+        _modelWithAdapters([]),
+      );
+
+      expect(
+        code,
+        contains("throw UnimplementedError('No adapters specified for Todo');"),
+      );
+    });
+
+    test('keeps local-only repository apiAdapter unsupported', () {
+      final code = RepositoryGenerator.generateRepositoryClass(
+        _modelWithAdapters(
+          [
+            _adapter('RestTodoAdapter'),
+          ],
+          localOnly: true,
+        ),
+      );
+
+      expect(
+        code,
+        contains('API adapter not available for local-only repository Todo.'),
+      );
+    });
+  });
+
   group('AdapterInfo', () {
     test('defaults superclass constraints to empty list', () {
       final adapter = _adapter('RestTodoAdapter');
@@ -82,7 +142,10 @@ void main() {
   });
 }
 
-ModelInfo _modelWithAdapters(List<AdapterInfo> adapters) {
+ModelInfo _modelWithAdapters(
+  List<AdapterInfo> adapters, {
+  bool localOnly = false,
+}) {
   return ModelInfo(
     className: 'Todo',
     tableName: 'todos',
@@ -90,6 +153,7 @@ ModelInfo _modelWithAdapters(List<AdapterInfo> adapters) {
     importPath: 'package:example/todo.dart',
     fields: const [],
     adapters: adapters,
+    localOnly: localOnly,
   );
 }
 

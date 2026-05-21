@@ -7,6 +7,7 @@ part of '../synquill.generated.dart';
 class GraphqlPostRepository extends SynquillRepositoryBase<GraphqlPost>
     with RepositoryHelpersMixin<GraphqlPost> {
   late final GraphqlPostDao _dao;
+  late final ApiAdapterBase<GraphqlPost> _apiAdapter = _GraphqlPostAdapter();
   static Logger get _log {
     try {
       return SynquillStorage.logger;
@@ -27,7 +28,7 @@ class GraphqlPostRepository extends SynquillRepositoryBase<GraphqlPost>
 
   @override
   ApiAdapterBase<GraphqlPost> get apiAdapter {
-    return _GraphqlPostAdapter();
+    return _apiAdapter;
   }
 
   @override
@@ -88,6 +89,7 @@ class GraphqlPostRepository extends SynquillRepositoryBase<GraphqlPost>
 class PostRepository extends SynquillRepositoryBase<Post>
     with RepositoryHelpersMixin<Post> {
   late final PostDao _dao;
+  late final ApiAdapterBase<Post> _apiAdapter = _PostAdapter();
   static Logger get _log {
     try {
       return SynquillStorage.logger;
@@ -108,7 +110,7 @@ class PostRepository extends SynquillRepositoryBase<Post>
 
   @override
   ApiAdapterBase<Post> get apiAdapter {
-    return _PostAdapter();
+    return _apiAdapter;
   }
 
   @override
@@ -304,6 +306,7 @@ class PlainModelRepository extends SynquillRepositoryBase<PlainModel>
 class UserRepository extends SynquillRepositoryBase<User>
     with RepositoryHelpersMixin<User> {
   late final UserDao _dao;
+  late final ApiAdapterBase<User> _apiAdapter = _UserAdapter();
   static Logger get _log {
     try {
       return SynquillStorage.logger;
@@ -324,7 +327,7 @@ class UserRepository extends SynquillRepositoryBase<User>
 
   @override
   ApiAdapterBase<User> get apiAdapter {
-    return _UserAdapter();
+    return _apiAdapter;
   }
 
   @override
@@ -382,6 +385,7 @@ class UserRepository extends SynquillRepositoryBase<User>
 class TodoRepository extends SynquillRepositoryBase<Todo>
     with RepositoryHelpersMixin<Todo> {
   late final TodoDao _dao;
+  late final ApiAdapterBase<Todo> _apiAdapter = _TodoAdapter();
   static Logger get _log {
     try {
       return SynquillStorage.logger;
@@ -402,7 +406,7 @@ class TodoRepository extends SynquillRepositoryBase<Todo>
 
   @override
   ApiAdapterBase<Todo> get apiAdapter {
-    return _TodoAdapter();
+    return _apiAdapter;
   }
 
   @override

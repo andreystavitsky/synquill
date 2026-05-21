@@ -226,15 +226,21 @@ $constructorBody
 
     final mixinClause = mixins.join(', ');
 
+    final hasAdapters = model.adapters != null && model.adapters!.isNotEmpty;
+
     // Generate apiAdapter getter based on whether adapters are defined
-    final apiAdapterGetter = (model.adapters == null || model.adapters!.isEmpty)
+    final apiAdapterField = hasAdapters
+        ? '''  late final ApiAdapterBase<$className> _apiAdapter = _${className}Adapter();
+'''
+        : '';
+    final apiAdapterGetter = !hasAdapters
         ? '''  @override
   ApiAdapterBase<$className> get apiAdapter {
     throw UnimplementedError('No adapters specified for $className');
   }'''
         : '''  @override
   ApiAdapterBase<$className> get apiAdapter {
-    return _${className}Adapter();
+    return _apiAdapter;
   }''';
 
     // Generate constructor with ID negotiation service initialization
@@ -261,7 +267,7 @@ $constructorBody
 class $repositoryName extends SynquillRepositoryBase<$className> 
     with $mixinClause {
   late final $daoName _dao;
-  static Logger get _log {
+$apiAdapterField  static Logger get _log {
     try {
       return SynquillStorage.logger;
     } catch (_) {
