@@ -1,6 +1,6 @@
 name: synquill_utils
 description: Utils for code generator and for the Offline-first Dart data engine with background JSON API sync and custom retry logic.
-version: 0.7.0
+version: 0.8.0
 homepage: https://synquill.dev
 
 environment:
