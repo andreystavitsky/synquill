@@ -251,6 +251,36 @@ void main() {
       await changeSubscription.cancel();
     });
 
+    test('retry waits for the failed upstream subscription to cancel',
+        () async {
+      final cancelGate = Completer<void>();
+      addTearDown(() {
+        if (!cancelGate.isCompleted) {
+          cancelGate.complete();
+        }
+      });
+      adapter
+        ..cancelGate = cancelGate
+        ..cancelStarted = Completer<void>();
+
+      final watchSubscription =
+          repository.watchAll(watchRemote: true).listen((_) {});
+      await pumpEventQueue();
+
+      adapter.emitError(NetworkException('connection dropped'));
+      await adapter.cancelStarted!.future;
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+
+      expect(adapter.subscribeCallCount, 1);
+
+      cancelGate.complete();
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+
+      expect(adapter.subscribeCallCount, 2);
+
+      await watchSubscription.cancel();
+    });
+
     test('fatal transport error emits non-retriable change without retry',
         () async {
       adapter
@@ -330,6 +360,30 @@ void main() {
       expect(registeredAdapter.cancelCount, 1);
 
       await subscription.cancel();
+    });
+
+    test('storage close continues realtime cleanup after a repository fails',
+        () async {
+      final secondDatabase = TestDatabase(NativeDatabase.memory());
+      addTearDown(secondDatabase.close);
+
+      late _ThrowingRealtimeRepository throwingRepository;
+      late _RecordingRealtimeRepository recordingRepository;
+      SynquillRepositoryProvider.register<TestUser>((db) {
+        if (identical(db, database)) {
+          return throwingRepository =
+              _ThrowingRealtimeRepository(db as TestDatabase, adapter);
+        }
+        return recordingRepository =
+            _RecordingRealtimeRepository(db as TestDatabase, adapter);
+      });
+      SynquillRepositoryProvider.getFrom<TestUser>(database);
+      SynquillRepositoryProvider.getFrom<TestUser>(secondDatabase);
+
+      await SynquillStorage.close();
+
+      expect(throwingRepository.disposeRealtimeCallCount, 1);
+      expect(recordingRepository.disposeRealtimeCallCount, 1);
     });
 
     test('obliterateLocalStorage cancels cached repository subscriptions',
@@ -458,6 +512,44 @@ void main() {
 
       await sub.cancel();
     });
+
+    test('repository dispose closes changes after in-flight realtime work',
+        () async {
+      final delayedRepository = _DelayedRealtimeRepository(database, adapter);
+      addTearDown(delayedRepository.disposeRealtimeSubscriptions);
+
+      final changesDone = Completer<void>();
+      final changesSubscription = delayedRepository.changes.listen(
+        (_) {},
+        onDone: changesDone.complete,
+      );
+      final watchSubscription =
+          delayedRepository.watchAll(watchRemote: true).listen((_) {});
+      await pumpEventQueue();
+
+      delayedRepository.delayNextSave();
+      adapter.emit(RealtimeEvent(
+        type: RealtimeEventType.created,
+        id: 'dispose-race',
+        item: TestUser(
+          id: 'dispose-race',
+          name: 'In flight',
+          email: 'in-flight@example.com',
+        ),
+      ));
+      await delayedRepository.saveStarted.future;
+
+      delayedRepository.dispose();
+      await pumpEventQueue();
+
+      expect(changesDone.isCompleted, isFalse);
+
+      delayedRepository.finishSave();
+      await changesDone.future;
+
+      await watchSubscription.cancel();
+      await changesSubscription.cancel();
+    });
   });
 }
 
@@ -487,6 +579,8 @@ class _RealtimeAdapter extends ApiAdapterBase<TestUser>
   int findOneCallCount = 0;
   int failNextSubscriptions = 0;
   Object? failNextError;
+  Completer<void>? cancelGate;
+  Completer<void>? cancelStarted;
 
   @override
   Uri get baseUrl => Uri.parse('https://example.com');
@@ -519,8 +613,13 @@ class _RealtimeAdapter extends ApiAdapterBase<TestUser>
     }
 
     final controller = StreamController<RealtimeEvent<TestUser>>(
-      onCancel: () {
+      onCancel: () async {
         cancelCount++;
+        final started = cancelStarted;
+        if (started != null && !started.isCompleted) {
+          started.complete();
+        }
+        await cancelGate?.future;
       },
     );
     _controllers.add(controller);
@@ -531,6 +630,14 @@ class _RealtimeAdapter extends ApiAdapterBase<TestUser>
     for (final controller in List.of(_controllers)) {
       if (!controller.isClosed) {
         controller.add(event);
+      }
+    }
+  }
+
+  void emitError(Object error) {
+    for (final controller in List.of(_controllers)) {
+      if (!controller.isClosed) {
+        controller.addError(error);
       }
     }
   }
@@ -768,6 +875,58 @@ class _RealtimeRepository extends SynquillRepositoryBase<TestUser> {
   }) async {
     await removeFromLocalIfExists(id);
     changeController.add(RepositoryChange.deleted(id));
+  }
+}
+
+class _DelayedRealtimeRepository extends _RealtimeRepository {
+  _DelayedRealtimeRepository(super.db, super.adapter);
+
+  late Completer<void> saveStarted;
+  late Completer<void> _saveGate;
+  var _delayNextSave = false;
+
+  void delayNextSave() {
+    _delayNextSave = true;
+    saveStarted = Completer<void>();
+    _saveGate = Completer<void>();
+  }
+
+  void finishSave() {
+    _saveGate.complete();
+  }
+
+  @override
+  Future<void> saveToLocal(TestUser item, {Map<String, dynamic>? extra}) async {
+    if (_delayNextSave) {
+      _delayNextSave = false;
+      saveStarted.complete();
+      await _saveGate.future;
+    }
+    await super.saveToLocal(item, extra: extra);
+  }
+}
+
+class _ThrowingRealtimeRepository extends _RealtimeRepository {
+  _ThrowingRealtimeRepository(super.db, super.adapter);
+
+  int disposeRealtimeCallCount = 0;
+
+  @override
+  Future<void> disposeRealtime() async {
+    disposeRealtimeCallCount++;
+    throw StateError('realtime teardown failed');
+  }
+}
+
+class _RecordingRealtimeRepository extends _RealtimeRepository {
+  _RecordingRealtimeRepository(super.db, super.adapter);
+
+  int disposeRealtimeCallCount = 0;
+
+  @override
+  Future<void> disposeRealtime() async {
+    disposeRealtimeCallCount++;
+    await super.disposeRealtime();
   }
 }
 

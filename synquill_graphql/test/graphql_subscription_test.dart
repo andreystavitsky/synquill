@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:gql_exec/gql_exec.dart' as gql_exec;
 import 'package:gql_link/gql_link.dart';
+import 'package:gql_websocket_link/gql_websocket_link.dart';
 import 'package:synquill/synquill.dart';
 import 'package:test/test.dart';
 
@@ -87,6 +88,12 @@ class SubscriptionTestAdapter extends TestGraphQLAdapter {
     capturedHeaders = headers;
     capturedExtra = extra;
     return link;
+  }
+}
+
+class DefaultSubscriptionLinkAdapter extends TestGraphQLAdapter {
+  Link buildDefaultSubscriptionLink() {
+    return super.createSubscriptionLink(endpoint: graphqlSubscriptionEndpoint);
   }
 }
 
@@ -387,6 +394,19 @@ void main() {
       link.addError(TestLinkException('Connection refused'));
 
       await expectation;
+    });
+
+    test('default subscription link leaves transport reconnect disabled',
+        () async {
+      final defaultLink =
+          DefaultSubscriptionLinkAdapter().buildDefaultSubscriptionLink();
+      addTearDown(defaultLink.dispose);
+
+      expect(defaultLink, isA<TransportWebSocketLink>());
+      expect(
+        (defaultLink as TransportWebSocketLink).client.options.retryAttempts,
+        0,
+      );
     });
 
     test('malformed payload becomes ApiException stream error', () async {

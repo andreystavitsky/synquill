@@ -155,7 +155,9 @@ mixin GraphQLSubscriptionMixin<TModel extends SynquillDataModel<TModel>>
 
   /// Creates the [Link] used for one subscription stream.
   ///
-  /// Override in tests or for custom transports.
+  /// Realtime repository watchers own their retry policy. Direct GraphQL
+  /// subscription users can override this for transport-specific retry
+  /// behavior.
   @protected
   Link createSubscriptionLink({
     required Uri endpoint,
@@ -169,7 +171,6 @@ mixin GraphQLSubscriptionMixin<TModel extends SynquillDataModel<TModel>>
           headers: headers,
           extra: extra,
         ),
-        retryAttempts: 5,
       ),
     );
   }

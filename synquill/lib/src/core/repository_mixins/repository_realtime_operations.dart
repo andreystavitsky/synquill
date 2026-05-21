@@ -23,6 +23,7 @@ mixin RepositoryRealtimeOperations<T extends SynquillDataModel<T>>
   final Map<_RealtimeSubscriptionKey, _ActiveRealtimeSubscription<T>>
       _activeRealtimeSubscriptions = {};
   final math.Random _realtimeJitterRandom = math.Random();
+  Future<void>? _disposeRealtimeSubscriptionsFuture;
 
   /// The logger instance for this repository.
   @override
@@ -203,7 +204,21 @@ mixin RepositoryRealtimeOperations<T extends SynquillDataModel<T>>
   }
 
   /// Disposes all active realtime subscriptions owned by this repository.
-  Future<void> disposeRealtimeSubscriptions() async {
+  Future<void> disposeRealtimeSubscriptions() {
+    final pendingDispose = _disposeRealtimeSubscriptionsFuture;
+    if (pendingDispose != null) return pendingDispose;
+
+    late final Future<void> disposeFuture;
+    disposeFuture = _disposeRealtimeSubscriptions().whenComplete(() {
+      if (identical(_disposeRealtimeSubscriptionsFuture, disposeFuture)) {
+        _disposeRealtimeSubscriptionsFuture = null;
+      }
+    });
+    _disposeRealtimeSubscriptionsFuture = disposeFuture;
+    return disposeFuture;
+  }
+
+  Future<void> _disposeRealtimeSubscriptions() async {
     final activeSubscriptions = _activeRealtimeSubscriptions.values.toList();
     _activeRealtimeSubscriptions.clear();
     await Future.wait(
@@ -292,25 +307,27 @@ mixin RepositoryRealtimeOperations<T extends SynquillDataModel<T>>
       )
           .listen(
         (event) {
-          unawaited(_handleRealtimeEvent(active, event));
+          active.trackWork(_handleRealtimeEvent(active, event));
         },
         onError: (Object error, StackTrace stackTrace) {
-          _handleRealtimeFailure(active, error, stackTrace);
+          active.trackWork(_handleRealtimeFailure(active, error, stackTrace));
         },
         onDone: () {
           if (!active.disposed &&
               active.subscription != null &&
               active.retryTimer == null) {
-            _handleRealtimeFailure(
-              active,
-              NetworkException('Realtime subscription ended.'),
-              StackTrace.current,
+            active.trackWork(
+              _handleRealtimeFailure(
+                active,
+                NetworkException('Realtime subscription ended.'),
+                StackTrace.current,
+              ),
             );
           }
         },
       );
     } catch (error, stackTrace) {
-      _handleRealtimeFailure(active, error, stackTrace);
+      active.trackWork(_handleRealtimeFailure(active, error, stackTrace));
     }
   }
 
@@ -326,15 +343,41 @@ mixin RepositoryRealtimeOperations<T extends SynquillDataModel<T>>
         extra: active.extra,
       );
     } catch (error, stackTrace) {
-      _handleRealtimeFailure(active, error, stackTrace);
+      await _handleRealtimeFailure(active, error, stackTrace);
     }
   }
 
-  void _handleRealtimeFailure(
+  Future<void> _handleRealtimeFailure(
     _ActiveRealtimeSubscription<T> active,
     Object error,
     StackTrace stackTrace,
   ) {
+    if (active.disposed) return Future.value();
+
+    final pendingTransition = active.failureTransition;
+    if (pendingTransition != null) {
+      return pendingTransition;
+    }
+
+    late final Future<void> transition;
+    transition = _transitionRealtimeFailure(
+      active,
+      error,
+      stackTrace,
+    ).whenComplete(() {
+      if (identical(active.failureTransition, transition)) {
+        active.failureTransition = null;
+      }
+    });
+    active.failureTransition = transition;
+    return transition;
+  }
+
+  Future<void> _transitionRealtimeFailure(
+    _ActiveRealtimeSubscription<T> active,
+    Object error,
+    StackTrace stackTrace,
+  ) async {
     if (active.disposed) return;
 
     final retryable = active.retryOnFail && isRealtimeRetryableError(error);
@@ -348,14 +391,15 @@ mixin RepositoryRealtimeOperations<T extends SynquillDataModel<T>>
       );
     }
 
-    unawaited(active.subscription?.cancel());
-    active.subscription = null;
+    await active.cancelSubscription();
     active.retryTimer?.cancel();
     active.retryTimer = null;
 
+    if (active.disposed) return;
+
     if (!retryable) {
       _activeRealtimeSubscriptions.remove(active.key);
-      unawaited(active.dispose());
+      active.stopRetrying();
       return;
     }
 
@@ -468,15 +512,53 @@ class _ActiveRealtimeSubscription<T extends SynquillDataModel<T>> {
   StreamSubscription<RealtimeEvent<T>>? subscription;
   Timer? retryTimer;
   bool disposed = false;
+  Future<void>? failureTransition;
+  Future<void>? _disposeFuture;
+  final Set<Future<void>> _inFlightWork = {};
 
-  Future<void> dispose() {
-    if (disposed) return Future.value();
+  void trackWork(Future<void> work) {
+    _inFlightWork.add(work);
+    work.then<void>(
+      (_) {
+        _inFlightWork.remove(work);
+      },
+      onError: (Object _, StackTrace __) {
+        _inFlightWork.remove(work);
+      },
+    );
+  }
+
+  Future<void> cancelSubscription() {
+    final currentSubscription = subscription;
+    subscription = null;
+    return currentSubscription?.cancel() ?? Future.value();
+  }
+
+  void stopRetrying() {
     disposed = true;
     retryTimer?.cancel();
     retryTimer = null;
-    final cancelFuture = subscription?.cancel();
-    subscription = null;
-    return cancelFuture ?? Future.value();
+  }
+
+  Future<void> dispose() {
+    final existingDispose = _disposeFuture;
+    if (existingDispose != null) return existingDispose;
+
+    disposed = true;
+    retryTimer?.cancel();
+    retryTimer = null;
+    return _disposeFuture = _dispose();
+  }
+
+  Future<void> _dispose() async {
+    await cancelSubscription();
+    await _waitForInFlightWork();
+  }
+
+  Future<void> _waitForInFlightWork() async {
+    while (_inFlightWork.isNotEmpty) {
+      await Future.wait(_inFlightWork.toList());
+    }
   }
 }
 

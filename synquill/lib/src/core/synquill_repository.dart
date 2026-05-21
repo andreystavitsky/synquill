@@ -46,6 +46,8 @@ abstract class SynquillRepositoryBase<T extends SynquillDataModel<T>>
   final StreamController<RepositoryChange<T>> _changeController =
       StreamController<RepositoryChange<T>>.broadcast();
 
+  Future<void>? _disposeFuture;
+
   /// Creates a new synchronized repository.
   SynquillRepositoryBase(this.db) {
     log = Logger('SynquillRepository<${T.toString()}>');
@@ -165,12 +167,22 @@ abstract class SynquillRepositoryBase<T extends SynquillDataModel<T>>
 
   /// Disposes of resources used by this repository.
   void dispose() {
-    unawaited(disposeRealtime());
-    _changeController.close();
+    unawaited(_dispose());
   }
 
   /// Disposes realtime subscriptions owned by this repository.
   Future<void> disposeRealtime() {
     return disposeRealtimeSubscriptions();
+  }
+
+  Future<void> _dispose() {
+    return _disposeFuture ??= _disposeInOrder();
+  }
+
+  Future<void> _disposeInOrder() async {
+    await disposeRealtime();
+    if (!_changeController.isClosed) {
+      await _changeController.close();
+    }
   }
 }

@@ -317,7 +317,16 @@ class SynquillRepositoryProvider {
         .toSet()
         .toList();
     for (final repository in repositories) {
-      await repository.disposeRealtime();
+      try {
+        await repository.disposeRealtime();
+      } catch (error, stackTrace) {
+        _log.warning(
+          'Failed to dispose realtime subscriptions for '
+          '${repository.runtimeType}: $error',
+          error,
+          stackTrace,
+        );
+      }
     }
   }
 
