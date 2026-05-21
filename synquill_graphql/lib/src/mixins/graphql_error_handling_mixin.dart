@@ -157,7 +157,8 @@ mixin GraphQLErrorHandlingMixin<TModel extends SynquillDataModel<TModel>>
           final errorsMap = responseData[key] as Map;
           return errorsMap.map((k, value) {
             if (value is List) {
-              return MapEntry(k.toString(), value.cast<String>().toList());
+              return MapEntry(
+                  k.toString(), value.map((e) => e.toString()).toList());
             } else if (value is String) {
               return MapEntry(k.toString(), [value]);
             }

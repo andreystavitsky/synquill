@@ -41,7 +41,6 @@ class OfflineException extends SynquillStorageException {
   OfflineException(super.message, [super.stackTrace]);
 }
 
-
 /// Thrown when a network connection error occurs.
 class NetworkException extends SynquillStorageException {
   /// Creates a [NetworkException] with an optional [stackTrace].

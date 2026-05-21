@@ -146,6 +146,29 @@ void main() {
             exception.fieldErrors!['email'], equals(['Invalid email format']));
       });
 
+      test('maps BAD_USER_INPUT with mixed/non-string field errors safely', () {
+        final error = {
+          'message': 'Validation failed',
+          'extensions': {
+            'code': 'BAD_USER_INPUT',
+            'fieldErrors': {
+              'age': ['Must be positive', 456],
+              'email': 'Invalid email format',
+              'status': 400,
+            },
+          },
+        };
+        final exception =
+            adapter.testMapGraphQLError(error, 200) as ValidationException;
+        expect(exception, isA<ValidationException>());
+        expect(exception.fieldErrors, isNotNull);
+        expect(
+            exception.fieldErrors!['age'], equals(['Must be positive', '456']));
+        expect(
+            exception.fieldErrors!['email'], equals(['Invalid email format']));
+        expect(exception.fieldErrors!['status'], equals(['400']));
+      });
+
       test('maps CONFLICT to ConflictException', () {
         final error = {
           'message': 'Conflict state',
@@ -251,6 +274,35 @@ void main() {
         );
         final exception = adapter.testMapDioError(dioException);
         expect(exception, isA<ServerException>());
+      });
+
+      test(
+          'maps DioException badResponse 400 with non-string/mixed type validation errors safely',
+          () {
+        final dioException = DioException(
+          requestOptions: RequestOptions(),
+          type: DioExceptionType.badResponse,
+          response: Response(
+            requestOptions: RequestOptions(),
+            statusCode: 400,
+            data: {
+              'errors': {
+                'age': ['Must be positive', 123],
+                'email': 'Invalid email format',
+                'status': 500,
+              }
+            },
+          ),
+        );
+        final exception =
+            adapter.testMapDioError(dioException) as ValidationException;
+        expect(exception, isA<ValidationException>());
+        expect(exception.fieldErrors, isNotNull);
+        expect(
+            exception.fieldErrors!['age'], equals(['Must be positive', '123']));
+        expect(
+            exception.fieldErrors!['email'], equals(['Invalid email format']));
+        expect(exception.fieldErrors!['status'], equals(['500']));
       });
     });
 

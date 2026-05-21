@@ -199,7 +199,8 @@ class _GraphqlPostsList extends StatelessWidget {
           margin: const EdgeInsets.only(bottom: 12),
           child: ListTile(
             leading: CircleAvatar(
-              child: Text(post.id.substring(0, post.id.length > 3 ? 3 : post.id.length)),
+              child: Text(post.id
+                  .substring(0, post.id.length > 3 ? 3 : post.id.length)),
             ),
             title: Text(
               post.title,

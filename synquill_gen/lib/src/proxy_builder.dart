@@ -2,7 +2,6 @@
 
 import 'package:build/build.dart';
 
-
 /// Creates a no-op builder that does nothing during the build process.
 ///
 /// This is used as a placeholder builder implementation.

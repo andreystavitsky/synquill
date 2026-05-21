@@ -1,6 +1,6 @@
 name: synquill_graphql
 description: GraphQL adapter for the Synquill offline-first data engine.
-version: 0.1.0
+version: 0.8.0
 publish_to: none
 
 environment:

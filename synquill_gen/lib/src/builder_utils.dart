@@ -1,6 +1,5 @@
 import 'package:synquill_utils/synquill_utils.dart';
 
-
 /// Utility functions shared across builder files
 class BuilderUtils {
   /// Convert string to camelCase

@@ -84,7 +84,8 @@ mixin RepositoryRealtimeOperations<T extends SynquillDataModel<T>>
         await localSubscription?.cancel();
         final activeKey = key;
         if (activeKey != null) {
-          await _releaseRealtimeSubscription(activeKey);
+          await _releaseRealtimeSubscription(activeKey,
+              retryOnFail: retryOnFail);
         }
       },
     );
@@ -132,7 +133,7 @@ mixin RepositoryRealtimeOperations<T extends SynquillDataModel<T>>
     });
 
     final committedItem = itemToEmit;
-    if (committedItem != null) {
+    if (committedItem != null && !changeController.isClosed) {
       if (event.type == RealtimeEventType.created) {
         changeController.add(RepositoryChange.created(committedItem));
       } else {
@@ -241,7 +242,9 @@ mixin RepositoryRealtimeOperations<T extends SynquillDataModel<T>>
     final existing = _activeRealtimeSubscriptions[key];
     if (existing != null) {
       existing.listenerCount++;
-      existing.retryOnFail = existing.retryOnFail || retryOnFail;
+      if (retryOnFail) {
+        existing.retryOnFailCount++;
+      }
       return key;
     }
 
@@ -259,12 +262,16 @@ mixin RepositoryRealtimeOperations<T extends SynquillDataModel<T>>
   }
 
   Future<void> _releaseRealtimeSubscription(
-    _RealtimeSubscriptionKey key,
-  ) async {
+    _RealtimeSubscriptionKey key, {
+    required bool retryOnFail,
+  }) async {
     final active = _activeRealtimeSubscriptions[key];
     if (active == null) return;
 
     active.listenerCount--;
+    if (retryOnFail) {
+      active.retryOnFailCount = math.max(0, active.retryOnFailCount - 1);
+    }
     if (active.listenerCount > 0) return;
 
     _activeRealtimeSubscriptions.remove(key);
@@ -331,13 +338,15 @@ mixin RepositoryRealtimeOperations<T extends SynquillDataModel<T>>
     if (active.disposed) return;
 
     final retryable = active.retryOnFail && isRealtimeRetryableError(error);
-    changeController.add(
-      RepositoryChange.realtimeError(
-        error,
-        stackTrace: stackTrace,
-        isRetriable: retryable,
-      ),
-    );
+    if (!changeController.isClosed) {
+      changeController.add(
+        RepositoryChange.realtimeError(
+          error,
+          stackTrace: stackTrace,
+          isRetriable: retryable,
+        ),
+      );
+    }
 
     unawaited(active.subscription?.cancel());
     active.subscription = null;
@@ -429,6 +438,10 @@ mixin RepositoryRealtimeOperations<T extends SynquillDataModel<T>>
     }
     return value.toString();
   }
+
+  @visibleForTesting
+  Map<dynamic, dynamic> get activeRealtimeSubscriptionsForTesting =>
+      _activeRealtimeSubscriptions;
 }
 
 class _ActiveRealtimeSubscription<T extends SynquillDataModel<T>> {
@@ -438,28 +451,30 @@ class _ActiveRealtimeSubscription<T extends SynquillDataModel<T>> {
     required this.queryParams,
     required this.headers,
     required this.extra,
-    required this.retryOnFail,
-  });
+    required bool retryOnFail,
+  }) : retryOnFailCount = retryOnFail ? 1 : 0;
 
   final _RealtimeSubscriptionKey key;
   final String? id;
   final QueryParams? queryParams;
   final Map<String, String>? headers;
   final Map<String, dynamic>? extra;
-  bool retryOnFail;
+  int retryOnFailCount;
+  bool get retryOnFail => retryOnFailCount > 0;
   int listenerCount = 1;
   int retryAttempt = 0;
   StreamSubscription<RealtimeEvent<T>>? subscription;
   Timer? retryTimer;
   bool disposed = false;
 
-  Future<void> dispose() async {
-    if (disposed) return;
+  Future<void> dispose() {
+    if (disposed) return Future.value();
     disposed = true;
     retryTimer?.cancel();
     retryTimer = null;
-    await subscription?.cancel();
+    final cancelFuture = subscription?.cancel();
     subscription = null;
+    return cancelFuture ?? Future.value();
   }
 }
 

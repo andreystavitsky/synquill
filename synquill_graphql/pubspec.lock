@@ -583,7 +583,7 @@ packages:
       path: "../synquill"
       relative: true
     source: path
-    version: "0.7.2"
+    version: "0.8.0"
   synquill_utils:
     dependency: transitive
     description:

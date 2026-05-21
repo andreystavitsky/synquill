@@ -266,7 +266,8 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
       final posts = await SynquillStorage.instance.posts.findAll(
           queryParams:
               QueryParams.filters([PostFields.userId.equals(currentUser.id)]));
-      final graphqlPosts = await SynquillStorage.instance.graphqlPosts.findAll();
+      final graphqlPosts =
+          await SynquillStorage.instance.graphqlPosts.findAll();
 
       developer.log(
           '[HomeBloc] Data loaded - todos: ${todos.length}, posts: ${posts.length}, graphqlPosts: ${graphqlPosts.length}',

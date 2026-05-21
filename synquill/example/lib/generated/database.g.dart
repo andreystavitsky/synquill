@@ -15,9 +15,9 @@ part of 'database.generated.dart';
 @TableIndex(name: 'idx_next_retry_at', columns: {#nextRetryAt})
 @TableIndex(name: 'idx_created_at', columns: {#createdAt})
 @TableIndex(
-  name: 'idx_temporary_client_id', 
-  columns: {#temporaryClientId},
-  unique: true)
+    name: 'idx_temporary_client_id',
+    columns: {#temporaryClientId},
+    unique: true)
 @TableIndex(name: 'idx_id_negotiation_status', columns: {#idNegotiationStatus})
 class SyncQueueItems extends Table {
   /// Unique identifier for the queue item.
@@ -28,16 +28,16 @@ class SyncQueueItems extends Table {
 
   /// The ID of the specific model instance being synced.
   TextColumn get modelId => text().named('model_id')();
-  
+
   /// Temporary client ID for models using server-generated IDs.
   /// Used to track the original temporary ID before server ID replacement.
-  TextColumn get temporaryClientId => text()
-    .named('temporary_client_id')
-    .nullable()();
-  
+  TextColumn get temporaryClientId =>
+      text().named('temporary_client_id').nullable()();
+
   /// ID negotiation status for server-generated ID models.
   /// Values: 'complete', 'pending', 'failed'
-  TextColumn get idNegotiationStatus => text().named('id_negotiation_status')
+  TextColumn get idNegotiationStatus => text()
+      .named('id_negotiation_status')
       .withDefault(const Constant('complete'))();
 
   /// JSON string representation of the model data.
@@ -82,10 +82,9 @@ class SyncQueueItems extends Table {
 
   @override
   List<Set<Column>> get uniqueKeys => [
-    {modelId, operation}, // Ensure only one operation per model ID
-  ];
+        {modelId, operation}, // Ensure only one operation per model ID
+      ];
 }
-
 
 @DriftDatabase(
   tables: [
@@ -106,8 +105,9 @@ class SyncQueueItems extends Table {
     TodoDao,
   ],
 )
+
 /// Main database class for synced data storage
-/// 
+///
 /// Provides Drift-powered offline storage with automatic sync capabilities.
 /// Includes all generated tables and DAOs for the configured models.
 class SynquillDatabase extends _$SynquillDatabase {
@@ -126,7 +126,7 @@ class SynquillDatabase extends _$SynquillDatabase {
   final Future<void> Function(Migrator, int, int)? _onCustomMigration;
 
   /// Creates a new SynquillDatabase instance
-  /// 
+  ///
   /// [executor] The database executor (usually a file-based connection)
   /// [onDatabaseCreated] Optional callback for initial database setup
   /// [onCustomMigration] Optional callback for handling database migrations
@@ -134,8 +134,8 @@ class SynquillDatabase extends _$SynquillDatabase {
     super.executor, {
     Future<void> Function(Migrator)? onDatabaseCreated,
     Future<void> Function(Migrator, int, int)? onCustomMigration,
-  }) : _onDatabaseCreated = onDatabaseCreated,
-       _onCustomMigration = onCustomMigration;
+  })  : _onDatabaseCreated = onDatabaseCreated,
+        _onCustomMigration = onCustomMigration;
 
   late final SyncQueueDao _syncQueueDao = SyncQueueDao(this);
 
@@ -202,23 +202,23 @@ class SynquillDatabase extends _$SynquillDatabase {
 
   /// Returns user-defined table types
   List<Type> get userDefinedTables => [
-    GraphqlPostTable,
-    PostTable,
-    LocalNoteTable,
-    PlainModelTable,
-    UserTable,
-    TodoTable,
-  ];
+        GraphqlPostTable,
+        PostTable,
+        LocalNoteTable,
+        PlainModelTable,
+        UserTable,
+        TodoTable,
+      ];
 
   /// Returns user-defined DAO types
   List<Type> get userDefinedDaos => [
-    GraphqlPostDao,
-    PostDao,
-    LocalNoteDao,
-    PlainModelDao,
-    UserDao,
-    TodoDao,
-  ];
+        GraphqlPostDao,
+        PostDao,
+        LocalNoteDao,
+        PlainModelDao,
+        UserDao,
+        TodoDao,
+      ];
 
   /// Closes the database connection.
   ///
@@ -230,4 +230,3 @@ class SynquillDatabase extends _$SynquillDatabase {
     await super.close();
   }
 }
-

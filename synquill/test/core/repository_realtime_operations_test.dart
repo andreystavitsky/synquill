@@ -393,9 +393,8 @@ void main() {
       );
 
       final trackingRepository = _RealtimeRepository(trackingDb, adapter);
-      final subscription = trackingRepository
-          .watchAll(watchRemote: true)
-          .listen((_) {});
+      final subscription =
+          trackingRepository.watchAll(watchRemote: true).listen((_) {});
       await pumpEventQueue();
 
       // Reset transaction counter
@@ -422,6 +421,42 @@ void main() {
       expect(trackingDb.transactionCallCount, 1);
 
       await subscription.cancel();
+    });
+
+    test('shared subscriptions isolate retryOnFail per-listener preferences',
+        () async {
+      final sub1 = repository
+          .watchAll(watchRemote: true, retryOnFail: false)
+          .listen((_) {});
+      await pumpEventQueue();
+
+      final active =
+          repository.activeRealtimeSubscriptionsForTesting.values.single;
+      expect(active.retryOnFail, isFalse);
+
+      final sub2 = repository
+          .watchAll(watchRemote: true, retryOnFail: true)
+          .listen((_) {});
+      await pumpEventQueue();
+
+      expect(active.retryOnFail, isTrue);
+
+      await sub2.cancel();
+      await pumpEventQueue();
+
+      expect(active.retryOnFail, isFalse);
+
+      await sub1.cancel();
+    });
+
+    test('repository dispose is safe with active subscriptions', () async {
+      final sub = repository.watchAll(watchRemote: true).listen((_) {});
+      await pumpEventQueue();
+
+      expect(() => repository.dispose(), returnsNormally);
+      await pumpEventQueue();
+
+      await sub.cancel();
     });
   });
 }
