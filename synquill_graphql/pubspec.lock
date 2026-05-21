@@ -585,13 +585,12 @@ packages:
     source: path
     version: "0.8.0"
   synquill_utils:
-    dependency: transitive
+    dependency: "direct overridden"
     description:
-      name: synquill_utils
-      sha256: "58f9e16fde792089bdb40c0c4bdf17a34442534344c81405d0e26a87b252deff"
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.7.0"
+      path: "../synquill_utils"
+      relative: true
+    source: path
+    version: "0.8.0"
   term_glyph:
     dependency: transitive
     description:

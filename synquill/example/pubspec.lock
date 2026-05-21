@@ -896,7 +896,7 @@ packages:
       path: "../../synquill_utils"
       relative: true
     source: path
-    version: "0.7.0"
+    version: "0.8.0"
   term_glyph:
     dependency: transitive
     description:
