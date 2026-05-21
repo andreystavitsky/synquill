@@ -1,6 +1,6 @@
 # Synquill Documentation
 
-Welcome to the comprehensive documentation for Synquill - a powerful Flutter package for offline-first data management with automatic REST API synchronization.
+Welcome to the comprehensive documentation for Synquill - a powerful Flutter package for offline-first data management with automatic REST and GraphQL API synchronization.
 
 ## 📚 Documentation Overview
 
