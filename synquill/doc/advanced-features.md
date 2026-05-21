@@ -106,10 +106,10 @@ class SmartSearchAdapter extends BasicApiAdapter<SearchableModel> {
 ```
 
 ## Database Migrations
-Database versioning in Synquill is set using the `@SynqillDatabaseVersion(1)` annotation above your database declaration, for example:
+Database versioning in Synquill is set using the `@SynquillDatabaseVersion(1)` annotation above your database declaration, for example:
 
 ```dart
-@SynqillDatabaseVersion(1)
+@SynquillDatabaseVersion(1)
 final database = SynquillDatabase(
   ...,
   onCustomMigration: _performMigration, // Pass your migration function here
@@ -118,7 +118,7 @@ final database = SynquillDatabase(
 ```
 
 > [!IMPORTANT]
-> **Build Required After Version Change**: After you change the database version in the `@SynqillDatabaseVersion` annotation, you MUST run `dart run build_runner build` to regenerate the database schema and initialization code.
+> **Build Required After Version Change**: After you change the database version in the `@SynquillDatabaseVersion` annotation, you MUST run `dart run build_runner build` to regenerate the database schema and initialization code.
 
 ### Background Isolate Configuration
 
@@ -203,9 +203,9 @@ While Synquill provides a robust foundation for offline-first data management, t
   - Composite indexes spanning multiple fields will be added in future versions
 
 ### Reactive Streams
-- **Reactive streams are local-only**:
-  - **`watchOne()` and `watchAll()` methods currently only watch local database changes** - These streams do not automatically react to remote data changes or sync operations
-  - Remote data changes are only reflected in the streams after they have been synced to the local database
-  - Future versions will include options to trigger remote data fetching when streams are subscribed to
+- **Reactive streams support remote real-time updates (v0.8.0+):**
+  - **Local-only by default**: By default, `watchOne()` and `watchAll()` methods only watch local database changes.
+  - **Real-time Remote Integration**: You can pass `watchRemote: true` (and `retryOnFail: true`) to automatically propagate remote events into your reactive streams when using an API adapter that implements real-time streams (like `graphql-transport-ws`).
+  - **Limitation**: Real-time remote updates require a `RealtimeApiAdapter` (such as the GraphQL adapter with subscription support). If the adapter does not support real-time subscriptions, enabling `watchRemote` will throw an `UnsupportedError`.
 
 These limitations are actively being addressed in the development roadmap. Contributions and feedback are welcome to help prioritize these features.

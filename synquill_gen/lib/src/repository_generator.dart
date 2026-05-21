@@ -1,4 +1,3 @@
-
 import 'package:synquill_gen/src/model_info.dart';
 import 'package:synquill_gen/src/builder_utils.dart';
 
@@ -65,10 +64,15 @@ class $adapterClassName extends BasicApiAdapter<$className> {
 
     final mixinClause =
         mixinParts.isNotEmpty ? ' with ${mixinParts.join(', ')}' : '';
+    final baseClass = adapters.any(
+      (adapter) => adapter.superclassConstraints.contains('GraphQLApiAdapter'),
+    )
+        ? 'GraphQLApiAdapter'
+        : 'BasicApiAdapter';
 
     return '''
 /// Generated adapter for $className
-class $adapterClassName extends BasicApiAdapter<$className>
+class $adapterClassName extends $baseClass<$className>
     $mixinClause {
   @override
   $className fromJson(Map<String, dynamic> json) {

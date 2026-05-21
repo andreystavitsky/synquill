@@ -69,12 +69,22 @@ class TestRepository extends SynquillRepositoryBase<TestModel> {
     String id, {
     DataLoadPolicy? loadPolicy,
     QueryParams? queryParams,
+    bool watchRemote = false,
+    bool retryOnFail = true,
+    Map<String, String>? headers,
+    Map<String, dynamic>? extra,
   }) {
     return watchFromLocal(id, queryParams: queryParams);
   }
 
   @override
-  Stream<List<TestModel>> watchAll({QueryParams? queryParams}) {
+  Stream<List<TestModel>> watchAll({
+    QueryParams? queryParams,
+    bool watchRemote = false,
+    bool retryOnFail = true,
+    Map<String, String>? headers,
+    Map<String, dynamic>? extra,
+  }) {
     return watchAllFromLocal(queryParams: queryParams);
   }
 

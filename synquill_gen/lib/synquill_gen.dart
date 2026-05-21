@@ -4,7 +4,6 @@
 /// repositories, and other synced storage code.
 library;
 
-
 // Export all builder components
 export 'src/adapter_info.dart';
 export 'src/aggregate_builder.dart';

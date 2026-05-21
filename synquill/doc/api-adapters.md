@@ -2,12 +2,16 @@
 
 This guide covers how to customize API adapters for different REST API patterns, HTTP methods, headers, authentication, and response parsing.
 
+> [!NOTE]
+> This guide is specific to REST API customization. If you are integrating a GraphQL backend, please refer to the dedicated **[GraphQL API Adapter Guide](graphql-adapter.md)**.
+
 ## Table of Contents
 
 - [HTTP Methods and URLs](#http-methods-and-urls)
 - [Custom Headers and Authentication](#custom-headers-and-authentication)
 - [Response Parsing](#response-parsing)
 - [HTTP Status Code Handling](#http-status-code-handling)
+- [Real-time & watchRemote Limitation](#real-time--watchremote-limitation)
 - [Example: Overriding findAll for Full Synchronization](#example-overriding-findall-for-full-synchronization)
 
 ## HTTP Methods and URLs
@@ -133,6 +137,20 @@ mixin CustomErrorHandlingAdapter on BasicApiAdapter<MyModel> {
   }
 }
 ```
+
+## Real-time & `watchRemote` Limitation
+
+By default, the standard HTTP REST adapter (`BasicApiAdapter`) is designed for static request-response patterns (such as `GET`, `POST`, `PATCH`, `DELETE`) and **does not support real-time data streaming** out of the box.
+
+> [!WARNING]
+> If you call repository watch methods (`watchAll` or `watchOne`) with **`watchRemote: true`** on a model that uses a standard `BasicApiAdapter`, Synquill will throw an `UnsupportedError`.
+> 
+> ```dart
+> // This will throw UnsupportedError if the model uses BasicApiAdapter
+> final stream = repository.watchAll(watchRemote: true);
+> ```
+> 
+> Real-time remote updates require a `RealtimeApiAdapter` (such as the GraphQL API adapter which implements WebSocket subscriptions). If you require real-time support with a REST backend, you must implement custom real-time links (e.g. using WebSockets or Server-Sent Events) and implement the corresponding subscription interfaces.
 
 ## Example: Overriding findAll for Full Synchronization
 

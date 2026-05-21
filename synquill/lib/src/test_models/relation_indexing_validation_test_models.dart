@@ -41,7 +41,6 @@ class IndexingTestProduct extends SynquillDataModel<IndexingTestProduct> {
     this.lastSyncedAt = lastSyncedAt;
   }
 
-  @override
   factory IndexingTestProduct.fromJson(Map<String, dynamic> json) {
     return IndexingTestProduct(
       id: json['id'] as String,
@@ -89,7 +88,6 @@ class IndexingTestCategory extends SynquillDataModel<IndexingTestCategory> {
     this.lastSyncedAt = lastSyncedAt;
   }
 
-  @override
   factory IndexingTestCategory.fromJson(Map<String, dynamic> json) {
     return IndexingTestCategory(
       id: json['id'] as String,
@@ -145,7 +143,6 @@ class InvalidProduct extends SynquillDataModel<InvalidProduct> {
     this.lastSyncedAt = lastSyncedAt;
   }
 
-  @override
   factory InvalidProduct.fromJson(Map<String, dynamic> json) {
     return InvalidProduct(
       id: json['id'] as String,
@@ -198,7 +195,6 @@ class TestUser extends SynquillDataModel<TestUser> {
     this.lastSyncedAt = lastSyncedAt;
   }
 
-  @override
   factory TestUser.fromJson(Map<String, dynamic> json) {
     return TestUser(
       id: json['id'] as String,

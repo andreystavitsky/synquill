@@ -55,7 +55,6 @@ class Project extends SynquillDataModel<Project> {
     required this.categoryId,
   });
 
-  @override
   factory Project.fromJson(Map<String, dynamic> json) =>
       _$ProjectFromJson(json);
 

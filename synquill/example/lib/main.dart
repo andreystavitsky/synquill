@@ -29,7 +29,7 @@ void main() async {
   );
 
   // Initialize the SynquillStorage system
-  @SynqillDatabaseVersion(2)
+  @SynquillDatabaseVersion(3)
   final database = SynquillDatabase(
     LazyDatabase(
       () => driftDatabase(
@@ -45,7 +45,7 @@ void main() async {
   );
 
   // If uncommented, this should cause a build error due to conflicting versions
-  // @SynqillDatabaseVersion(2)
+  // @SynquillDatabaseVersion(2)
   // final conflictingVersion = 'test';
 
   // Initialize the SynquillStorage system
@@ -121,6 +121,12 @@ Future<void> _performMigration(Migrator migrator, int from, int to) async {
 
     await migrator.createIndex(db.idxTemporaryClientId);
     await migrator.createIndex(db.idxIdNegotiationStatus);
+  }
+
+  if (from < 3) {
+    log.info('Creating graphql_posts table');
+    final db = migrator.database as SynquillDatabase;
+    await migrator.createTable(db.graphqlPostTable);
   }
 
   log.info('Custom migration completed');

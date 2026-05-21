@@ -4,9 +4,33 @@
 
 part of '../synquill.generated.dart';
 
+/// Generated adapter for GraphqlPost
+class _GraphqlPostAdapter extends GraphQLApiAdapter<GraphqlPost>
+    with GraphqlPostApiAdapter {
+  @override
+  GraphqlPost fromJson(Map<String, dynamic> json) {
+    // Try to call fromJson if it exists, otherwise throw
+    try {
+      return GraphqlPost.fromJson(json);
+    } on NoSuchMethodError {
+      throw UnimplementedError('fromJson not implemented for GraphqlPost');
+    }
+  }
+
+  @override
+  Map<String, dynamic> toJson(GraphqlPost model) {
+    // Try to call toJson if it exists, otherwise throw
+    try {
+      return model.toJson();
+    } on NoSuchMethodError {
+      throw UnimplementedError('toJson not implemented for GraphqlPost');
+    }
+  }
+}
+
 /// Generated adapter for Post
 class _PostAdapter extends BasicApiAdapter<Post>
-     with JsonApiAdapter<Post>, PostApiAdapter {
+    with JsonApiAdapter<Post>, PostApiAdapter {
   @override
   Post fromJson(Map<String, dynamic> json) {
     // Try to call fromJson if it exists, otherwise throw
@@ -28,10 +52,9 @@ class _PostAdapter extends BasicApiAdapter<Post>
   }
 }
 
-
 /// Generated adapter for User
 class _UserAdapter extends BasicApiAdapter<User>
-     with JsonApiAdapter<User>, UserApiAdapter {
+    with JsonApiAdapter<User>, UserApiAdapter {
   @override
   User fromJson(Map<String, dynamic> json) {
     // Try to call fromJson if it exists, otherwise throw
@@ -53,10 +76,9 @@ class _UserAdapter extends BasicApiAdapter<User>
   }
 }
 
-
 /// Generated adapter for Todo
 class _TodoAdapter extends BasicApiAdapter<Todo>
-     with JsonApiAdapter<Todo>, TodoApiAdapter {
+    with JsonApiAdapter<Todo>, TodoApiAdapter {
   @override
   Todo fromJson(Map<String, dynamic> json) {
     // Try to call fromJson if it exists, otherwise throw
@@ -77,5 +99,3 @@ class _TodoAdapter extends BasicApiAdapter<Todo>
     }
   }
 }
-
-

@@ -11,11 +11,11 @@ import 'package:synquill_gen/src/model_info.dart';
 /// Generates the main SynquillDatabase class
 class DatabaseGenerator {
   // TypeChecker for database version annotation
-  static const _synqillDatabaseVersionChecker = TypeChecker.fromRuntime(
-    SynqillDatabaseVersion,
+  static const _synquillDatabaseVersionChecker = TypeChecker.fromRuntime(
+    SynquillDatabaseVersion,
   );
 
-  /// Finds the database version from @SynqillDatabaseVersion annotation
+  /// Finds the database version from @SynquillDatabaseVersion annotation
   /// in the project. Returns 1 as default if no annotation is found.
   /// Throws an error if multiple different versions are found.
   static Future<int> _findDatabaseVersion(BuildStep buildStep) async {
@@ -34,9 +34,9 @@ class DatabaseGenerator {
         continue;
       }
 
-      // Search for ALL @SynqillDatabaseVersion annotations in source code
+      // Search for ALL @SynquillDatabaseVersion annotations in source code
       final versionPattern = RegExp(
-        r'@SynqillDatabaseVersion\s*\(\s*(\d+)\s*\)',
+        r'@SynquillDatabaseVersion\s*\(\s*(\d+)\s*\)',
         multiLine: true,
       );
       final matches = versionPattern.allMatches(content);
@@ -62,7 +62,7 @@ class DatabaseGenerator {
 
         // Check annotations on all library-level elements
         for (final element in library.topLevelElements) {
-          final annotation = _synqillDatabaseVersionChecker.firstAnnotationOf(
+          final annotation = _synquillDatabaseVersionChecker.firstAnnotationOf(
             element,
           );
           if (annotation != null) {
@@ -75,7 +75,8 @@ class DatabaseGenerator {
 
           // Check annotations on top-level variables specifically
           if (element is TopLevelVariableElement) {
-            final annotation = _synqillDatabaseVersionChecker.firstAnnotationOf(
+            final annotation =
+                _synquillDatabaseVersionChecker.firstAnnotationOf(
               element,
             );
             if (annotation != null) {
@@ -89,7 +90,8 @@ class DatabaseGenerator {
 
           // Check annotations on functions (like main)
           if (element is FunctionElement) {
-            final annotation = _synqillDatabaseVersionChecker.firstAnnotationOf(
+            final annotation =
+                _synquillDatabaseVersionChecker.firstAnnotationOf(
               element,
             );
             if (annotation != null) {
@@ -111,7 +113,7 @@ class DatabaseGenerator {
     if (foundVersions.length > 1) {
       final buffer = StringBuffer();
       buffer.writeln(
-        'ERROR: Multiple @SynqillDatabaseVersion annotations found with '
+        'ERROR: Multiple @SynquillDatabaseVersion annotations found with '
         'different versions:',
       );
       for (final entry in foundVersions.entries) {
@@ -122,7 +124,7 @@ class DatabaseGenerator {
       }
       buffer.writeln('');
       buffer.writeln(
-        'Please use only one @SynqillDatabaseVersion annotation in your '
+        'Please use only one @SynquillDatabaseVersion annotation in your '
         'entire project.',
       );
       buffer.writeln(

@@ -1,6 +1,6 @@
 # Synquill
 
-A powerful Flutter package for offline-first data management with automatic REST API synchronization. Built on top of Drift for robust local storage and featuring intelligent sync queues for seamless online/offline operation.
+A powerful Flutter package for offline-first data management with automatic REST and GraphQL API synchronization. Built on top of Drift for robust local storage and featuring intelligent sync queues for seamless online/offline operation.
 
 [![pub package](https://img.shields.io/pub/v/synquill.svg)](https://pub.dev/packages/synquill)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -16,7 +16,7 @@ A powerful Flutter package for offline-first data management with automatic REST
 - **Works completely offline** - sync when connectivity returns
 
 ### Intelligent Synchronization
-- **Bidirectional sync** between local storage and REST APIs
+- **Bidirectional sync** between local storage and REST/GraphQL APIs
 - **Configurable sync policies**: `localFirst`, `remoteFirst`, `localThenRemote`
 - **Dependency-based sync ordering** with hierarchical task resolution
 - **Background processing** capabilities, enabling integration with tools like WorkManager
@@ -29,7 +29,7 @@ A powerful Flutter package for offline-first data management with automatic REST
 - **Type-safe queries** with filtering, sorting, and pagination
 
 ### Flexible API Integration
-- **Pluggable API adapters** for different REST API patterns
+- **Pluggable API adapters** for different REST and GraphQL patterns (via `synquill_graphql`)
 - **Custom HTTP headers** and authentication support
 - **Error handling** with comprehensive exception types
 - **Request/response interceptors** for logging and debugging
@@ -46,10 +46,12 @@ Add to your `pubspec.yaml`:
 ```yaml
 dependencies:
   json_annotation: ^4.9.0
-  synquill: ^0.7.0
+  synquill: ^0.8.0
+  # If using GraphQL:
+  synquill_graphql: ^0.8.0
 
 dev_dependencies:
-  synquill_gen: ^0.7.0
+  synquill_gen: ^0.8.0
   build_runner: ^2.4.14
 ```
 
@@ -251,7 +253,8 @@ void main() async {
 For comprehensive documentation, guides, and advanced features, please visit the [documentation directory](https://github.com/andreystavitsky/synquill/tree/main/synquill/doc/).
 
 - **[Getting Started Guide](https://github.com/andreystavitsky/synquill/tree/main/synquill/doc/guide.md)** - Core concepts, querying, operations, and relationships
-- **[JSON API Adapters](https://github.com/andreystavitsky/synquill/tree/main/synquill/docapi-adapters.md)** - Customizing HTTP methods, headers, and response parsing
+- **[JSON API Adapters](https://github.com/andreystavitsky/synquill/tree/main/synquill/doc/api-adapters.md)** - Customizing HTTP methods, headers, and response parsing (REST)
+- **[GraphQL API Adapter](https://github.com/andreystavitsky/synquill/tree/main/synquill/doc/graphql-adapter.md)** - Integrating a GraphQL backend, batching, and subscriptions
 - **[Configuration](https://github.com/andreystavitsky/synquill/tree/main/synquill/doc/configuration.md)** - Storage configuration and background sync setup
 - **[Advanced Features](https://github.com/andreystavitsky/synquill/tree/main/synquill/doc/advanced-features.md)** - Queue management, dependency resolution, and more
 - **[API Reference](https://github.com/andreystavitsky/synquill/tree/main/synquill/doc/api-reference.md)** - Complete API documentation

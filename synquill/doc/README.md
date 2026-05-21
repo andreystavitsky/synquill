@@ -1,6 +1,6 @@
 # Synquill Documentation
 
-Welcome to the comprehensive documentation for Synquill - a powerful Flutter package for offline-first data management with automatic REST API synchronization.
+Welcome to the comprehensive documentation for Synquill - a powerful Flutter package for offline-first data management with automatic REST and GraphQL API synchronization.
 
 ## 📚 Documentation Overview
 
@@ -14,11 +14,17 @@ This documentation is organized into several sections to help you get started qu
   - Reactive data streams
 
 ### Configuration & Setup
-- **[API Adapters](api-adapters.md)** - Customizing HTTP communication
+- **[API Adapters](api-adapters.md)** - Customizing HTTP communication (REST)
   - Creating custom adapters
   - HTTP methods and headers
   - Authentication patterns
   - Response parsing and error handling
+
+- **[GraphQL API Adapter](graphql-adapter.md)** - Integrating a GraphQL backend
+  - Setting up models and adapters
+  - String-based query definition
+  - Variable mapping and HTTP batching
+  - WebSocket-based realtime subscriptions
 
 - **[Configuration](configuration.md)** - Storage and sync configuration
   - Database setup and options
@@ -49,8 +55,8 @@ This documentation is organized into several sections to help you get started qu
 
 ### For Advanced Users
 1. Explore **[Advanced Features](advanced-features.md)** for optimization techniques
-2. Dive into **[Queue Management](advanced/queues.md)** for complex sync scenarios
-3. Master **[Dependency Resolution](advanced/dependency-resolver.md)** for related data handling
+2. Dive into **[Queue Management](queues.md)** for complex sync scenarios
+3. Master **[Dependency Resolution](dependency-resolver.md)** for related data handling
 
 ### For Reference
 - Use the **[API Reference](api-reference.md)** for detailed method signatures and examples
@@ -70,11 +76,12 @@ Before diving into the documentation, familiarize yourself with these core conce
 | Use Case | Recommended Reading |
 |----------|-------------------|
 | Getting started with Synquill | [Quick Start Guide](guide.md) |
-| Setting up API communication | [API Adapters](api-adapters.md) |
+| Setting up REST API communication | [API Adapters](api-adapters.md) |
+| Setting up GraphQL API communication | [GraphQL API Adapter](graphql-adapter.md) |
 | Configuring background sync | [Configuration](configuration.md) |
 | Optimizing database performance | [Advanced Features](advanced-features.md) |
-| Managing complex sync scenarios | [Queue Management](advanced/queues.md) |
-| Handling related data dependencies | [Dependency Resolution](advanced/dependency-resolver.md) |
+| Managing complex sync scenarios | [Queue Management](queues.md) |
+| Handling related data dependencies | [Dependency Resolution](dependency-resolver.md) |
 | Looking up specific methods | [API Reference](api-reference.md) |
 
 ## 💡 Tips for Success

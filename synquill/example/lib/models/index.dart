@@ -2,6 +2,7 @@ export 'package:synquill/synquill.dart';
 export 'user.dart';
 export 'todo.dart';
 export 'post.dart';
+export 'graphql_post.dart';
 export 'plain_model.dart';
 export 'contact_base.dart';
 export 'local_note.dart';

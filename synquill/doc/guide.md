@@ -435,7 +435,10 @@ user.watchTodos().listen((todos) {
 // Remember to cancel the subscription when it is no longer needed to prevent memory leaks.
 subscription?.cancel();
 ```
-> **Note**: Reactive streams currently only watch local database changes. Remote data changes are reflected in streams only after they've been synced to the local database. See [Current Limitations](advanced-features.md#current-limitations) for more details.
+
+> **Note**: By default, reactive streams monitor local database changes. You can enable automatic, real-time remote updates by passing the `watchRemote: true` parameter (along with optional `retryOnFail: true` for automatic reconnection) to `watchOne` and `watchAll` methods.
+> 
+> **Important Limitation**: Real-time remote updates require a `RealtimeApiAdapter` (such as the GraphQL adapter with subscription support). The standard HTTP REST adapter (`BasicApiAdapter`) **does not** support real-time streaming out of the box; calling `watchRemote: true` on models using it will throw an `UnsupportedError`. See [GraphQL Adapter Guide](graphql-adapter.md) and [API Adapter Guide](api-adapters.md#real-time--watchremote-limitation) for details.
 
 ### Repository Change Events
 

@@ -78,12 +78,22 @@ class TestReactiveRepository extends SynquillRepositoryBase<TestModel> {
     String id, {
     DataLoadPolicy? loadPolicy,
     QueryParams? queryParams,
+    bool watchRemote = false,
+    bool retryOnFail = true,
+    Map<String, String>? headers,
+    Map<String, dynamic>? extra,
   }) {
     return _singleController.stream;
   }
 
   @override
-  Stream<List<TestModel>> watchAll({QueryParams? queryParams}) {
+  Stream<List<TestModel>> watchAll({
+    QueryParams? queryParams,
+    bool watchRemote = false,
+    bool retryOnFail = true,
+    Map<String, String>? headers,
+    Map<String, dynamic>? extra,
+  }) {
     return _listController.stream;
   }
 

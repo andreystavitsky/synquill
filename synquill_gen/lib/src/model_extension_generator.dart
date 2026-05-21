@@ -163,8 +163,21 @@ class ModelExtensionGenerator {
     buffer.writeln(
       '  /// Uses mappedBy field \'$mappedBy\' in $targetClassName',
     );
+    buffer.writeln(
+      '  ///',
+    );
+    buffer.writeln(
+      '  /// WARNING: Enabling [watchRemote] on relationships can lead to a high volume ',
+    );
+    buffer.writeln(
+      '  /// of concurrent WebSocket subscriptions if used inside list item views (N+1 subscriptions).',
+    );
     buffer.writeln('  Stream<List<$targetClassName>> $methodName({');
     buffer.writeln('    QueryParams? queryParams,');
+    buffer.writeln('    bool watchRemote = false,');
+    buffer.writeln('    bool retryOnFail = true,');
+    buffer.writeln('    Map<String, String>? headers,');
+    buffer.writeln('    Map<String, dynamic>? extra,');
     buffer.writeln('  }) {');
     buffer.writeln('    try {');
     buffer.writeln('      final database = DatabaseProvider.instance;');
@@ -187,6 +200,10 @@ class ModelExtensionGenerator {
     buffer.writeln('      ');
     buffer.writeln('      return repository.watchAll(');
     buffer.writeln('        queryParams: mergedQueryParams,');
+    buffer.writeln('        watchRemote: watchRemote,');
+    buffer.writeln('        retryOnFail: retryOnFail,');
+    buffer.writeln('        headers: headers,');
+    buffer.writeln('        extra: extra,');
     buffer.writeln('      );');
     buffer.writeln('    } catch (e, stackTrace) {');
     buffer.writeln('      _log.severe(');
@@ -264,8 +281,19 @@ class ModelExtensionGenerator {
     buffer.writeln(
       '  /// Automatically switches to new target when foreign key changes',
     );
+    buffer.writeln(
+      '  ///',
+    );
+    buffer.writeln(
+      '  /// WARNING: Enabling [watchRemote] on relationships can lead to a high volume ',
+    );
+    buffer.writeln(
+      '  /// of concurrent WebSocket subscriptions if used inside list item views (N+1 subscriptions).',
+    );
     buffer.writeln('  Stream<$targetClassName?> $methodName({');
     buffer.writeln('    DataLoadPolicy? loadPolicy,');
+    buffer.writeln('    bool watchRemote = false,');
+    buffer.writeln('    bool retryOnFail = true,');
     buffer.writeln('    Map<String, String>? headers,');
     buffer.writeln('    Map<String, dynamic>? extra,');
     buffer.writeln('  }) {');
@@ -279,7 +307,13 @@ class ModelExtensionGenerator {
     buffer.writeln(
       '      // Watch the source object for changes in foreign key',
     );
-    buffer.writeln('      return sourceRepository.watchOne(id)');
+    buffer.writeln('      return sourceRepository.watchOne(');
+    buffer.writeln('        id,');
+    buffer.writeln('        watchRemote: watchRemote,');
+    buffer.writeln('        retryOnFail: retryOnFail,');
+    buffer.writeln('        headers: headers,');
+    buffer.writeln('        extra: extra,');
+    buffer.writeln('      )');
     buffer.writeln('          .switchMap((sourceObject) {');
     buffer.writeln('        if (sourceObject == null) {');
     buffer.writeln('          return Stream.value(null);');
@@ -297,6 +331,10 @@ class ModelExtensionGenerator {
     buffer.writeln(
       '          loadPolicy: loadPolicy ?? DataLoadPolicy.localOnly,',
     );
+    buffer.writeln('          watchRemote: watchRemote,');
+    buffer.writeln('          retryOnFail: retryOnFail,');
+    buffer.writeln('          headers: headers,');
+    buffer.writeln('          extra: extra,');
     buffer.writeln('        );');
     buffer.writeln('      });');
     buffer.writeln('    } catch (e, stackTrace) {');

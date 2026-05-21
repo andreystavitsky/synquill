@@ -38,7 +38,6 @@ class Department extends SynquillDataModel<Department> {
     required this.companyId,
   });
 
-  @override
   factory Department.fromJson(Map<String, dynamic> json) =>
       _$DepartmentFromJson(json);
   @override

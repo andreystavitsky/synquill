@@ -1,3 +1,10 @@
+## 0.8.0
+
+### Improvements
+- Added support for generating adapters extending `GraphQLApiAdapter` based on base class constraints resolved during model analysis.
+- Generated relationship watchers (`watchRemote`, `retryOnFail`, etc.) now properly accept and forward realtime parameters.
+- Added inline warnings to generated relationship loaders warning of potential N+1 subscription performance issues.
+
 ## 0.7.1
 * Fixes typos in `synquill_gen`
 

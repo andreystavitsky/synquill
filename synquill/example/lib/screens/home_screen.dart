@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../blocs/home/home_bloc.dart';
 import '../models/index.dart';
+import 'graphql_posts_screen.dart';
 import 'posts_screen.dart';
 import 'todos_screen.dart';
 
@@ -83,6 +84,7 @@ class HomeView extends StatelessWidget {
     final user = state.user;
     final posts = state.posts;
     final todos = state.todos;
+    final graphqlPosts = state.graphqlPosts;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
@@ -114,32 +116,7 @@ class HomeView extends StatelessWidget {
 
           const SizedBox(height: 24),
 
-          // Stats Section
-          Row(
-            children: [
-              Expanded(
-                child: _buildStatCard(
-                  context,
-                  'Posts',
-                  posts.length.toString(),
-                  Icons.article,
-                  Colors.blue,
-                  () => _navigateToPosts(context),
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: _buildStatCard(
-                  context,
-                  'Todos',
-                  todos.length.toString(),
-                  Icons.check_circle,
-                  Colors.green,
-                  () => _navigateToTodos(context),
-                ),
-              ),
-            ],
-          ),
+          _buildStatsGrid(context, posts, todos, graphqlPosts),
 
           const SizedBox(height: 24),
 
@@ -158,10 +135,19 @@ class HomeView extends StatelessWidget {
                 context, 'Recent Todos', () => _navigateToTodos(context)),
             const SizedBox(height: 8),
             _buildRecentTodos(context, todos.take(5).toList()),
+            const SizedBox(height: 24),
+          ],
+
+          // Recent GraphQL Posts Section
+          if (graphqlPosts.isNotEmpty) ...[
+            _buildSectionHeader(context, 'Recent GraphQL Posts',
+                () => _navigateToGraphqlPosts(context)),
+            const SizedBox(height: 8),
+            _buildRecentGraphqlPosts(context, graphqlPosts.take(3).toList()),
           ],
 
           // Empty State
-          if (posts.isEmpty && todos.isEmpty) ...[
+          if (posts.isEmpty && todos.isEmpty && graphqlPosts.isEmpty) ...[
             const SizedBox(height: 32),
             Center(
               child: Column(
@@ -185,8 +171,10 @@ class HomeView extends StatelessWidget {
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 24),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                  Wrap(
+                    alignment: WrapAlignment.center,
+                    spacing: 16,
+                    runSpacing: 12,
                     children: [
                       ElevatedButton.icon(
                         onPressed: () => _navigateToPosts(context),
@@ -199,6 +187,11 @@ class HomeView extends StatelessWidget {
                         icon: const Icon(Icons.add_task),
                         label: const Text('Add Todo'),
                       ),
+                      ElevatedButton.icon(
+                        onPressed: () => _navigateToGraphqlPosts(context),
+                        icon: const Icon(Icons.cloud_queue),
+                        label: const Text('Load GraphQL'),
+                      ),
                     ],
                   ),
                 ],
@@ -207,6 +200,65 @@ class HomeView extends StatelessWidget {
           ],
         ],
       ),
+    );
+  }
+
+  Widget _buildStatsGrid(
+    BuildContext context,
+    List<Post> posts,
+    List<Todo> todos,
+    List<GraphqlPost> graphqlPosts,
+  ) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final maxWidth = constraints.maxWidth;
+        final columns = maxWidth >= 720
+            ? 3
+            : maxWidth >= 460
+                ? 2
+                : 1;
+        final cardWidth = (maxWidth - (16 * (columns - 1))) / columns;
+
+        return Wrap(
+          spacing: 16,
+          runSpacing: 16,
+          children: [
+            SizedBox(
+              width: cardWidth,
+              child: _buildStatCard(
+                context,
+                'Posts',
+                posts.length.toString(),
+                Icons.article,
+                Colors.blue,
+                () => _navigateToPosts(context),
+              ),
+            ),
+            SizedBox(
+              width: cardWidth,
+              child: _buildStatCard(
+                context,
+                'Todos',
+                todos.length.toString(),
+                Icons.check_circle,
+                Colors.green,
+                () => _navigateToTodos(context),
+              ),
+            ),
+            SizedBox(
+              width: cardWidth,
+              child: _buildStatCard(
+                context,
+                'GraphQL Posts',
+                graphqlPosts.length.toString(),
+                Icons.cloud_queue,
+                Colors.indigo,
+                () => _navigateToGraphqlPosts(context),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -323,6 +375,39 @@ class HomeView extends StatelessWidget {
     );
   }
 
+  Widget _buildRecentGraphqlPosts(
+    BuildContext context,
+    List<GraphqlPost> posts,
+  ) {
+    return Column(
+      children: posts.map((post) {
+        return Card(
+          margin: const EdgeInsets.only(bottom: 8),
+          child: ListTile(
+            leading: const CircleAvatar(
+              backgroundColor: Colors.indigo,
+              child: Icon(
+                Icons.cloud_queue,
+                color: Colors.white,
+              ),
+            ),
+            title: Text(
+              post.title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            subtitle: Text(
+              post.body,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            onTap: () => _navigateToGraphqlPosts(context),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
   void _navigateToPosts(BuildContext context) {
     Navigator.of(context).push(
       MaterialPageRoute(
@@ -335,6 +420,14 @@ class HomeView extends StatelessWidget {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => const TodosScreen(),
+      ),
+    );
+  }
+
+  void _navigateToGraphqlPosts(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const GraphqlPostsScreen(),
       ),
     );
   }

@@ -23,6 +23,17 @@ class FileAggregator {
     buffer.writeln('  DatabaseAccessor, GeneratedDatabase;');
 
     final aggregatedImports = <String>{};
+    final usesGraphQLAdapter = models.any(
+      (model) =>
+          model.adapters?.any(
+            (adapter) =>
+                adapter.superclassConstraints.contains('GraphQLApiAdapter'),
+          ) ??
+          false,
+    );
+    if (usesGraphQLAdapter) {
+      aggregatedImports.add('package:synquill_graphql/synquill_graphql.dart');
+    }
     for (final model in models) {
       aggregatedImports.add(model.importPath);
     }

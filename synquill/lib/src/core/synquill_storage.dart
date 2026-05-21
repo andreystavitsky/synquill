@@ -407,6 +407,10 @@ class SynquillStorage {
     _logger!.warning('Starting obliteration of all local storage data');
 
     try {
+      // 0. Stop realtime subscriptions before mutating local storage.
+      _logger!.info('Disposing realtime subscriptions');
+      await SynquillRepositoryProvider.disposeCachedRealtimeSubscriptions();
+
       // 1. Clear all request queues to prevent any pending operations
       _logger!.info('Clearing all request queues');
       try {
@@ -513,6 +517,8 @@ class SynquillStorage {
   /// and cancels connectivity monitoring. After calling this method,
   /// [init] must be called again before using the storage system.
   static Future<void> close() async {
+    await SynquillRepositoryProvider.disposeCachedRealtimeSubscriptions();
+
     // Stop retry executor first to prevent new tasks and wait for completion
     if (_retryExecutor != null) {
       await _retryExecutor!.stop();

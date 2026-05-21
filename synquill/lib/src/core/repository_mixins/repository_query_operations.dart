@@ -5,6 +5,7 @@ import 'package:synquill/src/core/exceptions.dart';
 import 'package:synquill/src/core/query_parameters.dart';
 import 'package:synquill/src/core/repository_mixins/repository_delete_operations.dart';
 import 'package:synquill/src/core/repository_mixins/repository_local_operations.dart';
+import 'package:synquill/src/core/repository_mixins/repository_realtime_operations.dart';
 import 'package:synquill/src/core/repository_mixins/repository_remote_operations.dart';
 import 'package:synquill/src/core/repository_mixins/repository_types.dart';
 import 'package:synquill/src/core/synquill_data_model.dart';
@@ -17,7 +18,8 @@ mixin RepositoryQueryOperations<T extends SynquillDataModel<T>>
     on
         RepositoryLocalOperations<T>,
         RepositoryRemoteOperations<T>,
-        RepositoryDeleteOperations<T> {
+        RepositoryDeleteOperations<T>,
+        RepositoryRealtimeOperations<T> {
   /// Gets the default load policy from global configuration.
   @protected
   DataLoadPolicy get defaultLoadPolicy;
@@ -206,17 +208,24 @@ mixin RepositoryQueryOperations<T extends SynquillDataModel<T>>
     String id, {
     DataLoadPolicy? loadPolicy,
     QueryParams? queryParams,
+    bool watchRemote = false,
+    bool retryOnFail = true,
+    Map<String, String>? headers,
+    Map<String, dynamic>? extra,
   }) {
     loadPolicy ??= defaultLoadPolicy;
     queryParams ??= QueryParams.empty;
     log.info('Watching $T with ID $id using policy ${loadPolicy.name}');
+
+    late final Stream<T?> localStream;
 
     // For watch operations, only use local database
     // Load policy affects the initial fetch, but watch always monitors local
     switch (loadPolicy) {
       case DataLoadPolicy.localOnly:
         log.info('Policy: localOnly. Watching $T from local database');
-        return watchFromLocal(id, queryParams: queryParams);
+        localStream = watchFromLocal(id, queryParams: queryParams);
+        break;
       case DataLoadPolicy.remoteFirst:
         throw UnimplementedError(
           'Remote first policy is not supported for watchOne. '
@@ -227,10 +236,30 @@ mixin RepositoryQueryOperations<T extends SynquillDataModel<T>>
           'Policy: ${loadPolicy.name}. Async refresh then watch from local',
         );
         // Trigger async fetch to ensure local is up to date using load queue
-        _enqueueRemoteFetchTask(id, queryParams: queryParams);
+        _enqueueRemoteFetchTask(
+          id,
+          queryParams: queryParams,
+          extra: extra,
+          headers: headers,
+        );
         // Return local watch stream
-        return watchFromLocal(id, queryParams: queryParams);
+        localStream = watchFromLocal(id, queryParams: queryParams);
+        break;
     }
+
+    if (!watchRemote) {
+      return localStream;
+    }
+
+    return watchLocalWithRealtime<T?>(
+      localStream,
+      scope: 'one',
+      id: id,
+      queryParams: queryParams,
+      headers: headers,
+      extra: extra,
+      retryOnFail: retryOnFail,
+    );
   }
 
   /// Finds an item by ID.
@@ -401,13 +430,31 @@ mixin RepositoryQueryOperations<T extends SynquillDataModel<T>>
   /// Returns a stream that emits the list of all items whenever they change.
   ///
   /// [queryParams] Query parameters for filtering, sorting, and pagination.
-  Stream<List<T>> watchAll({QueryParams? queryParams}) {
+  Stream<List<T>> watchAll({
+    QueryParams? queryParams,
+    bool watchRemote = false,
+    bool retryOnFail = true,
+    Map<String, String>? headers,
+    Map<String, dynamic>? extra,
+  }) {
     queryParams ??= QueryParams.empty;
     log.info('Watching all $T');
 
     // Local first - just get from local DB
     log.info('Getting all $T from local database');
-    return watchAllFromLocal(queryParams: queryParams);
+    final localStream = watchAllFromLocal(queryParams: queryParams);
+    if (!watchRemote) {
+      return localStream;
+    }
+
+    return watchLocalWithRealtime<List<T>>(
+      localStream,
+      scope: 'all',
+      queryParams: queryParams,
+      headers: headers,
+      extra: extra,
+      retryOnFail: retryOnFail,
+    );
   }
 
   /// Enqueues a remote fetch task for localThenRemote operations.

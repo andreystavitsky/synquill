@@ -53,6 +53,12 @@ class RepositoryChange<T> {
   /// The stack trace for the error, if applicable
   final StackTrace? stackTrace;
 
+  /// Whether this error came from a realtime remote watch.
+  final bool isRealtimeError;
+
+  /// Whether the failed operation will be retried automatically.
+  final bool? isRetriable;
+
   /// Creates a new repository change event.
   const RepositoryChange({
     required this.type,
@@ -61,6 +67,8 @@ class RepositoryChange<T> {
     this.oldId,
     this.error,
     this.stackTrace,
+    this.isRealtimeError = false,
+    this.isRetriable,
   });
 
   /// Creates a new repository change event for a created item.
@@ -90,5 +98,19 @@ class RepositoryChange<T> {
         type: RepositoryChangeType.error,
         error: error,
         stackTrace: stackTrace,
+      );
+
+  /// Creates a realtime repository change error.
+  factory RepositoryChange.realtimeError(
+    Object error, {
+    StackTrace? stackTrace,
+    required bool isRetriable,
+  }) =>
+      RepositoryChange(
+        type: RepositoryChangeType.error,
+        error: error,
+        stackTrace: stackTrace,
+        isRealtimeError: true,
+        isRetriable: isRetriable,
       );
 }

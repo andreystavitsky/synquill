@@ -12,6 +12,7 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
 
   StreamSubscription<List<Todo>>? _todosSubscription;
   StreamSubscription<List<Post>>? _postsSubscription;
+  StreamSubscription<List<GraphqlPost>>? _graphqlPostsSubscription;
   StreamSubscription<List<User>>? _usersSubscription;
 
   HomeBloc() : super(HomeInitial()) {
@@ -20,6 +21,7 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
     on<HomeUserDataChanged>(_onUserDataChanged);
     on<HomeTodosChanged>(_onTodosChanged);
     on<HomePostsChanged>(_onPostsChanged);
+    on<HomeGraphqlPostsChanged>(_onGraphqlPostsChanged);
     on<HomeUsersChanged>(_onUsersChanged);
   }
 
@@ -51,6 +53,7 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
       user: event.user,
       todos: event.todos,
       posts: event.posts,
+      graphqlPosts: event.graphqlPosts,
     ));
   }
 
@@ -82,6 +85,21 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
       // Only emit if posts actually changed
       if (!_listsEqual(currentState.posts, event.posts)) {
         emit(currentState.copyWith(posts: event.posts));
+      }
+    }
+  }
+
+  Future<void> _onGraphqlPostsChanged(
+    HomeGraphqlPostsChanged event,
+    Emitter<HomeState> emit,
+  ) async {
+    if (state is HomeLoaded) {
+      developer.log('[HomeBloc] GraphQL posts changed - updating state',
+          name: 'HomeBloc');
+      final currentState = state as HomeLoaded;
+
+      if (!_listsEqual(currentState.graphqlPosts, event.graphqlPosts)) {
+        emit(currentState.copyWith(graphqlPosts: event.graphqlPosts));
       }
     }
   }
@@ -150,6 +168,7 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
     // Cancel any existing subscriptions
     _todosSubscription?.cancel();
     _postsSubscription?.cancel();
+    _graphqlPostsSubscription?.cancel();
     _usersSubscription?.cancel();
 
     // Watch todos changes
@@ -181,6 +200,28 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
         .listen((posts) {
       if (!isClosed) {
         add(HomePostsChanged(posts));
+      }
+    });
+
+    // Watch locally cached GraphQL posts
+    _graphqlPostsSubscription = SynquillStorage.instance.graphqlPosts
+        .watchAll(
+      queryParams: const QueryParams(
+        sorts: [
+          SortCondition(
+            field: GraphqlPostFields.updatedAt,
+            direction: SortDirection.descending,
+          ),
+          SortCondition(
+            field: GraphqlPostFields.id,
+            direction: SortDirection.ascending,
+          ),
+        ],
+      ),
+    )
+        .listen((posts) {
+      if (!isClosed) {
+        add(HomeGraphqlPostsChanged(posts));
       }
     });
 
@@ -225,15 +266,18 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
       final posts = await SynquillStorage.instance.posts.findAll(
           queryParams:
               QueryParams.filters([PostFields.userId.equals(currentUser.id)]));
+      final graphqlPosts =
+          await SynquillStorage.instance.graphqlPosts.findAll();
 
       developer.log(
-          '[HomeBloc] Data loaded - todos: ${todos.length}, posts: ${posts.length}',
+          '[HomeBloc] Data loaded - todos: ${todos.length}, posts: ${posts.length}, graphqlPosts: ${graphqlPosts.length}',
           name: 'HomeBloc');
 
       emit(HomeLoaded(
         user: currentUser,
-        todos: [],
-        posts: [],
+        todos: todos,
+        posts: posts,
+        graphqlPosts: graphqlPosts,
       ));
     } catch (e, stackTrace) {
       developer.log('[HomeBloc] Error loading data: $e',
@@ -246,6 +290,7 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
   Future<void> close() {
     _todosSubscription?.cancel();
     _postsSubscription?.cancel();
+    _graphqlPostsSubscription?.cancel();
     _usersSubscription?.cancel();
     return super.close();
   }

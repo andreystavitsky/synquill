@@ -1,3 +1,12 @@
+## 0.8.0
+
+### New Features
+- Introduced realtime synchronization support for repositories via `RepositoryRealtimeOperations` mixin.
+- Extended repository `watchOne` and `watchAll` methods with a new `watchRemote` parameter and automated retry logic (`retryOnFail`).
+- Added transport-neutral `RealtimeEvent` and `RealtimeEventType` models for processing remote updates.
+- Added `RealtimeApiAdapter` interface to define standard subscription contracts.
+- Enhanced `RepositoryChange` with `realtimeError` factory constructor for unified error propagation.
+
 ## 0.7.2
 * Fixes imports.
 

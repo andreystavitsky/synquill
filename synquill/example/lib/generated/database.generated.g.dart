@@ -3,6 +3,10 @@
 part of 'database.generated.dart';
 
 // ignore_for_file: type=lint
+mixin _$GraphqlPostDaoMixin on DatabaseAccessor<SynquillDatabase> {
+  $GraphqlPostTableTable get graphqlPostTable =>
+      attachedDatabase.graphqlPostTable;
+}
 mixin _$PostDaoMixin on DatabaseAccessor<SynquillDatabase> {
   $PostTableTable get postTable => attachedDatabase.postTable;
 }
@@ -782,6 +786,279 @@ class SyncQueueItemsCompanion extends UpdateCompanion<SyncQueueItem> {
           ..write('status: $status, ')
           ..write('headers: $headers, ')
           ..write('extra: $extra')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $GraphqlPostTableTable extends GraphqlPostTable
+    with TableInfo<$GraphqlPostTableTable, GraphqlPost> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $GraphqlPostTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+      'id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _titleMeta = const VerificationMeta('title');
+  @override
+  late final GeneratedColumn<String> title = GeneratedColumn<String>(
+      'title', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _bodyMeta = const VerificationMeta('body');
+  @override
+  late final GeneratedColumn<String> body = GeneratedColumn<String>(
+      'body', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _userIdMeta = const VerificationMeta('userId');
+  @override
+  late final GeneratedColumn<int> userId = GeneratedColumn<int>(
+      'user_id', aliasedName, false,
+      type: DriftSqlType.int, requiredDuringInsert: true);
+  static const VerificationMeta _lastSyncedAtMeta =
+      const VerificationMeta('lastSyncedAt');
+  @override
+  late final GeneratedColumn<DateTime> lastSyncedAt = GeneratedColumn<DateTime>(
+      'last_synced_at', aliasedName, true,
+      type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  static const VerificationMeta _createdAtMeta =
+      const VerificationMeta('createdAt');
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+      'created_at', aliasedName, true,
+      type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  static const VerificationMeta _updatedAtMeta =
+      const VerificationMeta('updatedAt');
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+      'updated_at', aliasedName, true,
+      type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  @override
+  late final GeneratedColumnWithTypeConverter<SyncStatus?, String> syncStatus =
+      GeneratedColumn<String>('sync_status', aliasedName, true,
+              type: DriftSqlType.string,
+              requiredDuringInsert: false,
+              defaultValue: const Constant('synced'))
+          .withConverter<SyncStatus?>(
+              $GraphqlPostTableTable.$convertersyncStatus);
+  @override
+  List<GeneratedColumn> get $columns =>
+      [id, title, body, userId, lastSyncedAt, createdAt, updatedAt, syncStatus];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'graphql_posts';
+  @override
+  VerificationContext validateIntegrity(Insertable<GraphqlPost> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('title')) {
+      context.handle(
+          _titleMeta, title.isAcceptableOrUnknown(data['title']!, _titleMeta));
+    } else if (isInserting) {
+      context.missing(_titleMeta);
+    }
+    if (data.containsKey('body')) {
+      context.handle(
+          _bodyMeta, body.isAcceptableOrUnknown(data['body']!, _bodyMeta));
+    } else if (isInserting) {
+      context.missing(_bodyMeta);
+    }
+    if (data.containsKey('user_id')) {
+      context.handle(_userIdMeta,
+          userId.isAcceptableOrUnknown(data['user_id']!, _userIdMeta));
+    } else if (isInserting) {
+      context.missing(_userIdMeta);
+    }
+    if (data.containsKey('last_synced_at')) {
+      context.handle(
+          _lastSyncedAtMeta,
+          lastSyncedAt.isAcceptableOrUnknown(
+              data['last_synced_at']!, _lastSyncedAtMeta));
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(_createdAtMeta,
+          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(_updatedAtMeta,
+          updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  GraphqlPost map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return GraphqlPost.fromDb(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
+      title: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}title'])!,
+      body: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}body'])!,
+      userId: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}user_id'])!,
+      createdAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at']),
+      updatedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}updated_at']),
+      lastSyncedAt: attachedDatabase.typeMapping.read(
+          DriftSqlType.dateTime, data['${effectivePrefix}last_synced_at']),
+      syncStatus: $GraphqlPostTableTable.$convertersyncStatus.fromSql(
+          attachedDatabase.typeMapping.read(
+              DriftSqlType.string, data['${effectivePrefix}sync_status'])),
+    );
+  }
+
+  @override
+  $GraphqlPostTableTable createAlias(String alias) {
+    return $GraphqlPostTableTable(attachedDatabase, alias);
+  }
+
+  static TypeConverter<SyncStatus?, String?> $convertersyncStatus =
+      const SyncStatusConverter();
+}
+
+class GraphqlPostTableCompanion extends UpdateCompanion<GraphqlPost> {
+  final Value<String> id;
+  final Value<String> title;
+  final Value<String> body;
+  final Value<int> userId;
+  final Value<DateTime?> lastSyncedAt;
+  final Value<DateTime?> createdAt;
+  final Value<DateTime?> updatedAt;
+  final Value<SyncStatus?> syncStatus;
+  final Value<int> rowid;
+  const GraphqlPostTableCompanion({
+    this.id = const Value.absent(),
+    this.title = const Value.absent(),
+    this.body = const Value.absent(),
+    this.userId = const Value.absent(),
+    this.lastSyncedAt = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.syncStatus = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  GraphqlPostTableCompanion.insert({
+    required String id,
+    required String title,
+    required String body,
+    required int userId,
+    this.lastSyncedAt = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.syncStatus = const Value.absent(),
+    this.rowid = const Value.absent(),
+  })  : id = Value(id),
+        title = Value(title),
+        body = Value(body),
+        userId = Value(userId);
+  static Insertable<GraphqlPost> custom({
+    Expression<String>? id,
+    Expression<String>? title,
+    Expression<String>? body,
+    Expression<int>? userId,
+    Expression<DateTime>? lastSyncedAt,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<String>? syncStatus,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (title != null) 'title': title,
+      if (body != null) 'body': body,
+      if (userId != null) 'user_id': userId,
+      if (lastSyncedAt != null) 'last_synced_at': lastSyncedAt,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (syncStatus != null) 'sync_status': syncStatus,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  GraphqlPostTableCompanion copyWith(
+      {Value<String>? id,
+      Value<String>? title,
+      Value<String>? body,
+      Value<int>? userId,
+      Value<DateTime?>? lastSyncedAt,
+      Value<DateTime?>? createdAt,
+      Value<DateTime?>? updatedAt,
+      Value<SyncStatus?>? syncStatus,
+      Value<int>? rowid}) {
+    return GraphqlPostTableCompanion(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      body: body ?? this.body,
+      userId: userId ?? this.userId,
+      lastSyncedAt: lastSyncedAt ?? this.lastSyncedAt,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      syncStatus: syncStatus ?? this.syncStatus,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (title.present) {
+      map['title'] = Variable<String>(title.value);
+    }
+    if (body.present) {
+      map['body'] = Variable<String>(body.value);
+    }
+    if (userId.present) {
+      map['user_id'] = Variable<int>(userId.value);
+    }
+    if (lastSyncedAt.present) {
+      map['last_synced_at'] = Variable<DateTime>(lastSyncedAt.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (syncStatus.present) {
+      map['sync_status'] = Variable<String>(
+          $GraphqlPostTableTable.$convertersyncStatus.toSql(syncStatus.value));
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('GraphqlPostTableCompanion(')
+          ..write('id: $id, ')
+          ..write('title: $title, ')
+          ..write('body: $body, ')
+          ..write('userId: $userId, ')
+          ..write('lastSyncedAt: $lastSyncedAt, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('syncStatus: $syncStatus, ')
+          ..write('rowid: $rowid')
           ..write(')'))
         .toString();
   }
@@ -2219,6 +2496,8 @@ abstract class _$SynquillDatabase extends GeneratedDatabase {
   _$SynquillDatabase(QueryExecutor e) : super(e);
   $SynquillDatabaseManager get managers => $SynquillDatabaseManager(this);
   late final $SyncQueueItemsTable syncQueueItems = $SyncQueueItemsTable(this);
+  late final $GraphqlPostTableTable graphqlPostTable =
+      $GraphqlPostTableTable(this);
   late final $PostTableTable postTable = $PostTableTable(this);
   late final $LocalNoteTableTable localNoteTable = $LocalNoteTableTable(this);
   late final $PlainModelTableTable plainModelTable =
@@ -2247,6 +2526,8 @@ abstract class _$SynquillDatabase extends GeneratedDatabase {
       'CREATE INDEX idx_local_notes_ownerId ON local_notes (owner_id)');
   late final Index idxTodosUserId = Index(
       'idx_todos_userId', 'CREATE INDEX idx_todos_userId ON todos (user_id)');
+  late final GraphqlPostDao graphqlPostDao =
+      GraphqlPostDao(this as SynquillDatabase);
   late final PostDao postDao = PostDao(this as SynquillDatabase);
   late final LocalNoteDao localNoteDao = LocalNoteDao(this as SynquillDatabase);
   late final PlainModelDao plainModelDao =
@@ -2259,6 +2540,7 @@ abstract class _$SynquillDatabase extends GeneratedDatabase {
   @override
   List<DatabaseSchemaEntity> get allSchemaEntities => [
         syncQueueItems,
+        graphqlPostTable,
         postTable,
         localNoteTable,
         plainModelTable,
@@ -2602,6 +2884,229 @@ typedef $$SyncQueueItemsTableProcessedTableManager = ProcessedTableManager<
       BaseReferences<_$SynquillDatabase, $SyncQueueItemsTable, SyncQueueItem>
     ),
     SyncQueueItem,
+    PrefetchHooks Function()>;
+typedef $$GraphqlPostTableTableCreateCompanionBuilder
+    = GraphqlPostTableCompanion Function({
+  required String id,
+  required String title,
+  required String body,
+  required int userId,
+  Value<DateTime?> lastSyncedAt,
+  Value<DateTime?> createdAt,
+  Value<DateTime?> updatedAt,
+  Value<SyncStatus?> syncStatus,
+  Value<int> rowid,
+});
+typedef $$GraphqlPostTableTableUpdateCompanionBuilder
+    = GraphqlPostTableCompanion Function({
+  Value<String> id,
+  Value<String> title,
+  Value<String> body,
+  Value<int> userId,
+  Value<DateTime?> lastSyncedAt,
+  Value<DateTime?> createdAt,
+  Value<DateTime?> updatedAt,
+  Value<SyncStatus?> syncStatus,
+  Value<int> rowid,
+});
+
+class $$GraphqlPostTableTableFilterComposer
+    extends Composer<_$SynquillDatabase, $GraphqlPostTableTable> {
+  $$GraphqlPostTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get title => $composableBuilder(
+      column: $table.title, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get body => $composableBuilder(
+      column: $table.body, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get userId => $composableBuilder(
+      column: $table.userId, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get lastSyncedAt => $composableBuilder(
+      column: $table.lastSyncedAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+      column: $table.updatedAt, builder: (column) => ColumnFilters(column));
+
+  ColumnWithTypeConverterFilters<SyncStatus?, SyncStatus, String>
+      get syncStatus => $composableBuilder(
+          column: $table.syncStatus,
+          builder: (column) => ColumnWithTypeConverterFilters(column));
+}
+
+class $$GraphqlPostTableTableOrderingComposer
+    extends Composer<_$SynquillDatabase, $GraphqlPostTableTable> {
+  $$GraphqlPostTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get title => $composableBuilder(
+      column: $table.title, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get body => $composableBuilder(
+      column: $table.body, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get userId => $composableBuilder(
+      column: $table.userId, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get lastSyncedAt => $composableBuilder(
+      column: $table.lastSyncedAt,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+      column: $table.updatedAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get syncStatus => $composableBuilder(
+      column: $table.syncStatus, builder: (column) => ColumnOrderings(column));
+}
+
+class $$GraphqlPostTableTableAnnotationComposer
+    extends Composer<_$SynquillDatabase, $GraphqlPostTableTable> {
+  $$GraphqlPostTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get title =>
+      $composableBuilder(column: $table.title, builder: (column) => column);
+
+  GeneratedColumn<String> get body =>
+      $composableBuilder(column: $table.body, builder: (column) => column);
+
+  GeneratedColumn<int> get userId =>
+      $composableBuilder(column: $table.userId, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get lastSyncedAt => $composableBuilder(
+      column: $table.lastSyncedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<SyncStatus?, String> get syncStatus =>
+      $composableBuilder(
+          column: $table.syncStatus, builder: (column) => column);
+}
+
+class $$GraphqlPostTableTableTableManager extends RootTableManager<
+    _$SynquillDatabase,
+    $GraphqlPostTableTable,
+    GraphqlPost,
+    $$GraphqlPostTableTableFilterComposer,
+    $$GraphqlPostTableTableOrderingComposer,
+    $$GraphqlPostTableTableAnnotationComposer,
+    $$GraphqlPostTableTableCreateCompanionBuilder,
+    $$GraphqlPostTableTableUpdateCompanionBuilder,
+    (
+      GraphqlPost,
+      BaseReferences<_$SynquillDatabase, $GraphqlPostTableTable, GraphqlPost>
+    ),
+    GraphqlPost,
+    PrefetchHooks Function()> {
+  $$GraphqlPostTableTableTableManager(
+      _$SynquillDatabase db, $GraphqlPostTableTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$GraphqlPostTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$GraphqlPostTableTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$GraphqlPostTableTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<String> id = const Value.absent(),
+            Value<String> title = const Value.absent(),
+            Value<String> body = const Value.absent(),
+            Value<int> userId = const Value.absent(),
+            Value<DateTime?> lastSyncedAt = const Value.absent(),
+            Value<DateTime?> createdAt = const Value.absent(),
+            Value<DateTime?> updatedAt = const Value.absent(),
+            Value<SyncStatus?> syncStatus = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              GraphqlPostTableCompanion(
+            id: id,
+            title: title,
+            body: body,
+            userId: userId,
+            lastSyncedAt: lastSyncedAt,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+            syncStatus: syncStatus,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required String id,
+            required String title,
+            required String body,
+            required int userId,
+            Value<DateTime?> lastSyncedAt = const Value.absent(),
+            Value<DateTime?> createdAt = const Value.absent(),
+            Value<DateTime?> updatedAt = const Value.absent(),
+            Value<SyncStatus?> syncStatus = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              GraphqlPostTableCompanion.insert(
+            id: id,
+            title: title,
+            body: body,
+            userId: userId,
+            lastSyncedAt: lastSyncedAt,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+            syncStatus: syncStatus,
+            rowid: rowid,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ));
+}
+
+typedef $$GraphqlPostTableTableProcessedTableManager = ProcessedTableManager<
+    _$SynquillDatabase,
+    $GraphqlPostTableTable,
+    GraphqlPost,
+    $$GraphqlPostTableTableFilterComposer,
+    $$GraphqlPostTableTableOrderingComposer,
+    $$GraphqlPostTableTableAnnotationComposer,
+    $$GraphqlPostTableTableCreateCompanionBuilder,
+    $$GraphqlPostTableTableUpdateCompanionBuilder,
+    (
+      GraphqlPost,
+      BaseReferences<_$SynquillDatabase, $GraphqlPostTableTable, GraphqlPost>
+    ),
+    GraphqlPost,
     PrefetchHooks Function()>;
 typedef $$PostTableTableCreateCompanionBuilder = PostTableCompanion Function({
   required String id,
@@ -3742,6 +4247,8 @@ class $SynquillDatabaseManager {
   $SynquillDatabaseManager(this._db);
   $$SyncQueueItemsTableTableManager get syncQueueItems =>
       $$SyncQueueItemsTableTableManager(_db, _db.syncQueueItems);
+  $$GraphqlPostTableTableTableManager get graphqlPostTable =>
+      $$GraphqlPostTableTableTableManager(_db, _db.graphqlPostTable);
   $$PostTableTableTableManager get postTable =>
       $$PostTableTableTableManager(_db, _db.postTable);
   $$LocalNoteTableTableTableManager get localNoteTable =>
