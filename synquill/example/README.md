@@ -378,7 +378,7 @@ await SynquillStorage.init(
 
 ### Database Version Management
 ```dart
-@SynqillDatabaseVersion(1)
+@SynquillDatabaseVersion(1)
 final database = SynquillDatabase(
   LazyDatabase(() => driftDatabase(
     name: 'synced_storage.db',

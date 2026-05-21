@@ -439,6 +439,8 @@ mixin RepositoryRealtimeOperations<T extends SynquillDataModel<T>>
     return value.toString();
   }
 
+  /// Returns the internal map of active real-time subscriptions.
+  /// Used exclusively for testing purposes.
   @visibleForTesting
   Map<dynamic, dynamic> get activeRealtimeSubscriptionsForTesting =>
       _activeRealtimeSubscriptions;

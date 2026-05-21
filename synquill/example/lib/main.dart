@@ -29,7 +29,7 @@ void main() async {
   );
 
   // Initialize the SynquillStorage system
-  @SynqillDatabaseVersion(3)
+  @SynquillDatabaseVersion(3)
   final database = SynquillDatabase(
     LazyDatabase(
       () => driftDatabase(
@@ -45,7 +45,7 @@ void main() async {
   );
 
   // If uncommented, this should cause a build error due to conflicting versions
-  // @SynqillDatabaseVersion(2)
+  // @SynquillDatabaseVersion(2)
   // final conflictingVersion = 'test';
 
   // Initialize the SynquillStorage system

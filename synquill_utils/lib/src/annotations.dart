@@ -106,16 +106,16 @@ class Indexed {
 ///
 /// Example:
 /// ```dart
-/// @SynqillDatabaseVersion(2)
+/// @SynquillDatabaseVersion(2)
 /// void main() {
 ///   // Your app initialization
 /// }
 /// ```
-class SynqillDatabaseVersion {
+class SynquillDatabaseVersion {
   /// The database schema version number.
   /// Must be a positive integer.
   final int version;
 
-  /// Creates a new [SynqillDatabaseVersion] annotation.
-  const SynqillDatabaseVersion(this.version);
+  /// Creates a new [SynquillDatabaseVersion] annotation.
+  const SynquillDatabaseVersion(this.version);
 }

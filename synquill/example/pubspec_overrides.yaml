@@ -1,0 +1,9 @@
+dependency_overrides:
+  synquill_utils:
+    path: ../../synquill_utils
+  synquill:
+    path: ../
+  synquill_graphql:
+    path: ../../synquill_graphql
+  synquill_gen:
+    path: ../../synquill_gen

@@ -70,6 +70,16 @@ static DependencyResolver get dependencyResolver
 ```
 Returns the global dependency resolver instance.
 
+```dart
+static BackgroundSyncManager get backgroundSyncManager
+```
+Returns the global background sync manager instance.
+
+```dart
+static SyncQueueDao get syncQueueDao
+```
+Returns the global sync queue DAO instance.
+
 #### Methods
 
 ```dart
@@ -108,9 +118,19 @@ static Future<void> close()
 Closes the synced storage system and releases all resources.
 
 ```dart
-static Future<void> reset()
+Future<void> obliterateLocalStorage()
 ```
-Resets the singleton instance and configuration (primarily for testing).
+Completely obliterates all local storage data. Preserves initialization state, so the system remains functional afterwards. Intended for scenarios like user logout.
+
+```dart
+static Future<void> initForBackgroundIsolate({
+  required GeneratedDatabase database,
+  SynquillStorageConfig? config,
+  Logger? logger,
+  void Function(GeneratedDatabase)? initializeFn,
+})
+```
+Initializes SynquillStorage in a background isolate. Lightweight initialization without UI features like connectivity monitoring.
 
 ### SynquillStorageConfig
 
@@ -121,13 +141,12 @@ Configuration class for customizing the behavior of the SynquillStorage system.
 ```dart
 const SynquillStorageConfig({
   this.dio,
-  this.keepConnectionAlive = true,
   this.foregroundQueueConcurrency = 1,
   this.backgroundQueueConcurrency = 2,
   this.defaultSavePolicy = DataSavePolicy.localFirst,
   this.defaultLoadPolicy = DataLoadPolicy.localThenRemote,
   this.initialRetryDelay = const Duration(seconds: 2),
-  this.maxRetryDelay = const Duration(minutes: 5),
+  this.maxRetryDelay = const Duration(minutes: 30),
   this.backoffMultiplier = 2.0,
   this.jitterPercent = 0.2,
   this.maxRetryAttempts = 50,
@@ -163,25 +182,76 @@ A broadcast stream of repository change events (created, updated, deleted, error
 
 **Find Operations:**
 ```dart
-Future<T?> findOne(String id, {DataLoadPolicy? loadPolicy})
-Future<List<T>> findAll({QueryParams? queryParams, DataLoadPolicy? loadPolicy})
+Future<T?> findOne(
+  String id, {
+  DataLoadPolicy? loadPolicy,
+  QueryParams? queryParams,
+  Map<String, dynamic>? extra,
+  Map<String, String>? headers,
+})
+
+Future<T> findOneOrFail(
+  String id, {
+  DataLoadPolicy? loadPolicy,
+  QueryParams? queryParams,
+  Map<String, dynamic>? extra,
+  Map<String, String>? headers,
+})
+
+Future<List<T>> findAll({
+  DataLoadPolicy? loadPolicy,
+  QueryParams? queryParams,
+  Map<String, dynamic>? extra,
+  Map<String, String>? headers,
+})
 ```
 
 **Watch Operations (Reactive Streams):**
 ```dart
-Stream<T?> watchOne(String id, {bool fireImmediately = true})
-Stream<List<T>> watchAll({QueryParams? queryParams, bool fireImmediately = true})
+Stream<T?> watchOne(
+  String id, {
+  DataLoadPolicy? loadPolicy,
+  QueryParams? queryParams,
+  bool watchRemote = false,
+  bool retryOnFail = true,
+  Map<String, String>? headers,
+  Map<String, dynamic>? extra,
+})
+
+Stream<List<T>> watchAll({
+  QueryParams? queryParams,
+  bool watchRemote = false,
+  bool retryOnFail = true,
+  Map<String, String>? headers,
+  Map<String, dynamic>? extra,
+})
 ```
-> **Note**: Reactive streams currently only watch local database changes. Remote data changes are reflected in streams only after they've been synced to the local database. See [Current Limitations](advanced-features.md#current-limitations) for more details.
+> **Note**: By default, reactive streams monitor local database changes. You can enable automatic, real-time remote updates by passing `watchRemote: true` (and optional `retryOnFail: true` for automatic reconnection) if your API adapter implements real-time streams (e.g., via `RealtimeApiAdapter` interfaces like GraphQL subscriptions). See [GraphQL Adapter Guide](graphql-adapter.md) for more details.
 
 **Save Operations:**
 ```dart
-Future<T> save(T model, {DataSavePolicy? savePolicy})
+Future<T> save(
+  T item, {
+  DataSavePolicy? savePolicy,
+  Map<String, dynamic>? extra,
+  Map<String, String>? headers,
+  bool updateTimestamps = true,
+})
 ```
 
 **Delete Operations:**
 ```dart
-Future<void> delete(String id, {DataSavePolicy? savePolicy})
+Future<void> delete(
+  String id, {
+  DataSavePolicy? savePolicy,
+  Map<String, dynamic>? extra,
+  Map<String, String>? headers,
+  Set<String>? deletionContext,
+})
+
+Future<void> truncateLocal()
+
+Future<void> deleteFromLocal(String id)
 ```
 
 **Relationship Operations:**
@@ -287,7 +357,7 @@ HTTP headers for operations that send data.
 #### HTTP Method Configuration
 
 ```dart
-String methodForFind({Map<String, dynamic>? extra}) => 'GET'
+String methodForFind({QueryParams? queryParams, Map<String, dynamic>? extra}) => 'GET'
 String methodForCreate({Map<String, dynamic>? extra}) => 'POST'
 String methodForUpdate({Map<String, dynamic>? extra}) => 'PATCH'
 String methodForDelete({Map<String, dynamic>? extra}) => 'DELETE'
@@ -297,8 +367,8 @@ String methodForReplace({Map<String, dynamic>? extra}) => 'PUT'
 #### URL Builder Methods
 
 ```dart
-FutureOr<Uri> urlForFindOne(String id, {Map<String, dynamic>? extra})
-FutureOr<Uri> urlForFindAll({Map<String, dynamic>? extra})
+FutureOr<Uri> urlForFindOne(String id, {QueryParams? queryParams, Map<String, dynamic>? extra})
+FutureOr<Uri> urlForFindAll({QueryParams? queryParams, Map<String, dynamic>? extra})
 FutureOr<Uri> urlForCreate({Map<String, dynamic>? extra})
 FutureOr<Uri> urlForUpdate(String id, {Map<String, dynamic>? extra})
 FutureOr<Uri> urlForReplace(String id, {Map<String, dynamic>? extra})
