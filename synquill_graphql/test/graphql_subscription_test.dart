@@ -8,6 +8,10 @@ import 'package:test/test.dart';
 import 'helpers/test_graphql_adapter.dart';
 import 'helpers/test_model.dart';
 
+class TestLinkException extends LinkException {
+  TestLinkException(Object? originalException) : super(originalException, null);
+}
+
 class FakeSubscriptionLink extends Link {
   StreamController<gql_exec.Response>? _controller;
   gql_exec.Request? capturedRequest;
@@ -63,6 +67,15 @@ class SubscriptionTestAdapter extends TestGraphQLAdapter {
   String? get subscribeAllSubscription =>
       r'subscription WatchTestModels($filter: TestFilter) { '
       r'test_models(filter: $filter) { id name value } }';
+
+  @override
+  String? get subscribeEventsSubscription =>
+      r'subscription WatchTestModelEvents($id: ID, $filter: TestFilter) { '
+      r'test_model_events(id: $id, filter: $filter) { '
+      r'type id item { id name value } metadata } }';
+
+  @override
+  String get subscribeEventsResponseField => 'test_model_events';
 
   @override
   Link createSubscriptionLink({
@@ -137,6 +150,114 @@ void main() {
       );
 
       await subscription.cancel();
+    });
+
+    test('subscribeEvents builds a request with id and query variables',
+        () async {
+      const nameField = FieldSelector<String>('name', String);
+      final subscription = adapter
+          .subscribeEvents(
+            id: '1',
+            queryParams: QueryParams(
+              filters: [nameField.equals('A')],
+            ),
+          )
+          .listen((_) {});
+
+      await Future<void>.delayed(Duration.zero);
+
+      expect(
+        link.capturedRequest?.variables,
+        equals({
+          'id': '1',
+          'filter': {
+            'name': {'eq': 'A'},
+          },
+        }),
+      );
+
+      await subscription.cancel();
+    });
+
+    test('subscribeEvents parses standard event envelope', () async {
+      final values = <RealtimeEvent<TestModel>>[];
+      final subscription = adapter.subscribeEvents().listen(values.add);
+      await Future<void>.delayed(Duration.zero);
+
+      link.add(
+        const gql_exec.Response(
+          data: {
+            'test_model_events': {
+              'type': 'updated',
+              'id': '1',
+              'item': {'id': '1', 'name': 'One', 'value': 1},
+              'metadata': {'source': 'test'},
+            },
+          },
+          response: {},
+        ),
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      expect(values.single.type, RealtimeEventType.updated);
+      expect(values.single.id, '1');
+      expect(values.single.item, TestModel(id: '1', name: 'One', value: 1));
+      expect(values.single.metadata, {'source': 'test'});
+
+      await subscription.cancel();
+    });
+
+    test('subscribeEvents emits ApiException for malformed envelope', () async {
+      final stream = adapter.subscribeEvents();
+      final expectation = expectLater(stream, emitsError(isA<ApiException>()));
+      await Future<void>.delayed(Duration.zero);
+
+      link.add(
+        const gql_exec.Response(
+          data: {
+            'test_model_events': {'type': 'not-real', 'id': '1'},
+          },
+          response: {},
+        ),
+      );
+
+      await expectation;
+    });
+
+    test('subscribeEvents can parse a custom envelope shape', () async {
+      final customAdapter = CustomEventSubscriptionAdapter(link);
+      final values = <RealtimeEvent<TestModel>>[];
+      final subscription = customAdapter.subscribeEvents().listen(values.add);
+      await Future<void>.delayed(Duration.zero);
+
+      link.add(
+        const gql_exec.Response(
+          data: {
+            'customEvent': {
+              'kind': 'created',
+              'model': {'id': '1', 'name': 'Custom', 'value': 2},
+            },
+          },
+          response: {},
+        ),
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      expect(values.single.type, RealtimeEventType.created);
+      expect(values.single.id, '1');
+      expect(values.single.item, TestModel(id: '1', name: 'Custom', value: 2));
+
+      await subscription.cancel();
+    });
+
+    test('subscribeEvents errors when subscription document is not configured',
+        () async {
+      final unsupported = TestGraphQLAdapter();
+
+      await expectLater(
+        unsupported.subscribeEvents(),
+        emitsError(isA<ApiException>()),
+      );
     });
 
     test('subscribeOne emits multiple payloads in order', () async {
@@ -253,6 +374,21 @@ void main() {
       await expectation;
     });
 
+    test(
+        'LinkException and socket failures map to NetworkException for '
+        'autoreconnect', () async {
+      final stream = adapter.subscribeOne('1');
+      final expectation = expectLater(
+        stream,
+        emitsError(isA<NetworkException>()),
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      link.addError(TestLinkException('Connection refused'));
+
+      await expectation;
+    });
+
     test('malformed payload becomes ApiException stream error', () async {
       final stream = adapter.subscribeOne('1');
       final expectation = expectLater(
@@ -309,4 +445,33 @@ void main() {
       );
     });
   });
+}
+
+class CustomEventSubscriptionAdapter extends SubscriptionTestAdapter {
+  CustomEventSubscriptionAdapter(super.link);
+
+  @override
+  String? get subscribeEventsSubscription => r'''
+subscription CustomEvent {
+  customEvent { kind model { id name value } }
+}
+''';
+
+  @override
+  String get subscribeEventsResponseField => 'customEvent';
+
+  @override
+  RealtimeEvent<TestModel> parseSubscribeEventGraphQLResponse(
+    Map<String, dynamic> data,
+    String fieldName,
+  ) {
+    final event = data[fieldName] as Map<String, dynamic>;
+    final item = fromJson(event['model'] as Map<String, dynamic>);
+    return RealtimeEvent(
+      type: RealtimeEventType.created,
+      id: item.id,
+      item: item,
+      raw: event,
+    );
+  }
 }

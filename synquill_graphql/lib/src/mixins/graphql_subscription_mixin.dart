@@ -46,11 +46,19 @@ mixin GraphQLSubscriptionMixin<TModel extends SynquillDataModel<TModel>>
   /// Return null to keep [subscribeAll] unsupported for this adapter.
   String? get subscribeAllSubscription => null;
 
+  /// GraphQL subscription string for transport-neutral realtime events.
+  ///
+  /// Return null to keep repository-level realtime cache sync unsupported.
+  String? get subscribeEventsSubscription => null;
+
   /// Response field used by [subscribeOne].
   String get subscribeOneResponseField => findOneResponseField;
 
   /// Response field used by [subscribeAll].
   String get subscribeAllResponseField => findAllResponseField;
+
+  /// Response field used by [subscribeEvents].
+  String get subscribeEventsResponseField => '${type}Events';
 
   /// Response JSON key for findOne queries.
   String get findOneResponseField;
@@ -109,6 +117,38 @@ mixin GraphQLSubscriptionMixin<TModel extends SynquillDataModel<TModel>>
       parseData: (data) => parseSubscribeAllGraphQLResponse(
         data,
         subscribeAllResponseField,
+      ),
+    );
+  }
+
+  /// Subscribes to transport-neutral realtime events for repository cache sync.
+  Stream<RealtimeEvent<TModel>> subscribeEvents({
+    String? id,
+    QueryParams? queryParams,
+    Map<String, String>? headers,
+    Map<String, dynamic>? extra,
+  }) {
+    final subscription = subscribeEventsSubscription;
+    if (subscription == null) {
+      return Stream<RealtimeEvent<TModel>>.error(
+        ApiException('subscribeEventsSubscription is not configured.'),
+      );
+    }
+
+    final variables = <String, dynamic>{};
+    if (id != null) {
+      variables['id'] = id;
+    }
+    variables.addAll(queryParamsToGraphQLVariables(queryParams));
+
+    return executeGraphQLSubscription<RealtimeEvent<TModel>>(
+      subscription: subscription,
+      variables: variables.isEmpty ? null : variables,
+      headers: headers,
+      extra: extra,
+      parseData: (data) => parseSubscribeEventGraphQLResponse(
+        data,
+        subscribeEventsResponseField,
       ),
     );
   }
@@ -177,6 +217,71 @@ mixin GraphQLSubscriptionMixin<TModel extends SynquillDataModel<TModel>>
     String fieldName,
   ) {
     return parseFindAllGraphQLResponse(data, fieldName);
+  }
+
+  /// Parses a subscription payload that represents one realtime event.
+  @protected
+  RealtimeEvent<TModel> parseSubscribeEventGraphQLResponse(
+    Map<String, dynamic> data,
+    String fieldName,
+  ) {
+    try {
+      final event = _asStringDynamicMap(data[fieldName], fieldName);
+      final typeValue = event['type'];
+      if (typeValue is! String) {
+        throw ApiException(
+          'Failed to parse realtime event: expected string "type".',
+        );
+      }
+
+      final eventType = _parseRealtimeEventType(typeValue);
+      final itemValue = event['item'];
+      final item = itemValue == null
+          ? null
+          : fromJson(_asStringDynamicMap(itemValue, 'item'));
+      final idValue = event['id'] ?? item?.id;
+      if (idValue is! String || idValue.isEmpty) {
+        throw ApiException(
+          'Failed to parse realtime event: expected non-empty string "id".',
+        );
+      }
+
+      final metadataValue = event['metadata'];
+      final metadata = metadataValue == null
+          ? null
+          : _asStringDynamicMap(metadataValue, 'metadata');
+
+      return RealtimeEvent<TModel>(
+        type: eventType,
+        id: idValue,
+        item: item,
+        metadata: metadata,
+        raw: event,
+      );
+    } catch (e, st) {
+      if (e is SynquillStorageException) rethrow;
+      logger.severe('Error parsing realtime event response', e, st);
+      throw ApiException('Failed to parse realtime event response: $e');
+    }
+  }
+
+  RealtimeEventType _parseRealtimeEventType(String value) {
+    final normalized = value.toLowerCase();
+    for (final type in RealtimeEventType.values) {
+      if (type.name == normalized) {
+        return type;
+      }
+    }
+    throw ApiException('Failed to parse realtime event: unknown type $value.');
+  }
+
+  Map<String, dynamic> _asStringDynamicMap(Object? value, String fieldName) {
+    if (value is! Map) {
+      throw ApiException(
+        'Failed to parse realtime event: expected object "$fieldName".',
+      );
+    }
+    return value.map((key, val) => MapEntry(key.toString(), val));
   }
 
   /// Executes [subscription] through a GraphQL subscription [Link].
@@ -319,6 +424,16 @@ mixin GraphQLSubscriptionMixin<TModel extends SynquillDataModel<TModel>>
     if (error is SynquillStorageException) {
       return error;
     }
+
+    final isNetwork = error is LinkException ||
+        error.toString().toLowerCase().contains('socket') ||
+        error.toString().toLowerCase().contains('websocket') ||
+        error.toString().toLowerCase().contains('connection');
+
+    if (isNetwork) {
+      return NetworkException('GraphQL subscription transport failure: $error');
+    }
+
     return ApiException('GraphQL subscription failed: $error');
   }
 

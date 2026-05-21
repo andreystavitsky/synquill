@@ -87,6 +87,10 @@ class TestUserRepository extends SynquillRepositoryBase<TestUser> {
     String id, {
     DataLoadPolicy? loadPolicy,
     QueryParams? queryParams,
+    bool watchRemote = false,
+    bool retryOnFail = true,
+    Map<String, String>? headers,
+    Map<String, dynamic>? extra,
   }) {
     return Stream.value(
       TestUser(id: id, name: 'Test User', email: 'test@example.com'),
@@ -94,7 +98,13 @@ class TestUserRepository extends SynquillRepositoryBase<TestUser> {
   }
 
   @override
-  Stream<List<TestUser>> watchAll({QueryParams? queryParams}) {
+  Stream<List<TestUser>> watchAll({
+    QueryParams? queryParams,
+    bool watchRemote = false,
+    bool retryOnFail = true,
+    Map<String, String>? headers,
+    Map<String, dynamic>? extra,
+  }) {
     return Stream.value([
       TestUser(id: '1', name: 'Test User', email: 'test@example.com'),
     ]);

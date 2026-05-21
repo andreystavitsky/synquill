@@ -31,7 +31,6 @@ class Category extends SynquillDataModel<Category> {
 
   Category.fromDb({required this.id, required this.name, required this.color});
 
-  @override
   factory Category.fromJson(Map<String, dynamic> json) =>
       _$CategoryFromJson(json);
   @override

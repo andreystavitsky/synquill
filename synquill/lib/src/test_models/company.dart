@@ -34,7 +34,6 @@ class Company extends SynquillDataModel<Company> {
 
   Company.fromDb({required this.id, required this.name, this.departmentId});
 
-  @override
   factory Company.fromJson(Map<String, dynamic> json) =>
       _$CompanyFromJson(json);
   @override

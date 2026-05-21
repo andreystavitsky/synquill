@@ -310,6 +310,17 @@ class SynquillRepositoryProvider {
     _instances.clear();
   }
 
+  /// Disposes realtime subscriptions for all cached repository instances.
+  static Future<void> disposeCachedRealtimeSubscriptions() async {
+    final repositories = _instances.values
+        .expand((instancesByDb) => instancesByDb.values)
+        .toSet()
+        .toList();
+    for (final repository in repositories) {
+      await repository.disposeRealtime();
+    }
+  }
+
   /// Clears all registered factories and cached repository instances.
   ///
   /// Primarily used for cleaning up state in tests.

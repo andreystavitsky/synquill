@@ -12,7 +12,8 @@ abstract class GraphQLApiAdapter<TModel extends SynquillDataModel<TModel>>
         GraphQLErrorHandlingMixin<TModel>,
         GraphQLResponseParsingMixin<TModel>,
         GraphQLExecutionMixin<TModel>,
-        GraphQLSubscriptionMixin<TModel> {
+        GraphQLSubscriptionMixin<TModel>
+    implements RealtimeApiAdapter<TModel> {
   /// The GraphQL endpoint URL (e.g. `https://api.example.com/graphql`).
   Uri get graphqlEndpoint;
 

@@ -8,6 +8,7 @@ import 'package:synquill/src/core/query_parameters.dart';
 import 'package:synquill/src/core/repository_mixins/repository_delete_operations.dart';
 import 'package:synquill/src/core/repository_mixins/repository_local_operations.dart';
 import 'package:synquill/src/core/repository_mixins/repository_query_operations.dart';
+import 'package:synquill/src/core/repository_mixins/repository_realtime_operations.dart';
 import 'package:synquill/src/core/repository_mixins/repository_remote_operations.dart';
 import 'package:synquill/src/core/repository_mixins/repository_save_operations.dart';
 import 'package:synquill/src/core/repository_mixins/repository_sync_operations.dart';
@@ -26,10 +27,12 @@ abstract class SynquillRepositoryBase<T extends SynquillDataModel<T>>
         RepositoryLocalOperations<T>,
         RepositoryRemoteOperations<T>,
         RepositoryDeleteOperations<T>,
+        RepositoryRealtimeOperations<T>,
         RepositoryQueryOperations<T>,
         RepositorySaveOperations<T>,
         RepositorySyncOperations<T> {
   /// The database connection.
+  @override
   final GeneratedDatabase db;
 
   /// The logger for this repository.
@@ -162,6 +165,12 @@ abstract class SynquillRepositoryBase<T extends SynquillDataModel<T>>
 
   /// Disposes of resources used by this repository.
   void dispose() {
+    unawaited(disposeRealtime());
     _changeController.close();
+  }
+
+  /// Disposes realtime subscriptions owned by this repository.
+  Future<void> disposeRealtime() {
+    return disposeRealtimeSubscriptions();
   }
 }
