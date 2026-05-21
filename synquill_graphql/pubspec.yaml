@@ -1,7 +1,8 @@
 name: synquill_graphql
 description: GraphQL adapter for the Synquill offline-first data engine.
 version: 0.8.0
-publish_to: none
+homepage: https://github.com/andreystavitsky/synquill
+repository: https://github.com/andreystavitsky/synquill
 
 environment:
   sdk: ">=3.4.0 <4.0.0"
