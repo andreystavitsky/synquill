@@ -539,6 +539,111 @@ void main() {
           capturedErrors.where((e) => e is! QueueCancelledException).toList();
       expect(unexpected, isEmpty, reason: 'Unexpected errors: $unexpected');
     });
+
+    test('cancelled opaque task releases idempotency key after timeout',
+        () async {
+      final capturedErrors = <dynamic>[];
+      Object? bodyError;
+      StackTrace? bodyStackTrace;
+
+      await runZonedGuarded(() async {
+        try {
+          final mgr = RequestQueueManager(
+            config: const SynquillStorageConfig(
+              backgroundQueueConcurrency: 1,
+              maximumNetworkTimeout: Duration(milliseconds: 50),
+            ),
+          );
+          addTearDown(mgr.dispose);
+
+          final firstStarted = Completer<void>();
+          final releaseFirst = Completer<void>();
+          final firstFuture = mgr.enqueueTask(
+            NetworkTask<void>(
+              exec: () async {
+                firstStarted.complete();
+                await releaseFirst.future;
+              },
+              idempotencyKey: 'timed-held-key',
+              operation: SyncOperation.create,
+              modelType: 'TestModel',
+              modelId: 'timed-held-model',
+            ),
+            queueType: QueueType.background,
+          );
+          unawaited(firstFuture.catchError((_) {}));
+
+          final retryStarted = Completer<void>();
+          final releaseRetry = Completer<void>();
+          Future<void>? retryFuture;
+
+          try {
+            await firstStarted.future;
+            await mgr.clearQueuesOnDisconnect();
+            await Future<void>.delayed(const Duration(milliseconds: 80));
+
+            retryFuture = mgr.enqueueTask(
+              NetworkTask<void>(
+                exec: () async {
+                  retryStarted.complete();
+                  await releaseRetry.future;
+                },
+                idempotencyKey: 'timed-held-key',
+                operation: SyncOperation.create,
+                modelType: 'TestModel',
+                modelId: 'timed-held-model-retry',
+              ),
+              queueType: QueueType.background,
+            );
+            unawaited(retryFuture.catchError((_) {}));
+
+            await retryStarted.future.timeout(const Duration(seconds: 1));
+
+            releaseFirst.complete();
+            await firstFuture.catchError((_) {});
+
+            final duplicateRetry = NetworkTask<void>(
+              exec: () => Future.value(),
+              idempotencyKey: 'timed-held-key',
+              operation: SyncOperation.create,
+              modelType: 'TestModel',
+              modelId: 'timed-held-model-duplicate',
+            );
+
+            await expectLater(
+              mgr.enqueueTask(duplicateRetry, queueType: QueueType.background),
+              throwsA(isA<SynquillStorageException>()),
+            );
+          } finally {
+            if (!releaseFirst.isCompleted) {
+              releaseFirst.complete();
+            }
+            if (!releaseRetry.isCompleted) {
+              releaseRetry.complete();
+            }
+            await firstFuture.catchError((_) {});
+            await retryFuture?.catchError((_) {});
+          }
+        } catch (error, stackTrace) {
+          bodyError = error;
+          bodyStackTrace = stackTrace;
+        }
+      }, (error, stackTrace) {
+        if (error is! QueueCancelledException) {
+          capturedErrors.add(error);
+          bodyStackTrace ??= stackTrace;
+        }
+      });
+
+      if (bodyError != null) {
+        Error.throwWithStackTrace(
+          bodyError!,
+          bodyStackTrace ?? StackTrace.current,
+        );
+      }
+
+      expect(capturedErrors, isEmpty, reason: 'Unexpected errors in zone');
+    });
   });
 
   // ─────────────────────────────────────────────────────────────────────────

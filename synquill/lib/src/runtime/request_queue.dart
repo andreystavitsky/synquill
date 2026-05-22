@@ -36,7 +36,7 @@ enum QueueType {
 ///
 class RequestQueueManager {
   final Map<QueueType, RequestQueue> _queues = {};
-  final Map<QueueType, Set<String>> _activeIdempotencyKeys = {};
+  final Map<QueueType, Map<String, NetworkTask>> _activeIdempotencyTasks = {};
   final SynquillStorageConfig _config;
   late final Logger _log;
 
@@ -71,9 +71,9 @@ class RequestQueueManager {
 
     _createQueues();
 
-    // Initialize idempotency key tracking
+    // Initialize idempotency key tracking.
     for (final queueType in QueueType.values) {
-      _activeIdempotencyKeys[queueType] = <String>{};
+      _activeIdempotencyTasks[queueType] = <String, NetworkTask>{};
     }
 
     _log.info('RequestQueueManager initialized with 3 queues');
@@ -93,11 +93,11 @@ class RequestQueueManager {
   Future<T> enqueueTask<T>(NetworkTask<T> task, {QueueType? queueType}) async {
     queueType ??= _getDefaultQueueType(task);
     final queue = _queues[queueType]!;
-    final idempotencyKeys = _activeIdempotencyKeys[queueType]!;
+    final idempotencyTasks = _activeIdempotencyTasks[queueType]!;
 
     // Check for duplicate idempotency key FIRST (before capacity check)
     // This prevents race conditions in idempotency key handling
-    if (idempotencyKeys.contains(task.idempotencyKey)) {
+    if (idempotencyTasks.containsKey(task.idempotencyKey)) {
       final message =
           'Duplicate task with idempotency key: ${task.idempotencyKey}';
       _log.fine(message);
@@ -105,7 +105,7 @@ class RequestQueueManager {
     }
 
     // Track idempotency key immediately to prevent race conditions
-    idempotencyKeys.add(task.idempotencyKey);
+    idempotencyTasks[task.idempotencyKey] = task;
 
     try {
       // Check capacity limit with wait-based strategy
@@ -123,6 +123,7 @@ class RequestQueueManager {
 
       // Track the task for cancellation purposes
       queue._pendingTasks.add(task);
+      _releaseCancelledIdempotencyKey(task, idempotencyTasks);
 
       final result = await queue.addTask<T>(() async {
         try {
@@ -139,7 +140,7 @@ class RequestQueueManager {
 
       return result;
     } finally {
-      _releaseIdempotencyKeyAfterSettlement(task, idempotencyKeys);
+      _releaseIdempotencyKeyAfterSettlement(task, idempotencyTasks);
     }
   }
 
@@ -328,18 +329,60 @@ class RequestQueueManager {
 
   void _releaseIdempotencyKeyAfterSettlement(
     NetworkTask task,
-    Set<String> idempotencyKeys,
+    Map<String, NetworkTask> idempotencyTasks,
   ) {
     if (!task.executionStarted || task.isExecutionSettled) {
-      idempotencyKeys.remove(task.idempotencyKey);
+      _removeOwnedIdempotencyKey(task, idempotencyTasks);
       return;
     }
 
     unawaited(
       task.executionSettled.whenComplete(
-        () => idempotencyKeys.remove(task.idempotencyKey),
+        () => _removeOwnedIdempotencyKey(task, idempotencyTasks),
       ),
     );
+  }
+
+  void _releaseCancelledIdempotencyKey(
+    NetworkTask task,
+    Map<String, NetworkTask> idempotencyTasks,
+  ) {
+    unawaited(
+      task.future.then<void>((_) {}, onError: (_) {
+        if (!task.isCancelled) {
+          return;
+        }
+
+        unawaited(() async {
+          var timedOut = false;
+          await task.executionSettled.timeout(
+            _config.maximumNetworkTimeout,
+            onTimeout: () {
+              timedOut = true;
+            },
+          );
+
+          if (timedOut && !task.isExecutionSettled) {
+            _log.warning(
+              'Releasing cancelled idempotency key after '
+              '${_config.maximumNetworkTimeout.inMilliseconds}ms without '
+              'execution settlement: ${task.idempotencyKey}',
+            );
+          }
+
+          _removeOwnedIdempotencyKey(task, idempotencyTasks);
+        }());
+      }),
+    );
+  }
+
+  void _removeOwnedIdempotencyKey(
+    NetworkTask task,
+    Map<String, NetworkTask> idempotencyTasks,
+  ) {
+    if (identical(idempotencyTasks[task.idempotencyKey], task)) {
+      idempotencyTasks.remove(task.idempotencyKey);
+    }
   }
 }
 
