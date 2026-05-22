@@ -1,3 +1,7 @@
+## 0.8.2
+
+- Resolve critical runtime and generator issues.
+
 ## 0.8.0
 
 - Initial release of `synquill_graphql` package.
