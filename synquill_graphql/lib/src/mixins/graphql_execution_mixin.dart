@@ -220,6 +220,7 @@ mixin GraphQLExecutionMixin<TModel extends SynquillDataModel<TModel>>
     return dio.post<dynamic>(
       baseUrl.toString(),
       data: data,
+      cancelToken: NetworkTaskCancellationContext.current?.cancelToken,
       options: Options(
         headers: headers,
         extra: extra,

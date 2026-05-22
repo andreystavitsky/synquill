@@ -121,6 +121,34 @@ void main() {
         contains('API adapter not available for local-only repository Todo.'),
       );
     });
+
+    test('forwards headers from generated remote fetch methods', () {
+      final code = RepositoryGenerator.generateRepositoryClass(
+        _modelWithAdapters([
+          _adapter('RestTodoAdapter'),
+        ]),
+      );
+
+      expect(
+        code,
+        contains('''
+      final result = await apiAdapter.findOne(
+        id,
+        queryParams: queryParams,
+        headers: headers,
+        extra: extra
+      );'''),
+      );
+      expect(
+        code,
+        contains('''
+      final result = await apiAdapter.findAll(
+        queryParams: queryParams,
+        headers: headers,
+        extra: extra
+      );'''),
+      );
+    });
   });
 
   group('AdapterInfo', () {

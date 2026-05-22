@@ -219,6 +219,46 @@ void main() {
       );
     });
 
+    test('new payload resets a pending retry delay for the same model',
+        () async {
+      const modelId = 'retry-reset-model';
+      mockApiAdapter.setPersistentFailureForModel(modelId);
+
+      await repository.save(
+        PlainModel(id: modelId, name: 'Backed Off', value: 1),
+        savePolicy: DataSavePolicy.localFirst,
+      );
+      await Future.delayed(const Duration(milliseconds: 100));
+
+      final syncQueueDao = SyncQueueDao(database);
+      final taskBeforeUpdate =
+          (await syncQueueDao.getTasksForModelId('PlainModel', modelId)).single;
+      final retryAt = DateTime.now().add(const Duration(hours: 1));
+      await syncQueueDao.updateItem(
+        id: taskBeforeUpdate['id'] as int,
+        nextRetryAt: retryAt,
+      );
+
+      await repository.save(
+        PlainModel(id: modelId, name: 'Fresh Payload', value: 2),
+        savePolicy: DataSavePolicy.localFirst,
+      );
+      await Future.delayed(const Duration(milliseconds: 100));
+
+      final taskAfterUpdate =
+          (await syncQueueDao.getTasksForModelId('PlainModel', modelId)).single;
+      final payload = json.decode(taskAfterUpdate['payload'] as String)
+          as Map<String, dynamic>;
+
+      expect(payload['name'], 'Fresh Payload');
+      expect(payload['value'], 2);
+      expect(taskAfterUpdate['next_retry_at'], isNull);
+      expect(
+        (await syncQueueDao.getDueTasks()).map((task) => task['id']),
+        contains(taskAfterUpdate['id']),
+      );
+    });
+
     test(
       'Edge case: Multiple updates should keep updating the same CREATE entry',
       () async {

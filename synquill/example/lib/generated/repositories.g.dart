@@ -40,8 +40,8 @@ class GraphqlPostRepository extends SynquillRepositoryBase<GraphqlPost>
       Map<String, String>? headers,
       Map<String, dynamic>? extra}) async {
     try {
-      final result =
-          await apiAdapter.findOne(id, queryParams: queryParams, extra: extra);
+      final result = await apiAdapter.findOne(id,
+          queryParams: queryParams, headers: headers, extra: extra);
       _log.fine(
           'fetchFromRemote() for GraphqlPost successful: found item with id $id');
       return result;
@@ -72,8 +72,8 @@ class GraphqlPostRepository extends SynquillRepositoryBase<GraphqlPost>
       Map<String, String>? headers,
       Map<String, dynamic>? extra}) async {
     try {
-      final result =
-          await apiAdapter.findAll(queryParams: queryParams, extra: extra);
+      final result = await apiAdapter.findAll(
+          queryParams: queryParams, headers: headers, extra: extra);
       _log.fine('fetchAllFromRemote() for GraphqlPost successful: '
           'found ${result.length} items');
       return result;
@@ -122,8 +122,8 @@ class PostRepository extends SynquillRepositoryBase<Post>
       Map<String, String>? headers,
       Map<String, dynamic>? extra}) async {
     try {
-      final result =
-          await apiAdapter.findOne(id, queryParams: queryParams, extra: extra);
+      final result = await apiAdapter.findOne(id,
+          queryParams: queryParams, headers: headers, extra: extra);
       _log.fine(
           'fetchFromRemote() for Post successful: found item with id $id');
       return result;
@@ -152,8 +152,8 @@ class PostRepository extends SynquillRepositoryBase<Post>
       Map<String, String>? headers,
       Map<String, dynamic>? extra}) async {
     try {
-      final result =
-          await apiAdapter.findAll(queryParams: queryParams, extra: extra);
+      final result = await apiAdapter.findAll(
+          queryParams: queryParams, headers: headers, extra: extra);
       _log.fine('fetchAllFromRemote() for Post successful: '
           'found ${result.length} items');
       return result;
@@ -258,8 +258,8 @@ class PlainModelRepository extends SynquillRepositoryBase<PlainModel>
       Map<String, String>? headers,
       Map<String, dynamic>? extra}) async {
     try {
-      final result =
-          await apiAdapter.findOne(id, queryParams: queryParams, extra: extra);
+      final result = await apiAdapter.findOne(id,
+          queryParams: queryParams, headers: headers, extra: extra);
       _log.fine(
           'fetchFromRemote() for PlainModel successful: found item with id $id');
       return result;
@@ -290,8 +290,8 @@ class PlainModelRepository extends SynquillRepositoryBase<PlainModel>
       Map<String, String>? headers,
       Map<String, dynamic>? extra}) async {
     try {
-      final result =
-          await apiAdapter.findAll(queryParams: queryParams, extra: extra);
+      final result = await apiAdapter.findAll(
+          queryParams: queryParams, headers: headers, extra: extra);
       _log.fine('fetchAllFromRemote() for PlainModel successful: '
           'found ${result.length} items');
       return result;
@@ -339,8 +339,8 @@ class UserRepository extends SynquillRepositoryBase<User>
       Map<String, String>? headers,
       Map<String, dynamic>? extra}) async {
     try {
-      final result =
-          await apiAdapter.findOne(id, queryParams: queryParams, extra: extra);
+      final result = await apiAdapter.findOne(id,
+          queryParams: queryParams, headers: headers, extra: extra);
       _log.fine(
           'fetchFromRemote() for User successful: found item with id $id');
       return result;
@@ -369,8 +369,8 @@ class UserRepository extends SynquillRepositoryBase<User>
       Map<String, String>? headers,
       Map<String, dynamic>? extra}) async {
     try {
-      final result =
-          await apiAdapter.findAll(queryParams: queryParams, extra: extra);
+      final result = await apiAdapter.findAll(
+          queryParams: queryParams, headers: headers, extra: extra);
       _log.fine('fetchAllFromRemote() for User successful: '
           'found ${result.length} items');
       return result;
@@ -418,8 +418,8 @@ class TodoRepository extends SynquillRepositoryBase<Todo>
       Map<String, String>? headers,
       Map<String, dynamic>? extra}) async {
     try {
-      final result =
-          await apiAdapter.findOne(id, queryParams: queryParams, extra: extra);
+      final result = await apiAdapter.findOne(id,
+          queryParams: queryParams, headers: headers, extra: extra);
       _log.fine(
           'fetchFromRemote() for Todo successful: found item with id $id');
       return result;
@@ -448,8 +448,8 @@ class TodoRepository extends SynquillRepositoryBase<Todo>
       Map<String, String>? headers,
       Map<String, dynamic>? extra}) async {
     try {
-      final result =
-          await apiAdapter.findAll(queryParams: queryParams, extra: extra);
+      final result = await apiAdapter.findAll(
+          queryParams: queryParams, headers: headers, extra: extra);
       _log.fine('fetchAllFromRemote() for Todo successful: '
           'found ${result.length} items');
       return result;

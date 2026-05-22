@@ -294,8 +294,9 @@ $apiAdapterGetter
   }) async {
     try {
       final result = await apiAdapter.findOne(
-        id, 
+        id,
         queryParams: queryParams,
+        headers: headers,
         extra: extra
       );
       _log.fine(
@@ -336,7 +337,8 @@ $apiAdapterGetter
   }) async {
     try {
       final result = await apiAdapter.findAll(
-        queryParams: queryParams, 
+        queryParams: queryParams,
+        headers: headers,
         extra: extra
       );
       _log.fine(

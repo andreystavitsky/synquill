@@ -762,10 +762,36 @@ void main() {
             reason: 'Retry executor should still be available',
           );
 
-          // Should be able to process tasks (even though there are none)
+          SynquillRepositoryProvider.register<PlainModel>(
+            (db) => TestPlainModelRepository(db, mockApiAdapter),
+          );
+
+          mockApiAdapter.setNextOperationToFail('Post-obliterate sync fail');
+          await repository.save(
+            PlainModel(
+              id: 'post-obliterate-retry',
+              name: 'Post Obliterate Retry',
+              value: 303,
+            ),
+            savePolicy: DataSavePolicy.localFirst,
+          );
+          await Future.delayed(const Duration(milliseconds: 100));
+
           expect(
-            () => retryExecutorAfter.processDueTasksNow(),
-            returnsNormally,
+            (await syncQueueDao.getDueTasks()).map((task) => task['model_id']),
+            contains('post-obliterate-retry'),
+          );
+
+          await retryExecutorAfter.processDueTasksNow(forceSync: true);
+          await Future.delayed(const Duration(milliseconds: 100));
+
+          expect(
+            await syncQueueDao.getTasksForModelId(
+              'PlainModel',
+              'post-obliterate-retry',
+            ),
+            isEmpty,
+            reason: 'Retry executor should sync tasks created after obliterate',
           );
         }, (error, stack) {
           // Capture unhandled async errors (like QueueCancelledException)

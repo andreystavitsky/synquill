@@ -143,6 +143,27 @@ void main() {
       expect(retrievedItem?['next_retry_at'] != null, isTrue);
     });
 
+    test('update item can explicitly clear retry delay', () async {
+      final itemId = await dao.insertItem(
+        modelId: 'retry-reset',
+        modelType: 'TestModel',
+        payload: '{"id": "retry-reset"}',
+        operation: 'update',
+        nextRetryAt: DateTime.now().add(const Duration(minutes: 5)),
+      );
+
+      expect(await dao.getDueTasks(), isEmpty);
+
+      await dao.updateItem(id: itemId, clearNextRetryAt: true);
+
+      final item = await dao.getItemById(itemId);
+      expect(item?['next_retry_at'], isNull);
+      expect(
+        (await dao.getDueTasks()).map((task) => task['id']),
+        contains(itemId),
+      );
+    });
+
     test('delete item', () async {
       // Insert test item
       final itemId = await dao.insertItem(

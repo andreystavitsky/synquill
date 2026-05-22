@@ -722,7 +722,7 @@ class RetryExecutor {
     await _syncQueueDao.updateItem(
       id: taskId,
       operation: SyncOperation.update.name,
-      nextRetryAt: null, // Keep immediately due for retry
+      clearNextRetryAt: true, // Keep immediately due for retry
       lastError: 'Fallback failed: Both update and create '
           'returned 404. Update error: ${originalError.message}, '
           'Create error: ${createError.message}',
@@ -834,8 +834,17 @@ class RetryExecutor {
       config.maxRetryDelay.inMilliseconds,
     );
 
-    // Add jitter (±20%) for better distribution
+    // Add jitter for better distribution.
     final jitterMs = (cappedDelayMs * config.jitterPercent).toInt();
+    if (jitterMs <= 0) {
+      return Duration(
+        milliseconds: math.max(
+          config.minRetryDelay.inMilliseconds,
+          cappedDelayMs,
+        ),
+      );
+    }
+
     final random = math.Random();
     final randomOffset = random.nextInt(jitterMs * 2) - jitterMs;
 
