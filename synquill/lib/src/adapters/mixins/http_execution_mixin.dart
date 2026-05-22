@@ -6,6 +6,7 @@ import 'package:synquill/src/adapters/mixins/dio_client_mixin.dart';
 import 'package:synquill/src/adapters/mixins/error_handling_mixin.dart';
 import 'package:synquill/src/core/query_parameters.dart';
 import 'package:synquill/src/core/synquill_data_model.dart';
+import 'package:synquill/src/runtime/network_task.dart';
 
 /// {@template http_execution_mixin}
 /// Mixin that provides HTTP execution functionality for API adapters.
@@ -47,6 +48,7 @@ mixin HttpExecutionMixin<TModel extends SynquillDataModel<TModel>>
         data: data,
         queryParameters:
             queryParameters?.isNotEmpty == true ? queryParameters : null,
+        cancelToken: NetworkTaskCancellationContext.current?.cancelToken,
         options: Options(method: method, headers: headers),
       );
     } on DioException catch (e) {

@@ -158,7 +158,7 @@ mixin RepositorySyncOperations<T extends SynquillDataModel<T>> {
         payload: convert.jsonEncode(item.toJson()),
         idempotencyKey: idempotencyKey, // Update idempotency key too
         attemptCount: 0, // Reset attempt count for the new payload
-        nextRetryAt: null, // Allow immediate retry
+        clearNextRetryAt: true, // Allow immediate retry
         lastError: null, // Clear any previous errors
         headers: headers != null ? convert.jsonEncode(headers) : null,
         extra: extra != null ? convert.jsonEncode(extra) : null,
@@ -185,7 +185,7 @@ mixin RepositorySyncOperations<T extends SynquillDataModel<T>> {
           payload: convert.jsonEncode(item.toJson()),
           idempotencyKey: idempotencyKey, // Update idempotency key too
           attemptCount: 0, // Reset attempt count for the new payload
-          nextRetryAt: null, // Allow immediate retry
+          clearNextRetryAt: true, // Allow immediate retry
           lastError: null, // Clear any previous errors
           headers: headers != null ? convert.jsonEncode(headers) : null,
           extra: extra != null ? convert.jsonEncode(extra) : null,

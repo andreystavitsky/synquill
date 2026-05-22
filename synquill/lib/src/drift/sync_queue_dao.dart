@@ -182,6 +182,7 @@ class SyncQueueDao {
     int? attemptCount,
     String? lastError,
     DateTime? nextRetryAt,
+    bool clearNextRetryAt = false,
     String? idempotencyKey,
     String? status, // Added status
     String? headers, // JSON string of headers
@@ -215,7 +216,10 @@ class SyncQueueDao {
       updates.add('last_error = ?');
       variables.add(const Variable(null));
     }
-    if (nextRetryAt != null) {
+    if (clearNextRetryAt) {
+      updates.add('next_retry_at = ?');
+      variables.add(const Variable(null));
+    } else if (nextRetryAt != null) {
       updates.add('next_retry_at = ?');
       variables.add(Variable.withDateTime(nextRetryAt));
     }

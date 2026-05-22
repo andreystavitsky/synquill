@@ -75,6 +75,46 @@ List<Future<void>> _fillQueue(
   return futures;
 }
 
+Future<void> _expectParallelStarts(
+  RequestQueueManager mgr,
+  QueueType queueType,
+  int taskCount, {
+  required String idPrefix,
+}) async {
+  final release = Completer<void>();
+  final allStarted = Completer<void>();
+  var started = 0;
+
+  final futures = [
+    for (var i = 0; i < taskCount; i++)
+      mgr.enqueueTask(
+        NetworkTask<void>(
+          exec: () async {
+            started++;
+            if (started == taskCount) {
+              allStarted.complete();
+            }
+            await release.future;
+          },
+          idempotencyKey: '$idPrefix-$i',
+          operation: SyncOperation.create,
+          modelType: 'ParallelModel',
+          modelId: '$idPrefix-$i',
+        ),
+        queueType: queueType,
+      ),
+  ];
+
+  try {
+    await allStarted.future.timeout(const Duration(seconds: 1));
+  } finally {
+    if (!release.isCompleted) {
+      release.complete();
+    }
+    await Future.wait(futures.map((future) => future.catchError((_) {})));
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
@@ -102,6 +142,56 @@ void main() {
       expect(stats[QueueType.foreground]!.activeAndPendingTasks, equals(0));
       expect(stats[QueueType.load]!.activeAndPendingTasks, equals(0));
       expect(stats[QueueType.background]!.activeAndPendingTasks, equals(0));
+    });
+  });
+
+  group('Configured concurrency', () {
+    const config = SynquillStorageConfig(
+      foregroundQueueConcurrency: 3,
+      backgroundQueueConcurrency: 2,
+    );
+
+    test('starts configured foreground tasks in parallel', () async {
+      final mgr = RequestQueueManager(config: config);
+      try {
+        await _expectParallelStarts(
+          mgr,
+          QueueType.foreground,
+          3,
+          idPrefix: 'foreground-parallel',
+        );
+      } finally {
+        await mgr.dispose();
+      }
+    });
+
+    test('starts configured background tasks in parallel', () async {
+      final mgr = RequestQueueManager(config: config);
+      try {
+        await _expectParallelStarts(
+          mgr,
+          QueueType.background,
+          2,
+          idPrefix: 'background-parallel',
+        );
+      } finally {
+        await mgr.dispose();
+      }
+    });
+
+    test('recreated queues keep configured foreground parallelism', () async {
+      final mgr = RequestQueueManager(config: config);
+      try {
+        await mgr.clearQueuesOnDisconnect();
+        await _expectParallelStarts(
+          mgr,
+          QueueType.foreground,
+          3,
+          idPrefix: 'foreground-recreated',
+        );
+      } finally {
+        await mgr.dispose();
+      }
     });
   });
 
@@ -383,41 +473,64 @@ void main() {
       );
     });
 
-    test('idempotency keys are cleared after disconnect', () async {
+    test('active opaque task keeps idempotency key until exec settles',
+        () async {
       final capturedErrors = <dynamic>[];
 
       await runZonedGuarded(() async {
         final mgr = SynquillStorage.queueManager;
+        final taskStarted = Completer<void>();
+        final releaseTask = Completer<void>();
 
-        // Enqueue a long-running task to hold the key.
-        mgr
-            .enqueueTask(
-              NetworkTask<void>(
-                exec: () => Future.delayed(const Duration(seconds: 10)),
-                idempotencyKey: 'held-key',
-                operation: SyncOperation.create,
-                modelType: 'TestModel',
-                modelId: 'held-model',
-              ),
-              queueType: QueueType.background,
-            )
-            .ignore();
+        final taskFuture = mgr.enqueueTask(
+          NetworkTask<void>(
+            exec: () async {
+              taskStarted.complete();
+              await releaseTask.future;
+            },
+            idempotencyKey: 'held-key',
+            operation: SyncOperation.create,
+            modelType: 'TestModel',
+            modelId: 'held-model',
+          ),
+          queueType: QueueType.background,
+        );
 
+        await taskStarted.future;
+        final clearFuture = mgr.clearQueuesOnDisconnect();
         await Future.delayed(const Duration(milliseconds: 20));
-        await mgr.clearQueuesOnDisconnect();
-        await Future.delayed(const Duration(milliseconds: 50));
 
-        // Key should now be available.
-        final sameKeyTask = NetworkTask<void>(
+        try {
+          final sameKeyTask = NetworkTask<void>(
+            exec: () => Future.value(),
+            idempotencyKey: 'held-key',
+            operation: SyncOperation.create,
+            modelType: 'TestModel',
+            modelId: 'held-model-2',
+          );
+
+          await expectLater(
+            mgr.enqueueTask(sameKeyTask, queueType: QueueType.background),
+            throwsA(isA<SynquillStorageException>()),
+          );
+        } finally {
+          if (!releaseTask.isCompleted) {
+            releaseTask.complete();
+          }
+          await taskFuture.catchError((_) {});
+          await clearFuture.catchError((_) {});
+        }
+
+        final settledTask = NetworkTask<void>(
           exec: () => Future.value(),
           idempotencyKey: 'held-key',
           operation: SyncOperation.create,
           modelType: 'TestModel',
-          modelId: 'held-model-2',
+          modelId: 'held-model-settled',
         );
 
         await expectLater(
-          mgr.enqueueTask(sameKeyTask, queueType: QueueType.background),
+          mgr.enqueueTask(settledTask, queueType: QueueType.background),
           completes,
         );
       }, (e, _) => capturedErrors.add(e));

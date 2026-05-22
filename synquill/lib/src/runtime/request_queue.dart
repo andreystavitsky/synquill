@@ -37,6 +37,7 @@ enum QueueType {
 class RequestQueueManager {
   final Map<QueueType, RequestQueue> _queues = {};
   final Map<QueueType, Set<String>> _activeIdempotencyKeys = {};
+  final SynquillStorageConfig _config;
   late final Logger _log;
 
   /// Maximum number of tasks per queue to prevent memory issues
@@ -50,7 +51,8 @@ class RequestQueueManager {
 
   /// Creates a new RequestQueueManager with configured queues.
   RequestQueueManager({SynquillStorageConfig? config})
-      : _maxQueueCapacities = {
+      : _config = config ?? const SynquillStorageConfig(),
+        _maxQueueCapacities = {
           QueueType.foreground: config?.maxForegroundQueueCapacity ?? 50,
           QueueType.load: config?.maxLoadQueueCapacity ?? 50,
           QueueType.background: config?.maxBackgroundQueueCapacity ?? 50,
@@ -67,24 +69,7 @@ class RequestQueueManager {
             const Duration(milliseconds: 100) {
     _log = Logger('RequestQueueManager');
 
-    // Initialize the three queues with specific configurations
-    _queues[QueueType.foreground] = RequestQueue(
-      parallelism: 1,
-      delay: const Duration(milliseconds: 50),
-      name: 'ForegroundQueue',
-    );
-
-    _queues[QueueType.load] = RequestQueue(
-      parallelism: 2,
-      delay: const Duration(milliseconds: 50),
-      name: 'LoadQueue',
-    );
-
-    _queues[QueueType.background] = RequestQueue(
-      parallelism: 1,
-      delay: const Duration(milliseconds: 100),
-      name: 'BackgroundQueue',
-    );
+    _createQueues();
 
     // Initialize idempotency key tracking
     for (final queueType in QueueType.values) {
@@ -154,8 +139,7 @@ class RequestQueueManager {
 
       return result;
     } finally {
-      // Remove idempotency key when task completes (success or failure)
-      idempotencyKeys.remove(task.idempotencyKey);
+      _releaseIdempotencyKeyAfterSettlement(task, idempotencyKeys);
     }
   }
 
@@ -252,11 +236,6 @@ class RequestQueueManager {
   Future<void> clearQueuesOnDisconnect() async {
     _log.info('Clearing all request queues due to connectivity loss');
 
-    // Clear idempotency key tracking
-    for (final keys in _activeIdempotencyKeys.values) {
-      keys.clear();
-    }
-
     // Use runZonedGuarded to catch any unhandled QueueCancelledException
     final List<dynamic> disposalErrors = [];
 
@@ -284,24 +263,7 @@ class RequestQueueManager {
     // Give time for any async cleanup to complete
     await Future.delayed(const Duration(milliseconds: 20));
 
-    // Recreate fresh queues
-    _queues[QueueType.foreground] = RequestQueue(
-      parallelism: 1,
-      delay: const Duration(milliseconds: 50),
-      name: 'ForegroundQueue',
-    );
-
-    _queues[QueueType.load] = RequestQueue(
-      parallelism: 2,
-      delay: const Duration(milliseconds: 50),
-      name: 'LoadQueue',
-    );
-
-    _queues[QueueType.background] = RequestQueue(
-      parallelism: 1,
-      delay: const Duration(milliseconds: 100),
-      name: 'BackgroundQueue',
-    );
+    _createQueues();
 
     _log.info('All queues cleared and recreated (${disposalErrors.length} '
         'disposal errors captured)');
@@ -336,6 +298,48 @@ class RequestQueueManager {
     await Future.wait(_queues.values.map((queue) => queue.dispose()));
     _queues.clear();
     _log.info('RequestQueueManager disposed');
+  }
+
+  void _createQueues() {
+    for (final queueType in QueueType.values) {
+      _queues[queueType] = _createQueue(queueType);
+    }
+  }
+
+  RequestQueue _createQueue(QueueType queueType) {
+    return switch (queueType) {
+      QueueType.foreground => RequestQueue(
+          parallelism: _config.foregroundQueueConcurrency,
+          delay: const Duration(milliseconds: 50),
+          name: 'ForegroundQueue',
+        ),
+      QueueType.load => RequestQueue(
+          parallelism: 2,
+          delay: const Duration(milliseconds: 50),
+          name: 'LoadQueue',
+        ),
+      QueueType.background => RequestQueue(
+          parallelism: _config.backgroundQueueConcurrency,
+          delay: const Duration(milliseconds: 100),
+          name: 'BackgroundQueue',
+        ),
+    };
+  }
+
+  void _releaseIdempotencyKeyAfterSettlement(
+    NetworkTask task,
+    Set<String> idempotencyKeys,
+  ) {
+    if (!task.executionStarted || task.isExecutionSettled) {
+      idempotencyKeys.remove(task.idempotencyKey);
+      return;
+    }
+
+    unawaited(
+      task.executionSettled.whenComplete(
+        () => idempotencyKeys.remove(task.idempotencyKey),
+      ),
+    );
   }
 }
 

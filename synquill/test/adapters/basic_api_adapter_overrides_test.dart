@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:test/test.dart' hide isNull, isNotNull;
 import 'package:mockito/mockito.dart';
 import 'package:mockito/annotations.dart';
@@ -108,6 +110,81 @@ void main() {
             ),
           ).called(1);
         },
+      );
+    });
+
+    test('queue cancellation reaches a built-in REST write request', () async {
+      final capturedErrors = <Object>[];
+
+      await runZonedGuarded(() async {
+        final adapter = TestBasicApiAdapter(mockDio: mockDio);
+        final requestStarted = Completer<void>();
+        final requestSettled = Completer<Response<dynamic>>();
+        CancelToken? requestCancelToken;
+
+        when(
+          mockDio.request<dynamic>(
+            any,
+            data: anyNamed('data'),
+            queryParameters: anyNamed('queryParameters'),
+            cancelToken: anyNamed('cancelToken'),
+            options: anyNamed('options'),
+            onSendProgress: anyNamed('onSendProgress'),
+            onReceiveProgress: anyNamed('onReceiveProgress'),
+          ),
+        ).thenAnswer((invocation) {
+          requestCancelToken =
+              invocation.namedArguments[#cancelToken] as CancelToken?;
+          if (!requestStarted.isCompleted) {
+            requestStarted.complete();
+          }
+          requestCancelToken?.whenCancel.then((_) {
+            if (!requestSettled.isCompleted) {
+              requestSettled.completeError(
+                DioException(
+                  requestOptions: RequestOptions(path: '/testmodels'),
+                  type: DioExceptionType.cancel,
+                ),
+              );
+            }
+          });
+          return requestSettled.future;
+        });
+
+        final mgr = RequestQueueManager();
+        final enqueueFuture = mgr
+            .enqueueTask(
+              NetworkTask<TestModel?>(
+                exec: () => adapter.createOne(testModel),
+                idempotencyKey: 'rest-cancel-create',
+                operation: SyncOperation.create,
+                modelType: 'TestModel',
+                modelId: testModel.id,
+              ),
+              queueType: QueueType.background,
+            )
+            .catchError((_) => null);
+
+        try {
+          await requestStarted.future;
+          await mgr.clearQueuesOnDisconnect();
+
+          expect(requestCancelToken, isNot(equals(null)));
+          expect(requestCancelToken!.isCancelled, isTrue);
+        } finally {
+          if (!requestSettled.isCompleted) {
+            requestSettled.complete(mockResponse);
+          }
+          await enqueueFuture;
+          await mgr.dispose();
+        }
+      }, (error, _) => capturedErrors.add(error));
+
+      expect(
+        capturedErrors.where(
+          (error) => error.runtimeType.toString() != 'QueueCancelledException',
+        ),
+        isEmpty,
       );
     });
 

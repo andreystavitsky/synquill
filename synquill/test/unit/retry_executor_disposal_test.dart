@@ -100,5 +100,42 @@ void main() {
         }
       },
     );
+
+    test('zero jitter still schedules retry metadata after a failure',
+        () async {
+      await SynquillStorage.init(
+        database: database,
+        config: const SynquillStorageConfig(
+          initialRetryDelay: Duration(milliseconds: 5),
+          minRetryDelay: Duration(milliseconds: 1),
+          foregroundPollInterval: Duration(minutes: 1),
+          jitterPercent: 0,
+        ),
+      );
+
+      final repository = TestUserRepository(database, mockAdapter);
+      final user = TestUser(
+        id: 'zero-jitter-user',
+        name: 'Zero Jitter',
+        email: 'zero-jitter@example.test',
+      );
+      repository.addLocalUser(user);
+      mockAdapter.shouldFailOnCreate = true;
+
+      final syncQueueDao = SyncQueueDao(database);
+      final taskId = await syncQueueDao.insertItem(
+        modelId: user.id,
+        modelType: 'TestUser',
+        payload: '{"id":"zero-jitter-user","name":"Zero Jitter",'
+            '"email":"zero-jitter@example.test"}',
+        operation: SyncOperation.create.name,
+      );
+
+      await SynquillStorage.retryExecutor.processDueTasksNow(forceSync: true);
+
+      final retryTask = await syncQueueDao.getItemById(taskId);
+      expect(retryTask?['attempt_count'], 1);
+      expect(retryTask?['next_retry_at'], isNotNull);
+    });
   });
 }

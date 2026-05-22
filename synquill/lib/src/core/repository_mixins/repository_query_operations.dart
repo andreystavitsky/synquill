@@ -278,7 +278,13 @@ mixin RepositoryQueryOperations<T extends SynquillDataModel<T>>
     Map<String, dynamic>? extra,
     Map<String, String>? headers,
   }) async {
-    final result = await findOne(id, loadPolicy: loadPolicy);
+    final result = await findOne(
+      id,
+      loadPolicy: loadPolicy,
+      queryParams: queryParams,
+      extra: extra,
+      headers: headers,
+    );
     if (result == null) {
       throw NotFoundException('$T with ID $id not found');
     }

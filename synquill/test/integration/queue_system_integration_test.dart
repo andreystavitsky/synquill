@@ -1110,6 +1110,7 @@ void main() {
       }
 
       await Future.wait(allTasks);
+      await queueManager.joinAll();
 
       // Verify all queues are empty
       final stats = queueManager.getQueueStats();
@@ -1412,6 +1413,7 @@ void main() {
       }
 
       await Future.wait(allTasks);
+      await queueManager.joinAll();
 
       // Verify all queues are empty
       final stats = queueManager.getQueueStats();

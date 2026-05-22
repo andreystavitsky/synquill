@@ -449,6 +449,7 @@ class SynquillStorage {
       // 6. Re-initialize background sync manager to ensure clean state
       _logger!.info('Re-initializing background sync manager');
       await _initializeBackgroundSync();
+      _retryExecutor!.start();
 
       _logger!.warning('Local storage obliteration completed successfully');
     } catch (e, stackTrace) {

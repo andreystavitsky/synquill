@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
 import 'package:synquill/synquill.dart';
@@ -136,6 +138,92 @@ void main() {
             post.options.headers?['Content-Type'], equals('application/json'));
         expect(post.options.headers?['Authorization'], equals('Bearer token'));
         expect(post.options.extra, equals({'traceId': 'trace-1'}));
+      });
+
+      test('queue cancellation reaches a GraphQL mutation POST', () async {
+        final capturedErrors = <Object>[];
+
+        await runZonedGuarded(() async {
+          final requestStarted = Completer<void>();
+          final requestSettled = Completer<Response<dynamic>>();
+          CancelToken? requestCancelToken;
+
+          when(
+            mockDio.post<dynamic>(
+              any,
+              data: anyNamed('data'),
+              queryParameters: anyNamed('queryParameters'),
+              options: anyNamed('options'),
+              cancelToken: anyNamed('cancelToken'),
+              onSendProgress: anyNamed('onSendProgress'),
+              onReceiveProgress: anyNamed('onReceiveProgress'),
+            ),
+          ).thenAnswer((invocation) {
+            requestCancelToken =
+                invocation.namedArguments[#cancelToken] as CancelToken?;
+            if (!requestStarted.isCompleted) {
+              requestStarted.complete();
+            }
+            requestCancelToken?.whenCancel.then((_) {
+              if (!requestSettled.isCompleted) {
+                requestSettled.completeError(
+                  DioException(
+                    requestOptions: RequestOptions(path: '/graphql'),
+                    type: DioExceptionType.cancel,
+                  ),
+                );
+              }
+            });
+            return requestSettled.future;
+          });
+
+          final mgr = RequestQueueManager();
+          final model = TestModel(id: 'gql-cancel', name: 'Cancel', value: 1);
+          final enqueueFuture = mgr
+              .enqueueTask(
+                NetworkTask<TestModel?>(
+                  exec: () => adapter.createOne(model),
+                  idempotencyKey: 'graphql-cancel-create',
+                  operation: SyncOperation.create,
+                  modelType: 'TestModel',
+                  modelId: model.id,
+                ),
+                queueType: QueueType.background,
+              )
+              .catchError((_) => null);
+
+          try {
+            await requestStarted.future;
+            await mgr.clearQueuesOnDisconnect();
+
+            expect(requestCancelToken, isNotNull);
+            expect(requestCancelToken!.isCancelled, isTrue);
+          } finally {
+            if (!requestSettled.isCompleted) {
+              requestSettled.complete(
+                Response<dynamic>(
+                  data: {
+                    'data': {
+                      'createTestModel': model.toJson(),
+                    },
+                  },
+                  statusCode: 200,
+                  requestOptions: RequestOptions(path: '/graphql'),
+                ),
+              );
+            }
+            await enqueueFuture;
+            await mgr.dispose();
+          }
+        }, (error, _) => capturedErrors.add(error));
+
+        expect(
+          capturedErrors.where(
+            (error) =>
+                error.runtimeType.toString() != 'QueueCancelledException',
+          ),
+          isEmpty,
+        );
       });
 
       test('omits operationName and variables when they are null', () async {
