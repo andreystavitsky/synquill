@@ -9,6 +9,7 @@ import 'package:test/test.dart';
 import 'package:synquill/synquill.generated.dart';
 
 import 'package:synquill/src/test_models/index.dart';
+import 'package:synquill/src/test_models/relation_indexing_validation_test_models.dart';
 
 void main() {
   group('Relations Integration Tests', () {
@@ -993,6 +994,39 @@ void main() {
             await subscription.cancel();
           },
         );
+
+        test(
+          'Todo.watchUser() does not re-emit when source todo updates without '
+          'foreign-key change',
+          () async {
+            final todos = await todoRepository.findAll();
+            final sourceTodo = todos.first;
+
+            final emissions = <User?>[];
+            final subscription = sourceTodo.watchUser().listen(emissions.add);
+
+            await Future.delayed(const Duration(milliseconds: 150));
+            expect(emissions, isNotEmpty);
+
+            final initialEmissionCount = emissions.length;
+            final initialUser = emissions.last;
+            final updatedTodo = Todo(
+              id: sourceTodo.id,
+              title: '${sourceTodo.title} (edited)',
+              isCompleted: sourceTodo.isCompleted,
+              userId: sourceTodo.userId,
+            );
+            await todoRepository.save(updatedTodo);
+
+            await Future.delayed(const Duration(milliseconds: 150));
+
+            expect(emissions, hasLength(initialEmissionCount));
+            expect(emissions.last, isNotNull);
+            expect(emissions.last!.id, equals(initialUser!.id));
+
+            await subscription.cancel();
+          },
+        );
       });
 
       group('Watch Method Performance', () {
@@ -1070,6 +1104,312 @@ void main() {
         );
       });
     });
+  });
+
+  group('Generated Relation Watch Coverage', () {
+    late SynquillDatabase db;
+    late UserDao userDao;
+    late PostDao postDao;
+    late LocalNoteDao localNoteDao;
+    late IndexingTestProductDao indexingTestProductDao;
+    late IndexingTestCategoryDao indexingTestCategoryDao;
+    late CompanyDao companyDao;
+    late DepartmentDao departmentDao;
+    late ServerParentModelDao serverParentModelDao;
+    late ServerChildModelDao serverChildModelDao;
+
+    setUp(() async {
+      db = SynquillDatabase(NativeDatabase.memory());
+      await SynquillStorage.init(
+        database: db,
+        config: const SynquillStorageConfig(
+          defaultSavePolicy: DataSavePolicy.localFirst,
+          defaultLoadPolicy: DataLoadPolicy.localOnly,
+          foregroundQueueConcurrency: 1,
+          backgroundQueueConcurrency: 1,
+        ),
+        logger: Logger('GeneratedRelationWatchCoverageTest'),
+        initializeFn: initializeSynquillStorage,
+        enableInternetMonitoring: false,
+      );
+
+      userDao = UserDao(db);
+      postDao = PostDao(db);
+      localNoteDao = LocalNoteDao(db);
+      indexingTestProductDao = IndexingTestProductDao(db);
+      indexingTestCategoryDao = IndexingTestCategoryDao(db);
+      companyDao = CompanyDao(db);
+      departmentDao = DepartmentDao(db);
+      serverParentModelDao = ServerParentModelDao(db);
+      serverChildModelDao = ServerChildModelDao(db);
+    });
+
+    tearDown(() async {
+      await SynquillStorage.close();
+    });
+
+    test('User.watchPosts() and User.watchLocalNotes() stream relations',
+        () async {
+      final user = User(id: 'watch-user', name: 'Watch User');
+      final post = Post(
+        id: 'watch-post',
+        title: 'Watch Post',
+        body: 'Post body',
+        userId: user.id,
+      );
+      final note = LocalNote(
+        id: 'watch-note',
+        content: 'Watch note',
+        ownerId: user.id,
+      );
+
+      await userDao.saveModel(user);
+      await postDao.saveModel(post);
+      await localNoteDao.saveModel(note);
+
+      final posts = await user.watchPosts().first;
+      final notes = await user.watchLocalNotes().first;
+
+      expect(posts.map((item) => item.id), contains(post.id));
+      expect(notes.map((item) => item.id), contains(note.id));
+    });
+
+    test(
+      'IndexingTestProduct and IndexingTestCategory watch both relation sides',
+      () async {
+        final category = IndexingTestCategory(
+          id: 'watch-index-category',
+          name: 'Indexed Category',
+        );
+        final product = IndexingTestProduct(
+          id: 'watch-index-product',
+          name: 'Indexed Product',
+          categoryId: category.id,
+        );
+
+        await indexingTestCategoryDao.saveModel(category);
+        await indexingTestProductDao.saveModel(product);
+
+        final watchedCategory = await product.watchIndexingTestCategory().first;
+        final watchedProducts =
+            await category.watchIndexingTestProducts().first;
+
+        expect(watchedCategory, isNotNull);
+        expect(watchedCategory!.id, equals(category.id));
+        expect(watchedProducts.map((item) => item.id), contains(product.id));
+      },
+    );
+
+    test(
+      'Company and Department watch all generated relation methods',
+      () async {
+        final company = Company(id: 'watch-company', name: 'Watch Company');
+        final department = Department(
+          id: 'watch-department',
+          name: 'Watch Department',
+          companyId: company.id,
+        );
+        final companyWithDepartment = Company(
+          id: company.id,
+          name: company.name,
+          departmentId: department.id,
+        );
+
+        await companyDao.saveModel(company);
+        await departmentDao.saveModel(department);
+        await companyDao.saveModel(companyWithDepartment);
+
+        final watchedDepartments =
+            await companyWithDepartment.watchDepartments().first;
+        final watchedDepartment =
+            await companyWithDepartment.watchDepartment().first;
+        final watchedCompany = await department.watchCompany().first;
+        final watchedCompanies = await department.watchCompanies().first;
+
+        expect(
+          watchedDepartments.map((item) => item.id),
+          contains(department.id),
+        );
+        expect(watchedDepartment, isNotNull);
+        expect(watchedDepartment!.id, equals(department.id));
+        expect(watchedCompany, isNotNull);
+        expect(watchedCompany!.id, equals(company.id));
+        expect(
+          watchedCompanies.map((item) => item.id),
+          contains(company.id),
+        );
+      },
+    );
+
+    test(
+      'ServerParentModel and ServerChildModel watch both relation sides',
+      () async {
+        final parent = ServerParentModel(
+          id: 'watch-server-parent',
+          name: 'Watch Server Parent',
+          category: 'coverage',
+        );
+        final child = ServerChildModel(
+          id: 'watch-server-child',
+          name: 'Watch Server Child',
+          parentId: parent.id,
+          data: 'coverage',
+        );
+
+        await serverParentModelDao.saveModel(parent);
+        await serverChildModelDao.saveModel(child);
+
+        final watchedChildren = await parent.watchServerChildModels().first;
+        final watchedParent = await child.watchServerParentModel().first;
+
+        expect(watchedChildren.map((item) => item.id), contains(child.id));
+        expect(watchedParent, isNotNull);
+        expect(watchedParent!.id, equals(parent.id));
+      },
+    );
+
+    test(
+      'Company/Department watch cycle has bounded emissions and clean cancel',
+      () async {
+        final company = Company(
+          id: 'cycle-watch-company',
+          name: 'Cycle Watch Company',
+          departmentId: 'cycle-watch-department',
+        );
+        final department = Department(
+          id: 'cycle-watch-department',
+          name: 'Cycle Watch Department',
+          companyId: company.id,
+        );
+
+        await companyDao.saveModel(company);
+        await departmentDao.saveModel(department);
+
+        final departmentEmissions = <Department?>[];
+        final companyEmissions = <Company?>[];
+        final departmentSubscription =
+            company.watchDepartment().listen(departmentEmissions.add);
+        final companySubscription =
+            department.watchCompany().listen(companyEmissions.add);
+
+        await Future.delayed(const Duration(milliseconds: 150));
+        expect(departmentEmissions, isNotEmpty);
+        expect(companyEmissions, isNotEmpty);
+
+        final initialDepartmentEmissionCount = departmentEmissions.length;
+        final initialCompanyEmissionCount = companyEmissions.length;
+
+        await companyDao.saveModel(
+          Company(
+            id: company.id,
+            name: 'Cycle Watch Company Updated',
+            departmentId: department.id,
+          ),
+        );
+        await Future.delayed(const Duration(milliseconds: 150));
+
+        expect(departmentEmissions, hasLength(initialDepartmentEmissionCount));
+        expect(
+          companyEmissions.length,
+          lessThanOrEqualTo(initialCompanyEmissionCount + 1),
+        );
+        expect(companyEmissions.last, isNotNull);
+        expect(companyEmissions.last!.name, contains('Updated'));
+
+        await departmentSubscription.cancel();
+        await companySubscription.cancel();
+
+        final departmentCountAfterCancel = departmentEmissions.length;
+        final companyCountAfterCancel = companyEmissions.length;
+
+        await companyDao.saveModel(
+          Company(
+            id: company.id,
+            name: 'Cycle Watch Company After Cancel',
+            departmentId: department.id,
+          ),
+        );
+        await Future.delayed(const Duration(milliseconds: 150));
+
+        expect(departmentEmissions, hasLength(departmentCountAfterCancel));
+        expect(companyEmissions, hasLength(companyCountAfterCancel));
+      },
+    );
+
+    test(
+      'Server parent/child watch cycle has bounded emissions and clean cancel',
+      () async {
+        final parent = ServerParentModel(
+          id: 'cycle-server-parent',
+          name: 'Cycle Server Parent',
+          category: 'cycle',
+        );
+        final child = ServerChildModel(
+          id: 'cycle-server-child',
+          name: 'Cycle Server Child',
+          parentId: parent.id,
+          data: 'initial',
+        );
+
+        await serverParentModelDao.saveModel(parent);
+        await serverChildModelDao.saveModel(child);
+
+        final childListEmissions = <List<ServerChildModel>>[];
+        final parentEmissions = <ServerParentModel?>[];
+        final childListSubscription =
+            parent.watchServerChildModels().listen(childListEmissions.add);
+        final parentSubscription =
+            child.watchServerParentModel().listen(parentEmissions.add);
+
+        await Future.delayed(const Duration(milliseconds: 150));
+        expect(childListEmissions, isNotEmpty);
+        expect(parentEmissions, isNotEmpty);
+
+        final initialChildListEmissionCount = childListEmissions.length;
+        final initialParentEmissionCount = parentEmissions.length;
+
+        await serverChildModelDao.saveModel(
+          ServerChildModel(
+            id: child.id,
+            name: child.name,
+            parentId: parent.id,
+            data: 'updated',
+          ),
+        );
+        await Future.delayed(const Duration(milliseconds: 150));
+
+        expect(
+          childListEmissions.length,
+          lessThanOrEqualTo(initialChildListEmissionCount + 1),
+        );
+        expect(parentEmissions, hasLength(initialParentEmissionCount));
+        expect(
+          childListEmissions.last
+              .singleWhere((item) => item.id == child.id)
+              .data,
+          equals('updated'),
+        );
+
+        await childListSubscription.cancel();
+        await parentSubscription.cancel();
+
+        final childListCountAfterCancel = childListEmissions.length;
+        final parentCountAfterCancel = parentEmissions.length;
+
+        await serverChildModelDao.saveModel(
+          ServerChildModel(
+            id: child.id,
+            name: child.name,
+            parentId: parent.id,
+            data: 'after cancel',
+          ),
+        );
+        await Future.delayed(const Duration(milliseconds: 150));
+
+        expect(childListEmissions, hasLength(childListCountAfterCancel));
+        expect(parentEmissions, hasLength(parentCountAfterCancel));
+      },
+    );
   });
 
   group('Cascade Delete Tests', () {

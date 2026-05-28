@@ -309,25 +309,34 @@ class ModelExtensionGenerator {
     );
     buffer.writeln('      return sourceRepository.watchOne(');
     buffer.writeln('        id,');
+    buffer.writeln('        loadPolicy: DataLoadPolicy.localOnly,');
     buffer.writeln('        watchRemote: watchRemote,');
     buffer.writeln('        retryOnFail: retryOnFail,');
     buffer.writeln('        headers: headers,');
     buffer.writeln('        extra: extra,');
     buffer.writeln('      )');
-    buffer.writeln('          .switchMap((sourceObject) {');
+    buffer.writeln('          .map((sourceObject) {');
     buffer.writeln('        if (sourceObject == null) {');
-    buffer.writeln('          return Stream.value(null);');
+    buffer.writeln('          return null;');
     buffer.writeln('        }');
     buffer.writeln();
     buffer
         .writeln('        final foreignKey = sourceObject.$foreignKeyColumn;');
+    buffer.writeln('        if (foreignKey == null) {');
+    buffer.writeln('          return null;');
+    buffer.writeln('        }');
+    buffer.writeln();
+    buffer.writeln('        return sourceObject.$foreignKeyColumn.toString();');
+    buffer.writeln('      })');
+    buffer.writeln('          .distinct()');
+    buffer.writeln('          .switchMap((foreignKey) {');
     buffer.writeln('        if (foreignKey == null) {');
     buffer.writeln('          return Stream.value(null);');
     buffer.writeln('        }');
     buffer.writeln();
     buffer.writeln('        // Switch to watching the target object');
     buffer.writeln('        return targetRepository.watchOne(');
-    buffer.writeln('          foreignKey.toString(),');
+    buffer.writeln('          foreignKey,');
     buffer.writeln(
       '          loadPolicy: loadPolicy ?? DataLoadPolicy.localOnly,',
     );

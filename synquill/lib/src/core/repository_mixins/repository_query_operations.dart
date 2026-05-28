@@ -213,18 +213,15 @@ mixin RepositoryQueryOperations<T extends SynquillDataModel<T>>
     Map<String, String>? headers,
     Map<String, dynamic>? extra,
   }) {
-    loadPolicy ??= defaultLoadPolicy;
+    loadPolicy ??= DataLoadPolicy.localOnly;
     queryParams ??= QueryParams.empty;
     log.info('Watching $T with ID $id using policy ${loadPolicy.name}');
-
-    late final Stream<T?> localStream;
 
     // For watch operations, only use local database
     // Load policy affects the initial fetch, but watch always monitors local
     switch (loadPolicy) {
       case DataLoadPolicy.localOnly:
         log.info('Policy: localOnly. Watching $T from local database');
-        localStream = watchFromLocal(id, queryParams: queryParams);
         break;
       case DataLoadPolicy.remoteFirst:
         throw UnimplementedError(
@@ -242,24 +239,99 @@ mixin RepositoryQueryOperations<T extends SynquillDataModel<T>>
           extra: extra,
           headers: headers,
         );
-        // Return local watch stream
-        localStream = watchFromLocal(id, queryParams: queryParams);
         break;
     }
 
-    if (!watchRemote) {
-      return localStream;
-    }
-
-    return watchLocalWithRealtime<T?>(
-      localStream,
-      scope: 'one',
-      id: id,
+    return _watchOneFollowingIdChanges(
+      id,
       queryParams: queryParams,
+      watchRemote: watchRemote,
+      retryOnFail: retryOnFail,
       headers: headers,
       extra: extra,
-      retryOnFail: retryOnFail,
     );
+  }
+
+  Stream<T?> _watchOneFollowingIdChanges(
+    String initialId, {
+    required QueryParams queryParams,
+    required bool watchRemote,
+    required bool retryOnFail,
+    required Map<String, String>? headers,
+    required Map<String, dynamic>? extra,
+  }) {
+    late final StreamController<T?> controller;
+    StreamSubscription<T?>? activeWatch;
+    StreamSubscription<RepositoryChange<T>>? idChangeWatch;
+    var currentId = initialId;
+    var bindVersion = 0;
+    var cancelled = false;
+
+    Stream<T?> streamForId(String id) {
+      final localStream = watchFromLocal(id, queryParams: queryParams);
+      if (!watchRemote) {
+        return localStream;
+      }
+
+      return watchLocalWithRealtime<T?>(
+        localStream,
+        scope: 'one',
+        id: id,
+        queryParams: queryParams,
+        headers: headers,
+        extra: extra,
+        retryOnFail: retryOnFail,
+      );
+    }
+
+    Future<void> bindToId(String nextId) async {
+      currentId = nextId;
+      final version = ++bindVersion;
+      final previousWatch = activeWatch;
+      activeWatch = null;
+      await previousWatch?.cancel();
+      if (cancelled || version != bindVersion) return;
+
+      activeWatch = streamForId(nextId).listen(
+        controller.add,
+        onError: controller.addError,
+      );
+    }
+
+    void bindToIdUnawaited(String nextId) {
+      unawaited(
+        bindToId(nextId).catchError((Object error, StackTrace stackTrace) {
+          if (!controller.isClosed) {
+            controller.addError(error, stackTrace);
+          }
+        }),
+      );
+    }
+
+    controller = StreamController<T?>(
+      onListen: () {
+        bindToIdUnawaited(initialId);
+        idChangeWatch = changeController.stream.listen(
+          (change) {
+            final newId = change.id;
+            if (change.type == RepositoryChangeType.idChanged &&
+                change.oldId == currentId &&
+                newId != null &&
+                newId != currentId) {
+              bindToIdUnawaited(newId);
+            }
+          },
+          onError: controller.addError,
+        );
+      },
+      onCancel: () async {
+        cancelled = true;
+        await idChangeWatch?.cancel();
+        await activeWatch?.cancel();
+      },
+    );
+
+    return controller.stream;
   }
 
   /// Finds an item by ID.

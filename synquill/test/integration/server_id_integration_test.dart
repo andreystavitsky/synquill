@@ -1389,10 +1389,6 @@ void main() {
         parentAdapter = MockServerParentAdapter();
         childAdapter = MockServerChildAdapter();
 
-        // Create repository instances directly with mock adapters
-        parentRepo = _TestServerParentRepository(db, parentAdapter);
-        childRepo = _TestServerChildRepository(db, childAdapter);
-
         // Register custom repositories for global system (RetryExecutor)
         SynquillRepositoryProvider.register<ServerParentModel>(
           (db) => _TestServerParentRepository(db, parentAdapter),
@@ -1400,6 +1396,11 @@ void main() {
         SynquillRepositoryProvider.register<ServerChildModel>(
           (db) => _TestServerChildRepository(db, childAdapter),
         );
+
+        parentRepo = SynquillRepositoryProvider.getFrom<ServerParentModel>(db)
+            as _TestServerParentRepository;
+        childRepo = SynquillRepositoryProvider.getFrom<ServerChildModel>(db)
+            as _TestServerChildRepository;
       });
 
       test('should maintain foreign key relationships when parent ID changes',
@@ -1742,6 +1743,86 @@ void main() {
         // Clean up subscriptions
         await parentSub.cancel();
         await childSub.cancel();
+      });
+
+      test('watchOne follows server-generated ID negotiation', () async {
+        final tempParentId = generateCuid();
+        final parent = ServerParentModel(
+          id: tempParentId,
+          name: 'Watched Parent',
+          category: 'Watch ID Negotiation',
+        );
+
+        final watchedParents = <ServerParentModel?>[];
+        final subscription =
+            parentRepo.watchOne(tempParentId).listen(watchedParents.add);
+
+        await parentRepo.save(parent, savePolicy: DataSavePolicy.localFirst);
+        await Future.delayed(const Duration(milliseconds: 500));
+        await SynquillStorage.instance
+            .processBackgroundSyncTasks(forceSync: true);
+        await Future.delayed(const Duration(milliseconds: 100));
+
+        final finalParents = await parentRepo.findAll();
+        expect(finalParents, hasLength(1));
+        final finalParent = finalParents.single;
+
+        expect(finalParent.id, startsWith('server_parent_'));
+        expect(await parentRepo.findOne(tempParentId), isNull);
+        expect(
+          watchedParents.whereType<ServerParentModel>().map((item) => item.id),
+          contains(finalParent.id),
+        );
+        expect(watchedParents.last, isNotNull);
+        expect(watchedParents.last!.id, finalParent.id);
+
+        await subscription.cancel();
+      });
+
+      test(
+          'ServerChildModel.watchServerParentModel follows child and parent '
+          'server IDs', () async {
+        final tempParentId = generateCuid();
+        final tempChildId = generateCuid();
+        final parent = ServerParentModel(
+          id: tempParentId,
+          name: 'Watched Relation Parent',
+          category: 'Relation Watch',
+        );
+        final child = ServerChildModel(
+          id: tempChildId,
+          name: 'Watched Relation Child',
+          parentId: tempParentId,
+          data: 'Relation data',
+        );
+
+        final watchedParents = <ServerParentModel?>[];
+        final subscription =
+            child.watchServerParentModel().listen(watchedParents.add);
+
+        await parentRepo.save(parent, savePolicy: DataSavePolicy.localFirst);
+        await childRepo.save(child, savePolicy: DataSavePolicy.localFirst);
+        await Future.delayed(const Duration(milliseconds: 500));
+        await SynquillStorage.instance
+            .processBackgroundSyncTasks(forceSync: true);
+        await Future.delayed(const Duration(milliseconds: 150));
+
+        final finalParents = await parentRepo.findAll();
+        final finalChildren = await childRepo.findAll();
+        expect(finalParents, hasLength(1));
+        expect(finalChildren, hasLength(1));
+
+        final finalParent = finalParents.single;
+        final finalChild = finalChildren.single;
+        expect(finalParent.id, startsWith('server_parent_'));
+        expect(finalChild.id, startsWith('server_child_'));
+        expect(finalChild.parentId, finalParent.id);
+        expect(await parentRepo.findOne(tempParentId), isNull);
+        expect(await childRepo.findOne(tempChildId), isNull);
+        expect(watchedParents.last, isNotNull);
+        expect(watchedParents.last!.id, finalParent.id);
+
+        await subscription.cancel();
       });
     });
 
