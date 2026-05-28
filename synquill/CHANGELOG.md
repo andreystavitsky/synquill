@@ -1,3 +1,18 @@
+## 0.8.3
+
+### Changed
+- `watchOne(id)` is now passive by default and no longer inherits
+  `defaultLoadPolicy`; use `loadPolicy: DataLoadPolicy.localThenRemote`
+  explicitly when a remote refresh is required.
+
+### Fixed
+- `watchOne` now follows `RepositoryChange.idChanged` events so active
+  watches move from temporary client IDs to server-generated IDs.
+- `watchOne(watchRemote: true)` now rebinds realtime subscriptions after an
+  ID change.
+- Generated relation watch paths avoid unnecessary ManyToOne re-subscription
+  churn when the source model changes but its foreign key does not.
+
 ## 0.8.2
 
 - Resolve critical runtime and generator issues.

@@ -1,3 +1,10 @@
+## 0.8.3
+
+### Changed
+- Generated ManyToOne watch methods now watch the source object with
+  `DataLoadPolicy.localOnly` explicitly, derive a foreign-key stream, apply
+  `distinct()`, and only switch target watchers when the foreign key changes.
+
 ## 0.8.2
 
 - Resolve critical runtime and generator issues.

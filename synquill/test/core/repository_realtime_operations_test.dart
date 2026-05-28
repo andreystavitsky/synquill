@@ -309,6 +309,115 @@ void main() {
       await changeSubscription.cancel();
     });
 
+    test(
+      'watchOne without explicit loadPolicy is passive localOnly',
+      () async {
+        await repository.saveToLocal(
+          TestUser(id: '1', name: 'Local', email: 'local@example.com'),
+        );
+        adapter.remote['1'] = TestUser(
+          id: '1',
+          name: 'Remote snapshot',
+          email: 'remote@example.com',
+        );
+
+        final subscription = repository.watchOne('1').listen((_) {});
+        await Future<void>.delayed(const Duration(milliseconds: 120));
+
+        expect(adapter.findOneCallCount, 0);
+        expect(adapter.subscribeCallCount, 0);
+
+        await subscription.cancel();
+      },
+    );
+
+    test('watchOne explicit localThenRemote performs initial refresh',
+        () async {
+      adapter.remote['1'] = TestUser(
+        id: '1',
+        name: 'Remote snapshot',
+        email: 'remote@example.com',
+      );
+
+      final subscription = repository
+          .watchOne('1', loadPolicy: DataLoadPolicy.localThenRemote)
+          .listen((_) {});
+      await Future<void>.delayed(const Duration(milliseconds: 120));
+
+      expect(adapter.findOneCallCount, 1);
+      expect(adapter.subscribeCallCount, 0);
+
+      await subscription.cancel();
+    });
+
+    test('watchOne follows idChanged events to the server id', () async {
+      const tempId = 'temp-user';
+      const serverId = 'server-user';
+      final tempUser = TestUser(
+        id: tempId,
+        name: 'Temp',
+        email: 'temp@example.com',
+      );
+      final serverUser = TestUser(
+        id: serverId,
+        name: 'Server',
+        email: 'server@example.com',
+      );
+      final updatedServerUser = TestUser(
+        id: serverId,
+        name: 'Server updated',
+        email: 'server@example.com',
+      );
+
+      await repository.saveToLocal(tempUser);
+
+      final values = <TestUser?>[];
+      final subscription = repository.watchOne(tempId).listen(values.add);
+      await pumpEventQueue();
+
+      await repository.saveToLocal(serverUser);
+      repository.emitIdChanged(serverUser, tempId, serverId);
+      await pumpEventQueue();
+
+      await repository.saveToLocal(updatedServerUser);
+      await pumpEventQueue();
+
+      expect(values.map((user) => user?.id), containsAll([tempId, serverId]));
+      expect(values.last?.name, 'Server updated');
+
+      await subscription.cancel();
+    });
+
+    test('watchOne watchRemote re-subscribes after idChanged', () async {
+      const tempId = 'temp-user';
+      const serverId = 'server-user';
+      final tempUser = TestUser(
+        id: tempId,
+        name: 'Temp',
+        email: 'temp@example.com',
+      );
+      final serverUser = TestUser(
+        id: serverId,
+        name: 'Server',
+        email: 'server@example.com',
+      );
+
+      await repository.saveToLocal(tempUser);
+
+      final subscription =
+          repository.watchOne(tempId, watchRemote: true).listen((_) {});
+      await pumpEventQueue();
+
+      await repository.saveToLocal(serverUser);
+      repository.emitIdChanged(serverUser, tempId, serverId);
+      await Future<void>.delayed(const Duration(milliseconds: 40));
+
+      expect(adapter.subscribedIds, [tempId, serverId]);
+      expect(adapter.cancelCount, greaterThanOrEqualTo(1));
+
+      await subscription.cancel();
+    });
+
     test('watchRemote is orthogonal to localThenRemote initial refresh',
         () async {
       adapter.remote['1'] = TestUser(
@@ -574,6 +683,7 @@ class _RealtimeAdapter extends ApiAdapterBase<TestUser>
     implements RealtimeApiAdapter<TestUser> {
   final remote = <String, TestUser>{};
   final _controllers = <StreamController<RealtimeEvent<TestUser>>>[];
+  final subscribedIds = <String?>[];
   int subscribeCallCount = 0;
   int cancelCount = 0;
   int findOneCallCount = 0;
@@ -605,6 +715,7 @@ class _RealtimeAdapter extends ApiAdapterBase<TestUser>
     Map<String, dynamic>? extra,
   }) {
     subscribeCallCount++;
+    subscribedIds.add(id);
     if (failNextSubscriptions > 0) {
       failNextSubscriptions--;
       return Stream<RealtimeEvent<TestUser>>.error(
@@ -790,6 +901,10 @@ class _RealtimeRepository extends SynquillRepositoryBase<TestUser> {
 
   void addLocal(TestUser user) {
     _local[user.id] = user;
+  }
+
+  void emitIdChanged(TestUser item, String oldId, String newId) {
+    changeController.add(RepositoryChange.idChanged(item, oldId, newId));
   }
 
   @override

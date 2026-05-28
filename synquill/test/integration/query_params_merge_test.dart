@@ -130,5 +130,24 @@ void main() {
       expect(todos[0].title, equals('Important Task'));
       expect(todos[0].isCompleted, isTrue);
     });
+
+    test('watchTodos overwrites conflicting userId filter', () async {
+      final allUsers = await userRepository.findAll();
+      final testUser = allUsers.first;
+
+      final conflictingQueryParams = QueryParams(
+        filters: [
+          TodoFields.userId.equals('different-user-id'),
+          TodoFields.isCompleted.equals(false),
+        ],
+      );
+
+      final stream = testUser.watchTodos(queryParams: conflictingQueryParams);
+      final todos = await stream.first;
+
+      expect(todos.length, equals(2));
+      expect(todos.every((todo) => todo.userId == testUser.id), isTrue);
+      expect(todos.every((todo) => todo.isCompleted == false), isTrue);
+    });
   });
 }
