@@ -23,11 +23,11 @@ Add both the core engine and the GraphQL adapter to your Flutter project's `pubs
 
 ```yaml
 dependencies:
-  synquill: ^0.8.0
-  synquill_graphql: ^0.8.0
+  synquill: ^0.8.3
+  synquill_graphql: ^0.8.2
 
 dev_dependencies:
-  synquill_gen: ^0.8.0
+  synquill_gen: ^0.8.3
   build_runner: ^2.4.14
 ```
 

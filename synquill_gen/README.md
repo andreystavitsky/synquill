@@ -16,7 +16,7 @@ Add this package as a dev dependency in your `pubspec.yaml`:
 dev_dependencies:
   # Code generation tool - required for synquill
   build_runner: ^2.4.15
-  synquill_gen: ^0.8.1
+  synquill_gen: ^0.8.3
 ```
 
 ## Usage

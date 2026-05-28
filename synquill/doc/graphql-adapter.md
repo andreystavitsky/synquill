@@ -33,8 +33,8 @@ Add both the core package and the GraphQL adapter package to your `pubspec.yaml`
 
 ```yaml
 dependencies:
-  synquill: ^0.8.0
-  synquill_graphql: ^0.8.0
+  synquill: ^0.8.3
+  synquill_graphql: ^0.8.2
 ```
 
 ---

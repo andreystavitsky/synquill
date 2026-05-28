@@ -20,7 +20,7 @@ dependencies:
   
   path_provider: any
   
-  synquill: ^0.8.2
+  synquill: ^0.8.3
   synquill_graphql: ^0.8.2
   
   # Required for generated database logging
@@ -40,7 +40,7 @@ dev_dependencies:
   # Code generation tools - required for synquill
   build_runner: ^2.4.14
 
-  synquill_gen: ^0.8.2
+  synquill_gen: ^0.8.3
   
   flutter_lints: ^5.0.0
 

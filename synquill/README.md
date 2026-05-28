@@ -46,12 +46,12 @@ Add to your `pubspec.yaml`:
 ```yaml
 dependencies:
   json_annotation: ^4.9.0
-  synquill: ^0.8.0
+  synquill: ^0.8.3
   # If using GraphQL:
-  synquill_graphql: ^0.8.0
+  synquill_graphql: ^0.8.2
 
 dev_dependencies:
-  synquill_gen: ^0.8.0
+  synquill_gen: ^0.8.3
   build_runner: ^2.4.14
 ```
 
@@ -283,5 +283,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ---
 
 Built with ❤️ for the Flutter community
-
 
