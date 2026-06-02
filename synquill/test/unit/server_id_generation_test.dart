@@ -43,14 +43,26 @@ void main() {
       expect(newModel.description, equals('Test Description'));
     });
 
-    test('ID negotiation infrastructure exists', () {
-      // Test that enums and annotations work
-      expect(IdGenerationStrategy.client, isNotNull);
-      expect(IdGenerationStrategy.server, isNotNull);
+    test('RepositoryChange.idChanged preserves old and new IDs', () {
+      final originalId = generateCuid();
+      final serverId = generateCuid();
+      final model = ServerTestModel(
+        id: serverId,
+        name: 'Changed Model',
+        description: 'ID changed',
+      );
 
-      // Test that repository change types include idChanged
-      expect(RepositoryChangeType.values,
-          contains(RepositoryChangeType.idChanged));
+      final change = RepositoryChange<ServerTestModel>.idChanged(
+        model,
+        originalId,
+        serverId,
+      );
+
+      expect(change.type, equals(RepositoryChangeType.idChanged));
+      expect(change.item, same(model));
+      expect(change.oldId, equals(originalId));
+      expect(change.id, equals(serverId));
+      expect(change.error, isNull);
     });
 
     test('IdNegotiationService exists and works', () {

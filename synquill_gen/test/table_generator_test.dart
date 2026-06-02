@@ -188,20 +188,6 @@ void main() {
   });
 
   group('ModelAnalyzer relation field indexing validation', () {
-    test('throws error when @Indexed annotation is used on ManyToOne field',
-        () {
-      // This test would need to be in a separate test file for ModelAnalyzer
-      // since we can't easily mock ClassElement here
-      // For now, this serves as documentation of expected behavior
-    });
-
-    test('throws error when @Indexed annotation is used on OneToMany field',
-        () {
-      // This test would need to be in a separate test file for ModelAnalyzer
-      // since we can't easily mock ClassElement here
-      // For now, this serves as documentation of expected behavior
-    });
-
     test('automatically indexes ManyToOne fields without explicit @Indexed',
         () {
       final manyToOneField = FieldInfo(

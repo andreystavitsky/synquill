@@ -196,9 +196,7 @@ void main() {
       expect(allModels.length, equals(0));
 
       // Step 2: Call truncateLocal() on empty repository
-      expect(() => repository.truncateLocal(), returnsNormally);
-
-      await repository.truncateLocal();
+      await expectLater(repository.truncateLocal(), completes);
 
       // Step 3: Verify repository is still empty
       final allModelsAfter = await repository.fetchAllFromLocal();

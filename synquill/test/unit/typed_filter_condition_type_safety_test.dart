@@ -2,7 +2,7 @@ import 'package:synquill/synquill.dart';
 
 import 'package:test/test.dart';
 
-/// Test file to demonstrate compile-time type safety of TypedFilterCondition
+/// Tests runtime behavior for correctly typed TypedFilterCondition builders.
 void main() {
   group('TypedFilterCondition Type Safety', () {
     // Define test field selectors
@@ -10,8 +10,7 @@ void main() {
     const stringField = FieldSelector<String>('name', String);
     const dateTimeField = FieldSelector<DateTime>('createdAt', DateTime);
 
-    test('should enforce correct types for single value operations', () {
-      // These should work fine - correct types
+    test('builds single value operations with correctly typed values', () {
       final intEquals = intField.equals(123);
       final stringContains = stringField.contains('test');
       final dateLessThan = dateTimeField.lessThan(DateTime.now());
@@ -21,8 +20,7 @@ void main() {
       expect(dateLessThan.field.fieldName, equals('createdAt'));
     });
 
-    test('should enforce correct types for list operations', () {
-      // These should work fine - correct types
+    test('builds list operations with correctly typed values', () {
       final intInList = intField.inList([1, 2, 3]);
       final stringNotInList = stringField.notInList(['a', 'b', 'c']);
 
@@ -86,37 +84,6 @@ void main() {
     });
   });
 
-  group('Compile-time Type Safety Demonstration', () {
-    // This group contains examples that would cause compile-time errors
-    // if type safety is properly implemented.
-    //
-    // The following code snippets are commented out because they should
-    // NOT compile if type safety is working correctly:
-
-    test('demonstrates type safety enforcement', () {
-      const intField = FieldSelector<int>('value', int);
-      const stringField = FieldSelector<String>('name', String);
-
-      // These should work (correct types):
-      final validIntCondition = intField.equals(123);
-      final validStringCondition = stringField.equals('test');
-
-      expect(validIntCondition.field.fieldName, equals('value'));
-      expect(validStringCondition.field.fieldName, equals('name'));
-
-      // The following would cause compile-time errors if uncommented:
-
-      // ❌ This should NOT compile - passing string to int field:
-      // intField.equals('invalid');
-
-      // ❌ This should NOT compile - passing int to string field:
-      // stringField.equals( 123);
-
-      // ❌ This should NOT compile - wrong list type:
-      // intField.inList( ['a', 'b', 'c']);
-
-      // ❌ This should NOT compile - mixing types in list:
-      // intField.inList( [1, 'mixed', 3]);
-    });
-  });
+  // Negative compile-time type-safety cases need analyzer fixtures. Keeping
+  // commented-out invalid Dart here would not exercise the test runner.
 }

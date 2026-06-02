@@ -66,23 +66,32 @@ void main() {
   });
 
   group('Repository Integration Tests', () {
-    test('ServerTestModel repository should use RepositoryServerIdMixin', () {
-      // This test verifies that the generated repository includes the
-      // server ID mixin for models configured with server-generated IDs
+    test('generated repository uses RepositoryServerIdMixin', () async {
+      final database = SynquillDatabase(NativeDatabase.memory());
+      addTearDown(database.close);
 
-      // Note: Full repository integration tests are in the integration
-      // test suite. Here we just verify the ID negotiation infrastructure
-      // is in place
+      final repository = ServerTestModelRepository(database);
+      final model = ServerTestModel(
+        id: generateCuid(),
+        name: 'Repository Test',
+        description: 'Generated repository mixin test',
+      );
+      const temporaryClientId = 'temporary-client-id';
 
-      // Verify that enums and service classes are available
-      expect(IdNegotiationStatus.pending, isNotNull);
       expect(
-          () => IdNegotiationService<ServerTestModel>(
-              usesServerGeneratedId: true),
-          returnsNormally);
+        repository,
+        isA<RepositoryServerIdMixin<ServerTestModel>>(),
+      );
+      expect(repository.modelUsesServerGeneratedId(model), isTrue);
+      expect(repository.hasTemporaryId(model), isFalse);
 
-      // This confirms repository integration infrastructure is ready
-      expect(true, isTrue);
+      repository.markAsTemporary(model, temporaryClientId);
+
+      expect(repository.hasTemporaryId(model), isTrue);
+      expect(
+        repository.getTemporaryClientId(model),
+        equals(temporaryClientId),
+      );
     });
 
     test('Extension methods work correctly on models', () {

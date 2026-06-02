@@ -99,7 +99,7 @@ void main() {
     test(
       'obliterateLocalStorage() clears all local data completely',
       () async {
-        final List<dynamic> unhandledErrors = [];
+        final unhandledErrors = <Object>[];
 
         // Run the test in a zone that captures unhandled
         // QueueCancelledException
@@ -386,33 +386,22 @@ void main() {
             reason: 'Background sync should be ready after obliteration',
           );
 
-          // Should be able to process background sync without errors
-          expect(
-            () => SynquillStorage.instance.processBackgroundSyncTasks(),
-            returnsNormally,
+          await expectLater(
+            SynquillStorage.instance.processBackgroundSyncTasks(),
+            completes,
           );
         }, (error, stack) {
-          // Capture unhandled async errors (like QueueCancelledException)
           unhandledErrors.add(error);
-          print('Captured unhandled error: ${error.runtimeType} - $error');
         });
 
-        // Verify that we captured the expected QueueCancelledException
-        // instances but they didn't cause test failure
-        expect(unhandledErrors.isNotEmpty, isTrue,
-            reason:
-                'Should have captured some unhandled QueueCancelledException '
-                'instances');
-
-        print('Test completed successfully with ${unhandledErrors.length} '
-            'captured unhandled errors');
+        _expectOnlyQueueCancellationErrors(unhandledErrors);
       },
     );
 
     test(
       'obliterateLocalStorage() handles multiple repository types',
       () async {
-        final List<dynamic> unhandledErrors = [];
+        final unhandledErrors = <Object>[];
 
         await runZonedGuarded(() async {
           // For this test, we'll just verify that the method can handle
@@ -455,21 +444,16 @@ void main() {
 
           // Verify system is still functional
           expect(() => SynquillStorage.instance, returnsNormally);
-        }, (error, stack) {
-          // Capture unhandled async errors (like QueueCancelledException)
-          unhandledErrors.add(error);
-          print('Captured unhandled error: ${error.runtimeType} - $error');
-        });
+        }, (error, stack) => unhandledErrors.add(error));
 
-        print('Test completed successfully with ${unhandledErrors.length} '
-            'captured unhandled errors');
+        _expectOnlyQueueCancellationErrors(unhandledErrors);
       },
     );
 
     test(
       'obliterateLocalStorage() handles empty database gracefully',
       () async {
-        final List<dynamic> unhandledErrors = [];
+        final unhandledErrors = <Object>[];
 
         await runZonedGuarded(() async {
           // Verify database is empty
@@ -509,21 +493,16 @@ void main() {
           );
           expect(savedModel, isNotNull);
           expect(savedModel!.name, equals('Empty DB Test'));
-        }, (error, stack) {
-          // Capture unhandled async errors (like QueueCancelledException)
-          unhandledErrors.add(error);
-          print('Captured unhandled error: ${error.runtimeType} - $error');
-        });
+        }, (error, stack) => unhandledErrors.add(error));
 
-        print('Test completed successfully with ${unhandledErrors.length} '
-            'captured unhandled errors');
+        _expectOnlyQueueCancellationErrors(unhandledErrors);
       },
     );
 
     test(
       'obliterateLocalStorage() handles errors gracefully',
       () async {
-        final List<dynamic> unhandledErrors = [];
+        final unhandledErrors = <Object>[];
 
         await runZonedGuarded(() async {
           // Create some test data first
@@ -555,21 +534,16 @@ void main() {
 
           // System should remain functional
           expect(() => SynquillStorage.instance, returnsNormally);
-        }, (error, stack) {
-          // Capture unhandled async errors (like QueueCancelledException)
-          unhandledErrors.add(error);
-          print('Captured unhandled error: ${error.runtimeType} - $error');
-        });
+        }, (error, stack) => unhandledErrors.add(error));
 
-        print('Test completed successfully with ${unhandledErrors.length} '
-            'captured unhandled errors');
+        _expectOnlyQueueCancellationErrors(unhandledErrors);
       },
     );
 
     test(
       'obliterateLocalStorage() preserves repository registrations',
       () async {
-        final List<dynamic> unhandledErrors = [];
+        final unhandledErrors = <Object>[];
 
         await runZonedGuarded(() async {
           // Get initial repository registrations
@@ -628,21 +602,16 @@ void main() {
           expect(savedNewModel, isNotNull);
           expect((savedNewModel! as PlainModel).name,
               equals('Post Registration Test'));
-        }, (error, stack) {
-          // Capture unhandled async errors (like QueueCancelledException)
-          unhandledErrors.add(error);
-          print('Captured unhandled error: ${error.runtimeType} - $error');
-        });
+        }, (error, stack) => unhandledErrors.add(error));
 
-        print('Test completed successfully with ${unhandledErrors.length} '
-            'captured unhandled errors');
+        _expectOnlyQueueCancellationErrors(unhandledErrors);
       },
     );
 
     test(
       'obliterateLocalStorage() resets background sync state properly',
       () async {
-        final List<dynamic> unhandledErrors = [];
+        final unhandledErrors = <Object>[];
 
         await runZonedGuarded(() async {
           // Verify background sync manager is initialized and functional
@@ -693,26 +662,20 @@ void main() {
             returnsNormally,
           );
 
-          // Should be able to process background sync tasks
-          expect(
-            () => SynquillStorage.instance.processBackgroundSyncTasks(),
-            returnsNormally,
+          await expectLater(
+            SynquillStorage.instance.processBackgroundSyncTasks(),
+            completes,
           );
-        }, (error, stack) {
-          // Capture unhandled async errors (like QueueCancelledException)
-          unhandledErrors.add(error);
-          print('Captured unhandled error: ${error.runtimeType} - $error');
-        });
+        }, (error, stack) => unhandledErrors.add(error));
 
-        print('Test completed successfully with ${unhandledErrors.length} '
-            'captured unhandled errors');
+        _expectOnlyQueueCancellationErrors(unhandledErrors);
       },
     );
 
     test(
       'obliterateLocalStorage() clears retry executor state',
       () async {
-        final List<dynamic> unhandledErrors = [];
+        final unhandledErrors = <Object>[];
 
         await runZonedGuarded(() async {
           // Create test data and sync queue entries
@@ -793,21 +756,16 @@ void main() {
             isEmpty,
             reason: 'Retry executor should sync tasks created after obliterate',
           );
-        }, (error, stack) {
-          // Capture unhandled async errors (like QueueCancelledException)
-          unhandledErrors.add(error);
-          print('Captured unhandled error: ${error.runtimeType} - $error');
-        });
+        }, (error, stack) => unhandledErrors.add(error));
 
-        print('Test completed successfully with ${unhandledErrors.length} '
-            'captured unhandled errors');
+        _expectOnlyQueueCancellationErrors(unhandledErrors);
       },
     );
 
     test(
       'obliterateLocalStorage() maintains queue manager functionality',
       () async {
-        final List<dynamic> unhandledErrors = [];
+        final unhandledErrors = <Object>[];
 
         await runZonedGuarded(() async {
           // Get initial queue manager
@@ -878,15 +836,21 @@ void main() {
             finalStats[QueueType.foreground]!.activeAndPendingTasks,
             equals(0),
           );
-        }, (error, stack) {
-          // Capture unhandled async errors (like QueueCancelledException)
-          unhandledErrors.add(error);
-          print('Captured unhandled error: ${error.runtimeType} - $error');
-        });
+        }, (error, stack) => unhandledErrors.add(error));
 
-        print('Test completed successfully with ${unhandledErrors.length} '
-            'captured unhandled errors');
+        _expectOnlyQueueCancellationErrors(unhandledErrors);
       },
     );
   });
+}
+
+void _expectOnlyQueueCancellationErrors(List<Object> errors) {
+  final unexpected =
+      errors.where((error) => error is! QueueCancelledException).toList();
+
+  expect(
+    unexpected,
+    isEmpty,
+    reason: 'Unexpected unhandled async errors: $unexpected',
+  );
 }

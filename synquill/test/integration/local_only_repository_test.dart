@@ -284,7 +284,7 @@ void main() {
         expect(result, isNull);
 
         // Try to delete a non-existent item (should not throw)
-        expect(() => localRepo.delete('non-existent'), returnsNormally);
+        await expectLater(localRepo.delete('non-existent'), completes);
       });
 
       test('concurrent operations work correctly', () async {

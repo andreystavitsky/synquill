@@ -165,32 +165,6 @@ void main() {
         throwsA(isA<StateError>()),
       );
     });
-
-    test('rethrows TimeoutException on 20-second overrun', () async {
-      // Inject a RetryExecutor stub that hangs forever so the 20-second
-      // timeout is hit.  We can't swap out the executor easily, so we
-      // instead verify the 20 s timeout mechanism by using a very short
-      // custom timeout on a hung future.
-
-      // Create a completer that never resolves to simulate a hung executor.
-      final hung = Completer<void>();
-
-      // Directly call the timeout logic mirroring BackgroundSyncManager.
-      expect(
-        () async {
-          await hung.future.timeout(
-            const Duration(milliseconds: 50), // shortened for test speed
-            onTimeout: () {
-              throw TimeoutException(
-                'Background sync processing exceeded timeout',
-                const Duration(milliseconds: 50),
-              );
-            },
-          );
-        },
-        throwsA(isA<TimeoutException>()),
-      );
-    });
   });
 
   // ─────────────────────────────────────────────────────────────────────────

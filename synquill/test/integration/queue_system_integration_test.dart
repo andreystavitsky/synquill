@@ -325,14 +325,13 @@ void main() {
     });
 
     test('Queue Connectivity Response', () async {
-      final List<dynamic> unhandledErrors = [];
+      final unhandledErrors = <Object>[];
 
       await runZonedGuarded(() async {
         final queueManager = SynquillStorage.queueManager;
 
         // Add some tasks to queues and collect them in a way that handles
         // cancellation gracefully
-        final tasks = <Future<void>>[];
         final taskCompletions = <Completer<void>>[];
 
         for (int i = 0; i < 5; i++) {
@@ -355,7 +354,6 @@ void main() {
             task,
             queueType: QueueType.background,
           );
-          tasks.add(taskFuture);
 
           // Set up async handling for this task
           unawaited(
@@ -423,13 +421,10 @@ void main() {
         // This should trigger due task processing
         await Future.delayed(const Duration(milliseconds: 500));
       }, (error, stack) {
-        // Capture unhandled async errors (like QueueCancelledException)
         unhandledErrors.add(error);
-        print('Captured unhandled error: ${error.runtimeType} - $error');
       });
 
-      print('Test completed successfully with ${unhandledErrors.length} '
-          'captured unhandled errors');
+      _expectOnlyQueueCancellationErrors(unhandledErrors);
     });
 
     test('Network Error Prioritization', () async {
@@ -698,17 +693,20 @@ void main() {
       TestUserRepository.clearLocal();
     });
 
-    test('Invalid Network Task Parameters', () async {
-      expect(
-        () => NetworkTask<void>(
-          exec: () => Future.value(),
-          idempotencyKey: '', // Empty idempotency key
-          operation: SyncOperation.create,
-          modelType: 'TestModel',
-          modelId: 'test-1',
-        ),
-        returnsNormally, // Should not throw, but may cause issues later
+    test('NetworkTask preserves metadata for empty idempotency key', () {
+      final task = NetworkTask<void>(
+        exec: () => Future.value(),
+        idempotencyKey: '',
+        operation: SyncOperation.create,
+        modelType: 'TestModel',
+        modelId: 'test-1',
       );
+
+      expect(task.idempotencyKey, isEmpty);
+      expect(task.operation, equals(SyncOperation.create));
+      expect(task.modelType, equals('TestModel'));
+      expect(task.modelId, equals('test-1'));
+      expect(task.completer.isCompleted, isFalse);
     });
 
     test('Queue Manager Error Recovery', () async {
@@ -1142,7 +1140,7 @@ void main() {
     });
 
     test('STRESS: Network Interruption During Operations', () async {
-      final List<dynamic> unhandledErrors = [];
+      final unhandledErrors = <Object>[];
 
       await runZonedGuarded(() async {
         final queueManager = SynquillStorage.queueManager;
@@ -1201,13 +1199,10 @@ void main() {
               'network interruption',
         );
       }, (error, stack) {
-        // Capture unhandled async errors (like QueueCancelledException)
         unhandledErrors.add(error);
-        print('Captured unhandled error: ${error.runtimeType} - $error');
       });
 
-      print('Test completed successfully with ${unhandledErrors.length} '
-          'captured unhandled errors');
+      _expectOnlyQueueCancellationErrors(unhandledErrors);
     });
 
     test('STRESS: Resource Exhaustion Scenarios', () async {
@@ -1899,6 +1894,17 @@ void main() {
       await subscription.cancel();
     });
   });
+}
+
+void _expectOnlyQueueCancellationErrors(List<Object> errors) {
+  final unexpected =
+      errors.where((error) => error is! QueueCancelledException).toList();
+
+  expect(
+    unexpected,
+    isEmpty,
+    reason: 'Unexpected unhandled async errors: $unexpected',
+  );
 }
 
 /// Initializes the test storage system.

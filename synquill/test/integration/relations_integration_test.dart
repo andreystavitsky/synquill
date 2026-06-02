@@ -117,13 +117,11 @@ void main() {
             queryParams: queryParams,
           );
 
-          expect(userCompletedTodos.length, greaterThanOrEqualTo(0));
-          expect(
-            userCompletedTodos.every(
-              (todo) => todo.userId == targetUserId && todo.isCompleted,
-            ),
-            isTrue,
-          );
+          expect(userCompletedTodos, isNotEmpty);
+          for (final todo in userCompletedTodos) {
+            expect(todo.userId, equals(targetUserId));
+            expect(todo.isCompleted, isTrue);
+          }
         },
       );
 
