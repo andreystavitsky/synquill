@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:dio/dio.dart';
+import 'package:queue/queue.dart';
 import 'package:synquill/src/core/exceptions.dart';
 import 'package:synquill/src/core/repository_mixins/repository_types.dart';
 import 'package:synquill/src/runtime/retry_policy.dart';
@@ -95,6 +96,13 @@ void main() {
         );
         expect(
           actionFor(DuplicateSyncTaskException('duplicate idempotency key')),
+          RetryDecisionAction.retry,
+        );
+      });
+
+      test('retries queue cancellation from lifecycle changes', () {
+        expect(
+          actionFor(QueueCancelledException()),
           RetryDecisionAction.retry,
         );
       });

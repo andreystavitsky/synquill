@@ -43,6 +43,28 @@ void main() {
 
       expect(code, isNot(contains('registerIdJsonKey')));
     });
+
+    test('escapes custom id JSON keys as Dart string literals', () {
+      final code = ModelInfoRegistryGenerator.generateModelInfoRegistry([
+        ModelInfo(
+          className: 'FavoritePlace',
+          tableName: 'favorite_places',
+          endpoint: '/favorite_places',
+          importPath: 'package:example/favorite_place.dart',
+          fields: [
+            FieldInfo(name: 'id', dartType: _MockDartType('String')),
+          ],
+          idJsonKey: r"place'Id$bad\name",
+        ),
+      ]);
+
+      expect(
+        code,
+        contains(
+          r"ModelInfoRegistryProvider.registerIdJsonKey('FavoritePlace', 'place\'Id\$bad\\name');",
+        ),
+      );
+    });
   });
 }
 

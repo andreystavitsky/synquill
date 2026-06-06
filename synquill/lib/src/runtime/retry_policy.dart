@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:dio/dio.dart';
+import 'package:queue/queue.dart';
 import 'package:synquill/src/core/exceptions.dart';
 import 'package:synquill/src/core/repository_mixins/repository_types.dart';
 
@@ -67,6 +68,10 @@ class RetryPolicy {
 
     if (error is OfflineException) {
       return const RetryDecision.retry('offline');
+    }
+
+    if (error is QueueCancelledException) {
+      return const RetryDecision.retry('queue cancelled');
     }
 
     if (error is QueueCapacityExceededException ||

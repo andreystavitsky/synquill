@@ -33,14 +33,60 @@ class ModelInfoRegistryGenerator {
 
     for (final model in models) {
       if (model.idJsonKey != 'id') {
+        final modelTypeLiteral = _dartStringLiteral(model.className);
+        final idJsonKeyLiteral = _dartStringLiteral(model.idJsonKey);
         buffer.writeln(
           '  ModelInfoRegistryProvider.registerIdJsonKey('
-          '\'${model.className}\', \'${model.idJsonKey}\');',
+          '$modelTypeLiteral, $idJsonKeyLiteral);',
         );
       }
     }
 
     buffer.writeln();
+  }
+
+  static String _dartStringLiteral(String value) {
+    final buffer = StringBuffer("'");
+
+    for (final codeUnit in value.codeUnits) {
+      switch (codeUnit) {
+        case 0x08:
+          buffer.write(r'\b');
+          break;
+        case 0x09:
+          buffer.write(r'\t');
+          break;
+        case 0x0A:
+          buffer.write(r'\n');
+          break;
+        case 0x0C:
+          buffer.write(r'\f');
+          break;
+        case 0x0D:
+          buffer.write(r'\r');
+          break;
+        case 0x24:
+          buffer.write(r'\$');
+          break;
+        case 0x27:
+          buffer.write(r"\'");
+          break;
+        case 0x5C:
+          buffer.write(r'\\');
+          break;
+        default:
+          if (codeUnit < 0x20) {
+            buffer.write(r'\u{');
+            buffer.write(codeUnit.toRadixString(16));
+            buffer.write('}');
+          } else {
+            buffer.writeCharCode(codeUnit);
+          }
+      }
+    }
+
+    buffer.write("'");
+    return buffer.toString();
   }
 
   /// Generates cascade delete relation registration code

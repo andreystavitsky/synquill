@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:queue/queue.dart';
 import 'package:synquill/synquill_core.dart';
 import 'package:test/test.dart';
 
@@ -194,6 +195,32 @@ void main() {
       expect(task['attempt_count'], 1);
       expect(task['next_retry_at'], isNotNull);
       expect(task['last_error'], contains('DioException'));
+    });
+
+    test('schedules retry for queue cancellation lifecycle errors', () async {
+      await initStorage();
+      final user = TestUser(
+        id: 'queue-cancel-retry',
+        name: 'Queue Cancel Retry',
+        email: 'queue-cancel@example.test',
+      );
+      repository.addLocalUser(user);
+      mockAdapter.createError = QueueCancelledException();
+
+      final taskId = await insertTask(
+        modelType: 'TestUser',
+        modelId: user.id,
+        operation: SyncOperation.create.name,
+        payload: jsonEncode(user.toJson()),
+      );
+
+      final task = await processAndFetch(taskId);
+
+      expect(task, isNotNull);
+      expect(task!['status'], SyncStatus.pending.name);
+      expect(task['attempt_count'], 1);
+      expect(task['next_retry_at'], isNotNull);
+      expect(task['last_error'], contains('QueueCancelledException'));
     });
 
     test('discards delete tasks when remote resource is already gone',
