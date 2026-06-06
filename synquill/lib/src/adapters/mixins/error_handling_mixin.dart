@@ -98,7 +98,7 @@ mixin ErrorHandlingMixin<TModel extends SynquillDataModel<TModel>>
           error.stackTrace,
         );
       case DioExceptionType.badCertificate:
-        return NetworkException(
+        return BadCertificateException(
           'Bad certificate: ${error.message ?? "Invalid SSL certificate"}',
           error.stackTrace,
         );

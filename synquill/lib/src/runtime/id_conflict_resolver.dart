@@ -1,11 +1,14 @@
 import 'dart:async';
 import 'package:drift/drift.dart';
 import 'package:logging/logging.dart';
+import 'package:synquill/src/core/exceptions.dart';
 import 'package:synquill/src/core/model_info_registry_provider.dart';
 import 'package:synquill/src/core/synquill_storage.dart';
 import 'package:synquill/src/drift/sync_queue_dao.dart';
 import 'package:synquill/src/runtime/id_negotiation_service.dart';
 import 'package:synquill_utils/synquill_utils.dart';
+
+export 'package:synquill/src/core/exceptions.dart' show IdConflictException;
 
 /// Service for resolving ID conflicts during server ID negotiation.
 ///
@@ -748,35 +751,5 @@ class IdConflictResolver {
       _log.warning('Error marking record as conflicted: $e');
       // Non-critical error, continue operation
     }
-  }
-}
-
-/// Exception thrown when ID conflicts cannot be resolved.
-class IdConflictException implements Exception {
-  /// The error message.
-  final String message;
-
-  /// The temporary client ID that caused the conflict.
-  final String temporaryId;
-
-  /// The proposed server ID that conflicts.
-  final String proposedServerId;
-
-  /// The model type involved in the conflict.
-  final String modelType;
-
-  /// Creates a new [IdConflictException].
-  const IdConflictException(
-    this.message, {
-    required this.temporaryId,
-    required this.proposedServerId,
-    required this.modelType,
-  });
-
-  @override
-  String toString() {
-    return 'IdConflictException: $message '
-        '(temporary: $temporaryId, proposed: $proposedServerId, '
-        'model: $modelType)';
   }
 }

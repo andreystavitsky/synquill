@@ -17,6 +17,7 @@ import 'package:synquill/src/drift/sync_queue_dao.dart';
 import 'package:synquill/src/runtime/dependency_resolver.dart';
 import 'package:synquill/src/runtime/network_task.dart';
 import 'package:synquill/src/runtime/request_queue.dart';
+import 'package:synquill/src/runtime/retry_policy.dart';
 
 /// Manages retry logic for sync queue operations with exponential backoff.
 ///
@@ -291,6 +292,7 @@ class RetryExecutor {
     final operation = taskData['op'] as String;
     final attemptCount = taskData['attempt_count'] as int;
     final idempotencyKey = taskData['idempotency_key'] as String?;
+    final syncOperation = _tryParseSyncOperation(operation);
 
     _log.fine('Processing sync queue task $taskId: $operation $modelType');
 
@@ -332,43 +334,23 @@ class RetryExecutor {
         await _syncQueueDao.deleteTask(taskId);
         _log.info('Successfully synced task $taskId: $operation $modelType');
       } catch (networkError, networkStackTrace) {
-        // Check if model no longer exists locally
-        if (networkError is ModelNoLongerExistsException) {
-          // Model was deleted locally - remove task from sync queue
-          await _syncQueueDao.deleteTask(taskId);
-          _log.info(
-            'Deleted sync queue task $taskId: model no longer exists locally',
-          );
-        } else if (networkError is DoubleFallbackException) {
-          // Double 404 failure - task was already updated to remain due
-          // No additional retry scheduling needed
-          _log.info(
-            'Handling DoubleFallbackException for task $taskId, '
-            'task should remain available for manual retry',
-          );
-        } else {
-          // Network operation failed - schedule retry
-          await _scheduleRetry(taskId, attemptCount, networkError.toString());
-          _log.warning(
-            'Network operation failed for task $taskId, scheduled retry',
-            networkError,
-            networkStackTrace,
-          );
-        }
+        await _handleTaskFailure(
+          taskId: taskId,
+          attemptCount: attemptCount,
+          error: networkError,
+          stackTrace: networkStackTrace,
+          operation: syncOperation,
+        );
       }
     } catch (e, stackTrace) {
-      if (e is DoubleFallbackException) {
-        // Double 404 failure - task was already updated to remain due
-        // No additional retry scheduling needed
-        _log.info(
-          'Double fallback failure for task $taskId, '
-          'task remains available for manual retry',
-        );
-      } else {
-        _log.severe('Error processing sync queue task $taskId', e, stackTrace);
-        // Mark task as failed for retry
-        await _scheduleRetry(taskId, attemptCount, e.toString());
-      }
+      _log.severe('Error processing sync queue task $taskId', e, stackTrace);
+      await _handleTaskFailure(
+        taskId: taskId,
+        attemptCount: attemptCount,
+        error: e,
+        stackTrace: stackTrace,
+        operation: syncOperation,
+      );
     }
   }
 
@@ -441,7 +423,17 @@ class RetryExecutor {
     try {
       return SyncOperation.values.firstWhere((op) => op.name == operation);
     } catch (e) {
-      throw ArgumentError('Unknown sync operation: $operation');
+      throw InvalidSyncQueueTaskException(
+        'Unknown sync operation: $operation',
+      );
+    }
+  }
+
+  SyncOperation? _tryParseSyncOperation(String operation) {
+    try {
+      return _parseSyncOperation(operation);
+    } catch (_) {
+      return null;
     }
   }
 
@@ -450,15 +442,15 @@ class RetryExecutor {
     try {
       return convert.jsonDecode(payload) as Map<String, dynamic>;
     } catch (e) {
-      throw SynquillStorageException('Failed to parse task payload: $e');
+      throw InvalidSyncQueueTaskException('Failed to parse task payload: $e');
     }
   }
 
   /// Extracts model ID from model data.
   String _extractModelId(Map<String, dynamic> modelData) {
-    final modelId = modelData['id'] as String?;
-    if (modelId == null) {
-      throw SynquillStorageException('Model data missing ID');
+    final modelId = modelData['id'];
+    if (modelId is! String || modelId.isEmpty) {
+      throw InvalidSyncQueueTaskException('Model data missing ID');
     }
     return modelId;
   }
@@ -509,7 +501,7 @@ class RetryExecutor {
     );
 
     if (repository == null) {
-      throw SynquillStorageException(
+      throw SyncQueueConfigurationException(
         'No registered repository found for model type: $modelType',
       );
     }
@@ -800,6 +792,51 @@ class RetryExecutor {
       'Scheduled retry $nextAttempt/${config.maxRetryAttempts} for task $taskId '
       'at $nextRetryAt (delay: ${retryDelay.inSeconds}s)',
     );
+  }
+
+  Future<void> _handleTaskFailure({
+    required int taskId,
+    required int attemptCount,
+    required Object error,
+    required StackTrace stackTrace,
+    required SyncOperation? operation,
+  }) async {
+    final decision = RetryPolicy.evaluate(error, operation: operation);
+
+    switch (decision.action) {
+      case RetryDecisionAction.retry:
+        await _scheduleRetry(taskId, attemptCount, error.toString());
+        _log.warning(
+          'Retryable sync queue task failure for task $taskId '
+          '(${decision.reason}); scheduled retry',
+          error,
+          stackTrace,
+        );
+        break;
+      case RetryDecisionAction.markDead:
+        _log.severe(
+          'Non-retryable sync queue task failure for task $taskId '
+          '(${decision.reason}); marking dead',
+          error,
+          stackTrace,
+        );
+        await _markTaskAsDead(taskId, _formatTerminalError(error));
+        break;
+      case RetryDecisionAction.discard:
+        await _syncQueueDao.deleteTask(taskId);
+        _log.info(
+          'Discarded sync queue task $taskId after non-retryable '
+          'completion condition (${decision.reason})',
+        );
+        break;
+    }
+  }
+
+  String _formatTerminalError(Object error) {
+    if (error is DoubleFallbackException) {
+      return 'Fallback failed: ${error.toString()}';
+    }
+    return error.toString();
   }
 
   /// Marks a task as dead and removes it from the sync queue.

@@ -992,20 +992,26 @@ void main() {
         // Wait for sync processing attempts
         await Future.delayed(const Duration(milliseconds: 300));
 
-        // Step 5: Verify that the sync operation failed and is still pending
+        // Step 5: Verify that the sync operation failed permanently and is
+        // not returned as due for retry.
         final syncQueueDao = SyncQueueDao(database);
         final pendingTasks = await syncQueueDao.getDueTasks();
 
         expect(
-          pendingTasks.length,
-          1,
+          pendingTasks
+              .where((task) => task['model_id'] == 'test-model-double-404'),
+          isEmpty,
           reason: 'When both update and create fail with 404, '
-              'task should remain in sync queue for retry',
+              'task should not remain due for retry',
         );
 
-        final task = pendingTasks.first;
+        final allTasks = await syncQueueDao.getAllItems();
+        final task = allTasks.firstWhere(
+          (task) => task['model_id'] == 'test-model-double-404',
+        );
         expect(task['op'], 'update');
         expect(task['model_id'], 'test-model-double-404');
+        expect(task['status'], SyncStatus.dead.name);
 
         // Verify that the error message indicates both operations failed
         final lastError = task['last_error'] as String?;

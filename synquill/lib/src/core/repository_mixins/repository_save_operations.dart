@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:convert' as convert;
 import 'dart:math' as math;
 import 'package:cuid2/cuid2.dart';
-import 'package:dio/dio.dart';
 import 'package:drift/drift.dart';
 import 'package:meta/meta.dart';
 import 'package:synquill/src/adapters/api_adapter.dart';
@@ -22,6 +21,7 @@ import 'package:synquill/src/runtime/id_conflict_resolver.dart';
 import 'package:synquill/src/runtime/id_negotiation_service.dart';
 import 'package:synquill/src/runtime/network_task.dart';
 import 'package:synquill/src/runtime/request_queue.dart';
+import 'package:synquill/src/runtime/retry_policy.dart';
 import 'package:synquill_utils/synquill_utils.dart';
 
 /// Mixin providing save operations for repositories.
@@ -1192,22 +1192,11 @@ mixin RepositorySaveOperations<T extends SynquillDataModel<T>>
 
   /// Determines if an error is retryable.
   bool _isRetryableError(Object error) {
-    if (error is TimeoutException) return true;
-    if (error is DioException) {
-      // Retry on network errors, server errors, but not client errors
-      final type = error.type;
-      return type == DioExceptionType.connectionTimeout ||
-          type == DioExceptionType.receiveTimeout ||
-          type == DioExceptionType.sendTimeout ||
-          type == DioExceptionType.connectionError ||
-          (error.response?.statusCode != null &&
-              error.response!.statusCode! >= 500);
-    }
-    // Don't retry conflict errors
-    if (error is IdConflictException) return false;
-
-    // Default to retryable for unknown errors
-    return true;
+    return RetryPolicy.evaluate(
+          error,
+          operation: SyncOperation.create,
+        ).action ==
+        RetryDecisionAction.retry;
   }
 
   /// Replaces an item's ID everywhere it's referenced.

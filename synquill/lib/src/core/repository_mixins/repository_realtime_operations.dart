@@ -16,6 +16,7 @@ import 'package:synquill/src/core/repository_mixins/repository_types.dart';
 import 'package:synquill/src/core/synquill_data_model.dart';
 import 'package:synquill/src/core/synquill_storage.dart';
 import 'package:synquill/src/drift/sync_queue_dao.dart';
+import 'package:synquill/src/runtime/retry_policy.dart';
 
 /// Adds transport-neutral realtime subscription handling to repositories.
 mixin RepositoryRealtimeOperations<T extends SynquillDataModel<T>>
@@ -170,15 +171,7 @@ mixin RepositoryRealtimeOperations<T extends SynquillDataModel<T>>
   /// Whether [error] should retry the realtime subscription.
   @protected
   bool isRealtimeRetryableError(Object error) {
-    if (error is TimeoutException) return true;
-    if (error is OfflineException) return true;
-    if (error is NetworkException) return true;
-    if (error is ServerException) return true;
-    if (error is ApiException) {
-      final statusCode = error.statusCode;
-      return statusCode != null && statusCode >= 500;
-    }
-    return false;
+    return RetryPolicy.evaluate(error).action == RetryDecisionAction.retry;
   }
 
   /// Calculates the next realtime retry delay.

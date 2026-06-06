@@ -101,7 +101,7 @@ void main() {
       },
     );
 
-    test('zero jitter still schedules retry metadata after a failure',
+    test('zero jitter still schedules retry metadata after transient failure',
         () async {
       await SynquillStorage.init(
         database: database,
@@ -120,7 +120,7 @@ void main() {
         email: 'zero-jitter@example.test',
       );
       repository.addLocalUser(user);
-      mockAdapter.shouldFailOnCreate = true;
+      mockAdapter.setNetworkError(true);
 
       final syncQueueDao = SyncQueueDao(database);
       final taskId = await syncQueueDao.insertItem(

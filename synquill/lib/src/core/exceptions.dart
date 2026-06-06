@@ -47,6 +47,41 @@ class NetworkException extends SynquillStorageException {
   NetworkException(super.message, [super.stackTrace]);
 }
 
+/// Thrown when an SSL/TLS certificate failure occurs.
+///
+/// Unlike transient network failures, certificate failures usually require
+/// configuration or server-side changes and should not be retried.
+class BadCertificateException extends NetworkException {
+  /// Creates a [BadCertificateException] with an optional [stackTrace].
+  BadCertificateException(super.message, [super.stackTrace]);
+}
+
+/// Thrown when a sync queue row cannot be converted into a valid sync task.
+class InvalidSyncQueueTaskException extends SynquillStorageException {
+  /// Creates an [InvalidSyncQueueTaskException] with an optional [stackTrace].
+  InvalidSyncQueueTaskException(super.message, [super.stackTrace]);
+}
+
+/// Thrown when runtime configuration required for sync queue processing
+/// is missing or inconsistent.
+class SyncQueueConfigurationException extends SynquillStorageException {
+  /// Creates a [SyncQueueConfigurationException] with an optional stack trace.
+  SyncQueueConfigurationException(super.message, [super.stackTrace]);
+}
+
+/// Thrown when a request queue remains at capacity long enough that the
+/// caller should retry later.
+class QueueCapacityExceededException extends SynquillStorageException {
+  /// Creates a [QueueCapacityExceededException] with an optional stack trace.
+  QueueCapacityExceededException(super.message, [super.stackTrace]);
+}
+
+/// Thrown when a sync task with the same idempotency key is already active.
+class DuplicateSyncTaskException extends SynquillStorageException {
+  /// Creates a [DuplicateSyncTaskException] with an optional stack trace.
+  DuplicateSyncTaskException(super.message, [super.stackTrace]);
+}
+
 /// General API exception for HTTP errors.
 class ApiException extends SynquillStorageException {
   /// The HTTP status code, if available.
@@ -154,4 +189,34 @@ class DoubleFallbackException extends SynquillStorageException {
   @override
   String toString() => 'DoubleFallbackException: $message '
       '(Update: ${originalError.message}, Create: ${createError.message})';
+}
+
+/// Exception thrown when ID conflicts cannot be resolved.
+class IdConflictException implements Exception {
+  /// The error message.
+  final String message;
+
+  /// The temporary client ID that caused the conflict.
+  final String temporaryId;
+
+  /// The proposed server ID that conflicts.
+  final String proposedServerId;
+
+  /// The model type involved in the conflict.
+  final String modelType;
+
+  /// Creates a new [IdConflictException].
+  const IdConflictException(
+    this.message, {
+    required this.temporaryId,
+    required this.proposedServerId,
+    required this.modelType,
+  });
+
+  @override
+  String toString() {
+    return 'IdConflictException: $message '
+        '(temporary: $temporaryId, proposed: $proposedServerId, '
+        'model: $modelType)';
+  }
 }
