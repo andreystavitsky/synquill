@@ -110,32 +110,41 @@ extension PostRelationExtensions on Post {
       // Watch the source object for changes in foreign key
       return sourceRepository
           .watchOne(
-        id,
-        watchRemote: watchRemote,
-        retryOnFail: retryOnFail,
-        headers: headers,
-        extra: extra,
-      )
-          .switchMap((sourceObject) {
-        if (sourceObject == null) {
-          return Stream.value(null);
-        }
+            id,
+            loadPolicy: DataLoadPolicy.localOnly,
+            watchRemote: watchRemote,
+            retryOnFail: retryOnFail,
+            headers: headers,
+            extra: extra,
+          )
+          .map((sourceObject) {
+            if (sourceObject == null) {
+              return null;
+            }
 
-        final foreignKey = sourceObject.userId;
-        if (foreignKey == null) {
-          return Stream.value(null);
-        }
+            final foreignKey = sourceObject.userId;
+            if (foreignKey == null) {
+              return null;
+            }
 
-        // Switch to watching the target object
-        return targetRepository.watchOne(
-          foreignKey.toString(),
-          loadPolicy: loadPolicy ?? DataLoadPolicy.localOnly,
-          watchRemote: watchRemote,
-          retryOnFail: retryOnFail,
-          headers: headers,
-          extra: extra,
-        );
-      });
+            return sourceObject.userId.toString();
+          })
+          .distinct()
+          .switchMap((foreignKey) {
+            if (foreignKey == null) {
+              return Stream.value(null);
+            }
+
+            // Switch to watching the target object
+            return targetRepository.watchOne(
+              foreignKey,
+              loadPolicy: loadPolicy ?? DataLoadPolicy.localOnly,
+              watchRemote: watchRemote,
+              retryOnFail: retryOnFail,
+              headers: headers,
+              extra: extra,
+            );
+          });
     } catch (e, stackTrace) {
       _log.severe(
         'Failed to watch User for Post[$id]',
@@ -232,32 +241,41 @@ extension LocalNoteRelationExtensions on LocalNote {
       // Watch the source object for changes in foreign key
       return sourceRepository
           .watchOne(
-        id,
-        watchRemote: watchRemote,
-        retryOnFail: retryOnFail,
-        headers: headers,
-        extra: extra,
-      )
-          .switchMap((sourceObject) {
-        if (sourceObject == null) {
-          return Stream.value(null);
-        }
+            id,
+            loadPolicy: DataLoadPolicy.localOnly,
+            watchRemote: watchRemote,
+            retryOnFail: retryOnFail,
+            headers: headers,
+            extra: extra,
+          )
+          .map((sourceObject) {
+            if (sourceObject == null) {
+              return null;
+            }
 
-        final foreignKey = sourceObject.ownerId;
-        if (foreignKey == null) {
-          return Stream.value(null);
-        }
+            final foreignKey = sourceObject.ownerId;
+            if (foreignKey == null) {
+              return null;
+            }
 
-        // Switch to watching the target object
-        return targetRepository.watchOne(
-          foreignKey.toString(),
-          loadPolicy: loadPolicy ?? DataLoadPolicy.localOnly,
-          watchRemote: watchRemote,
-          retryOnFail: retryOnFail,
-          headers: headers,
-          extra: extra,
-        );
-      });
+            return sourceObject.ownerId.toString();
+          })
+          .distinct()
+          .switchMap((foreignKey) {
+            if (foreignKey == null) {
+              return Stream.value(null);
+            }
+
+            // Switch to watching the target object
+            return targetRepository.watchOne(
+              foreignKey,
+              loadPolicy: loadPolicy ?? DataLoadPolicy.localOnly,
+              watchRemote: watchRemote,
+              retryOnFail: retryOnFail,
+              headers: headers,
+              extra: extra,
+            );
+          });
     } catch (e, stackTrace) {
       _log.severe(
         'Failed to watch User for LocalNote[$id]',
@@ -628,32 +646,41 @@ extension TodoRelationExtensions on Todo {
       // Watch the source object for changes in foreign key
       return sourceRepository
           .watchOne(
-        id,
-        watchRemote: watchRemote,
-        retryOnFail: retryOnFail,
-        headers: headers,
-        extra: extra,
-      )
-          .switchMap((sourceObject) {
-        if (sourceObject == null) {
-          return Stream.value(null);
-        }
+            id,
+            loadPolicy: DataLoadPolicy.localOnly,
+            watchRemote: watchRemote,
+            retryOnFail: retryOnFail,
+            headers: headers,
+            extra: extra,
+          )
+          .map((sourceObject) {
+            if (sourceObject == null) {
+              return null;
+            }
 
-        final foreignKey = sourceObject.userId;
-        if (foreignKey == null) {
-          return Stream.value(null);
-        }
+            final foreignKey = sourceObject.userId;
+            if (foreignKey == null) {
+              return null;
+            }
 
-        // Switch to watching the target object
-        return targetRepository.watchOne(
-          foreignKey.toString(),
-          loadPolicy: loadPolicy ?? DataLoadPolicy.localOnly,
-          watchRemote: watchRemote,
-          retryOnFail: retryOnFail,
-          headers: headers,
-          extra: extra,
-        );
-      });
+            return sourceObject.userId.toString();
+          })
+          .distinct()
+          .switchMap((foreignKey) {
+            if (foreignKey == null) {
+              return Stream.value(null);
+            }
+
+            // Switch to watching the target object
+            return targetRepository.watchOne(
+              foreignKey,
+              loadPolicy: loadPolicy ?? DataLoadPolicy.localOnly,
+              watchRemote: watchRemote,
+              retryOnFail: retryOnFail,
+              headers: headers,
+              extra: extra,
+            );
+          });
     } catch (e, stackTrace) {
       _log.severe(
         'Failed to watch User for Todo[$id]',
@@ -663,4 +690,26 @@ extension TodoRelationExtensions on Todo {
       rethrow;
     }
   }
+}
+
+/// Generated ID management extension for FavoritePlace
+extension FavoritePlaceIdManagement on FavoritePlace {
+  /// Whether this model uses server-generated IDs
+  bool get $usesServerGeneratedId => false;
+
+  /// Create a new model instance with a different ID
+  /// This is used during ID negotiation when server assigns a different ID
+  FavoritePlace $replaceIdEverywhere(String newId) {
+    final json = toJson();
+    json['id'] = newId;
+    return fromJson(json);
+  }
+
+  /// Whether this model currently has a temporary ID
+  /// (always false for client-generated IDs)
+  bool get $hasTemporaryId => false;
+
+  /// Get temporary client ID for this model
+  /// (always null for client-generated IDs)
+  String? get $temporaryClientId => null;
 }

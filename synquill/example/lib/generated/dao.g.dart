@@ -1676,3 +1676,219 @@ class TodoDao extends DatabaseAccessor<SynquillDatabase>
   @override
   Future<int> deleteAll() => delete(todoTable).go();
 }
+
+/// Typed field selectors for FavoritePlace model
+class FavoritePlaceFields {
+  /// Field selector for id
+  static const FieldSelector<String> id = FieldSelector<String>('id', String);
+
+  /// Field selector for title
+  static const FieldSelector<String> title =
+      FieldSelector<String>('title', String);
+
+  /// Field selector for address
+  static const FieldSelector<String> address =
+      FieldSelector<String>('address', String);
+
+  /// Field selector for lastSyncedAt
+  static const FieldSelector<DateTime> lastSyncedAt =
+      FieldSelector<DateTime>('lastSyncedAt', DateTime);
+
+  /// Field selector for createdAt
+  static const FieldSelector<DateTime> createdAt =
+      FieldSelector<DateTime>('createdAt', DateTime);
+
+  /// Field selector for updatedAt
+  static const FieldSelector<DateTime> updatedAt =
+      FieldSelector<DateTime>('updatedAt', DateTime);
+
+  /// Field selector for syncStatus
+  static const FieldSelector<SyncStatus> syncStatus =
+      FieldSelector<SyncStatus>('syncStatus', SyncStatus);
+}
+
+/// Data Access Object for FavoritePlace operations
+///
+/// Provides CRUD operations and query methods for FavoritePlace entities
+/// in the SQLite database using Drift ORM.
+@DriftAccessor(tables: [FavoritePlaceTable])
+class FavoritePlaceDao extends DatabaseAccessor<SynquillDatabase>
+    with
+        _$FavoritePlaceDaoMixin,
+        DaoHelpersMixin<FavoritePlaceTable, FavoritePlace>,
+        BaseDaoMixin<FavoritePlace> {
+  /// Creates a new FavoritePlace DAO instance
+  FavoritePlaceDao(super.attachedDatabase);
+
+  /// Get all favoriteplaces as Drift data
+  Future<List<FavoritePlace>> getAllData() => select(favoritePlaceTable).get();
+
+  /// Get favoriteplace data by ID
+  Future<FavoritePlace?> getDataById(String id) =>
+      (select(favoritePlaceTable)..where((t) => t.id.equals(id)))
+          .getSingleOrNull();
+
+  /// Get all favoriteplaces as model objects
+  Future<List<FavoritePlace>> getAll({QueryParams? queryParams}) async {
+    queryParams ??= QueryParams.empty;
+    final query = select(favoritePlaceTable);
+    applyQueryParams(query, queryParams);
+    final dataList = await query.get();
+    return dataList;
+  }
+
+  /// Get favoriteplace by ID as model object
+  Future<FavoritePlace?> getById(String id, {QueryParams? queryParams}) async {
+    queryParams ??= QueryParams.empty;
+    final query = select(favoritePlaceTable)..where((t) => t.id.equals(id));
+    applyQueryParams(query, queryParams);
+    final data = await query.getSingleOrNull();
+    return data;
+  }
+
+  /// Insert or update favoriteplace
+  Future<int> insertOrUpdate(FavoritePlaceTableCompanion entry) =>
+      into(favoritePlaceTable).insertOnConflictUpdate(entry);
+
+  /// Save favoriteplace model
+  @override
+  Future<FavoritePlace> saveModel(FavoritePlace model) async {
+    final companion = FavoritePlaceTableCompanion(
+        id: Value(model.id),
+        title: Value(model.title),
+        address: Value(model.address),
+        lastSyncedAt: Value(model.lastSyncedAt),
+        createdAt: Value(model.createdAt ?? DateTime.now()),
+        updatedAt: Value(model.updatedAt ?? DateTime.now()),
+        syncStatus: Value(model.syncStatus ?? SyncStatus.synced));
+    await insertOrUpdate(companion);
+    return model;
+  }
+
+  /// Delete favoriteplace by ID
+  @override
+  Future<int> deleteById(String id) =>
+      (delete(favoritePlaceTable)..where((t) => t.id.equals(id))).go();
+
+  /// Watch all favoriteplaces as a stream
+  Stream<List<FavoritePlace>> watchAll({QueryParams? queryParams}) {
+    queryParams ??= QueryParams.empty;
+    final query = select(favoritePlaceTable);
+    applyQueryParams(query, queryParams);
+    return query.watch();
+  }
+
+  /// Watch favoriteplace by ID as a stream
+  Stream<FavoritePlace?> watchById(String id, {QueryParams? queryParams}) {
+    queryParams ??= QueryParams.empty;
+    final query = select(favoritePlaceTable)..where((t) => t.id.equals(id));
+    applyQueryParams(query, queryParams);
+    return query.watchSingleOrNull();
+  }
+
+  /// The primary table this DAO operates on.
+  @override
+  TableInfo<FavoritePlaceTable, FavoritePlace> get table => favoritePlaceTable;
+
+  /// Get column expression for a field name
+  @override
+  Expression<Object>? getColumnForField(String fieldName) {
+    switch (fieldName) {
+      case 'id':
+        return favoritePlaceTable.id;
+      case 'title':
+        return favoritePlaceTable.title;
+      case 'address':
+        return favoritePlaceTable.address;
+      case 'lastSyncedAt':
+        return favoritePlaceTable.lastSyncedAt;
+      case 'createdAt':
+        return favoritePlaceTable.createdAt;
+      case 'updatedAt':
+        return favoritePlaceTable.updatedAt;
+      case 'syncStatus':
+        return favoritePlaceTable.syncStatus;
+      default:
+        return null;
+    }
+  }
+
+  /// Get the data type for a field name
+  @override
+  String? getFieldType(String fieldName) {
+    switch (fieldName) {
+      case 'id':
+        return 'String';
+      case 'title':
+        return 'String';
+      case 'address':
+        return 'String';
+      case 'lastSyncedAt':
+        return 'DateTime';
+      case 'createdAt':
+        return 'DateTime';
+      case 'updatedAt':
+        return 'DateTime';
+      case 'syncStatus':
+        return 'SyncStatus';
+      default:
+        return null;
+    }
+  }
+
+  /// Create ordering term for sorting
+  @override
+  OrderingTerm createOrderingTerm(
+      SortCondition sort, FavoritePlaceTable table) {
+    final column = getColumnForField(sort.field.fieldName);
+    if (column == null) {
+      throw ArgumentError('Unknown field for sorting: ${sort.field.fieldName}');
+    }
+
+    return OrderingTerm(
+      expression: column,
+      mode: sort.direction == SortDirection.ascending
+          ? OrderingMode.asc
+          : OrderingMode.desc,
+    );
+  }
+
+  // Implementation of BaseDaoMixin methods
+  @override
+  Future<FavoritePlace?> getByIdTyped(String id,
+      {QueryParams? queryParams}) async {
+    return await getById(id, queryParams: queryParams);
+  }
+
+  @override
+  Future<List<FavoritePlace>> getAllTyped({QueryParams? queryParams}) async {
+    return await getAll(queryParams: queryParams);
+  }
+
+  @override
+  Stream<FavoritePlace?> watchByIdTyped(String id, {QueryParams? queryParams}) {
+    return watchById(id, queryParams: queryParams);
+  }
+
+  @override
+  Stream<List<FavoritePlace>> watchAllTyped({QueryParams? queryParams}) {
+    return watchAll(queryParams: queryParams);
+  }
+
+  /// Returns all favoriteplaces whose IDs are not in [excludedIds].
+  @override
+  Future<List<FavoritePlace>> getAllExcludingIds(
+    Set<String> excludedIds, {
+    QueryParams? queryParams,
+  }) async {
+    queryParams ??= QueryParams.empty;
+    final query = select(favoritePlaceTable)
+      ..where((t) => t.id.isNotIn(excludedIds.toList()));
+    applyQueryParams(query, queryParams);
+    return query.get();
+  }
+
+  /// Delete all favoriteplaces from the table
+  @override
+  Future<int> deleteAll() => delete(favoritePlaceTable).go();
+}

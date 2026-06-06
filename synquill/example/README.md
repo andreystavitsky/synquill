@@ -4,7 +4,8 @@ This is a comprehensive Flutter example app that demonstrates how to use the `sy
 
 ## Overview
 
-This example implements a multi-model app featuring users, todos, and posts that showcases:
+This example implements a multi-model app featuring users, todos, posts, and
+favorite places that showcases:
 
 - **Model Definition**: How to create models with `@SynquillRepository` annotation
 - **Data Synchronization**: Demonstrating `localFirst` and `remoteFirst` policies
@@ -17,6 +18,7 @@ This example implements a multi-model app featuring users, todos, and posts that
 
 ### Core Functionality
 - ✅ **Multi-model support**: Users, Todos, and Posts
+- ✅ **Custom ID JSON keys**: Favorite places serialize `id` as `placeId`
 - ✅ **Relationship management**: Users have many todos and posts
 - ✅ **Real-time UI updates**: Stream-based reactive interface with `watch...` methods
 - ✅ **Advanced querying**: `findAll()`, `findOne()` with filtering, sorting, pagination
@@ -44,7 +46,7 @@ This example implements a multi-model app featuring users, todos, and posts that
 
 ## Model Architecture
 
-The app demonstrates three interconnected models:
+The app demonstrates interconnected models plus a custom-id API model:
 
 ### User Model
 ```dart
@@ -92,6 +94,42 @@ class Post extends SynquillDataModel<Post> {
   final String userId;
   // ... implementation
 }
+```
+
+### FavoritePlace Model
+```dart
+@JsonSerializable()
+@SynquillRepository(adapters: [JsonApiAdapter, FavoritePlaceApiAdapter])
+class FavoritePlace extends SynquillDataModel<FavoritePlace> {
+  @override
+  @SynquillIdKey('placeId')
+  @JsonKey(name: 'placeId')
+  final String id;
+
+  final String title;
+  final String address;
+  // ... implementation
+}
+```
+
+`FavoritePlace.id` is still Synquill's internal model identity. The API JSON
+uses `placeId`:
+
+```dart
+final place = FavoritePlace(
+  id: 'place-1',
+  title: 'Trailhead',
+  address: 'North Ridge',
+);
+
+expect(place.toJson(), containsPair('placeId', 'place-1'));
+expect(place.toJson().containsKey('id'), isFalse);
+
+await place.save(savePolicy: DataSavePolicy.localFirst);
+await SynquillStorage.instance.favoritePlaces.delete(
+  place.id,
+  savePolicy: DataSavePolicy.localFirst,
+);
 ```
 
 ## Data Synchronization Policies
@@ -378,7 +416,7 @@ await SynquillStorage.init(
 
 ### Database Version Management
 ```dart
-@SynquillDatabaseVersion(1)
+@SynquillDatabaseVersion(4)
 final database = SynquillDatabase(
   LazyDatabase(() => driftDatabase(
     name: 'synced_storage.db',

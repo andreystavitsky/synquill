@@ -71,6 +71,9 @@ class ModelInfoRegistryProvider {
   /// Map from target model type to all models that reference it
   static final Map<String, List<ForeignKeyRelation>> _foreignKeyRelations = {};
 
+  /// Map from model type name to its API JSON id key.
+  static final Map<String, String> _idJsonKeys = {};
+
   static final _log = () {
     try {
       return SynquillStorage.logger;
@@ -152,6 +155,41 @@ class ModelInfoRegistryProvider {
     return _cascadeDeleteRelations.keys.toList();
   }
 
+  /// Registers a custom API JSON key for a model's internal id field.
+  ///
+  /// Generated code calls this for models that annotate their `id` field with
+  /// `@SynquillIdKey`.
+  static void registerIdJsonKey(String modelTypeName, String idJsonKey) {
+    if (idJsonKey.isEmpty) {
+      throw ArgumentError.value(
+        idJsonKey,
+        'idJsonKey',
+        'Custom id JSON key cannot be empty',
+      );
+    }
+
+    if (idJsonKey == 'id') {
+      _idJsonKeys.remove(modelTypeName);
+      return;
+    }
+
+    _log.fine(
+      'Registering id JSON key "$idJsonKey" for $modelTypeName',
+    );
+    _idJsonKeys[modelTypeName] = idJsonKey;
+  }
+
+  /// Gets the API JSON key that represents a model's internal id.
+  ///
+  /// Returns `id` when no custom key is registered.
+  static String getIdJsonKey(String modelTypeName) {
+    final idJsonKey = _idJsonKeys[modelTypeName] ?? 'id';
+    _log.fine(
+      'Retrieved id JSON key "$idJsonKey" for $modelTypeName',
+    );
+    return idJsonKey;
+  }
+
   /// Registers foreign key relations for a target model type
   ///
   /// This method is called by generated code during initialization.
@@ -226,6 +264,7 @@ class ModelInfoRegistryProvider {
     );
     _cascadeDeleteRelations.clear();
     _foreignKeyRelations.clear();
+    _idJsonKeys.clear();
   }
 
   /// Gets debug information about the current registry state
@@ -236,6 +275,7 @@ class ModelInfoRegistryProvider {
     return {
       'totalModels': _cascadeDeleteRelations.length,
       'modelsWithCascadeDelete': _cascadeDeleteRelations.keys.toList(),
+      'idJsonKeys': Map<String, String>.from(_idJsonKeys),
       'cascadeDeleteRelations':
           Map<String, List<Map<String, String>>>.fromEntries(
         _cascadeDeleteRelations.entries.map(

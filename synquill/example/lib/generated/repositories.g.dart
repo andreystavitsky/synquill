@@ -460,6 +460,89 @@ class TodoRepository extends SynquillRepositoryBase<Todo>
   }
 }
 
+/// Concrete repository implementation for FavoritePlace
+class FavoritePlaceRepository extends SynquillRepositoryBase<FavoritePlace>
+    with RepositoryHelpersMixin<FavoritePlace> {
+  late final FavoritePlaceDao _dao;
+  late final ApiAdapterBase<FavoritePlace> _apiAdapter =
+      _FavoritePlaceAdapter();
+  static Logger get _log {
+    try {
+      return SynquillStorage.logger;
+    } catch (_) {
+      return Logger('FavoritePlaceRepository');
+    }
+  }
+
+  /// Creates a new FavoritePlace repository instance
+  ///
+  /// [db] The database instance to use for data operations
+  FavoritePlaceRepository(super.db) {
+    _dao = FavoritePlaceDao(db as SynquillDatabase);
+  }
+
+  @override
+  DatabaseAccessor get dao => _dao;
+
+  @override
+  ApiAdapterBase<FavoritePlace> get apiAdapter {
+    return _apiAdapter;
+  }
+
+  @override
+  bool get localOnly => false;
+
+  @override
+  Future<FavoritePlace?> fetchFromRemote(String id,
+      {QueryParams? queryParams,
+      Map<String, String>? headers,
+      Map<String, dynamic>? extra}) async {
+    try {
+      final result = await apiAdapter.findOne(id,
+          queryParams: queryParams, headers: headers, extra: extra);
+      _log.fine(
+          'fetchFromRemote() for FavoritePlace successful: found item with id $id');
+      return result;
+    } on ApiExceptionNotFound {
+      _log.fine(
+          'fetchFromRemote() for FavoritePlace: item with id $id not found in '
+          'remote API');
+      // Rethrow the exception so SynquillRepositoryBase can remove the
+      // item from local storage
+      rethrow;
+    } on ApiExceptionGone {
+      _log.fine(
+          'fetchFromRemote() for FavoritePlace: item with id $id is gone from '
+          'remote API');
+      // Rethrow the exception so SynquillRepositoryBase can remove the
+      // item from local storage
+      rethrow;
+    } catch (e, stackTrace) {
+      _log.warning('fetchFromRemote() for FavoritePlace failed for id $id', e,
+          stackTrace);
+      rethrow;
+    }
+  }
+
+  @override
+  Future<List<FavoritePlace>> fetchAllFromRemote(
+      {QueryParams? queryParams,
+      Map<String, String>? headers,
+      Map<String, dynamic>? extra}) async {
+    try {
+      final result = await apiAdapter.findAll(
+          queryParams: queryParams, headers: headers, extra: extra);
+      _log.fine('fetchAllFromRemote() for FavoritePlace successful: '
+          'found ${result.length} items');
+      return result;
+    } catch (e, stackTrace) {
+      _log.warning(
+          'fetchAllFromRemote() for FavoritePlace failed', e, stackTrace);
+      rethrow;
+    }
+  }
+}
+
 /// Register all repository factories with SynquillRepositoryProvider
 void registerAllRepositories() {
   SynquillRepositoryProvider.register<GraphqlPost>(
@@ -479,6 +562,9 @@ void registerAllRepositories() {
   );
   SynquillRepositoryProvider.register<Todo>(
     (db) => TodoRepository(db),
+  );
+  SynquillRepositoryProvider.register<FavoritePlace>(
+    (db) => FavoritePlaceRepository(db),
   );
 }
 
@@ -509,8 +595,11 @@ void initializeSynquillStorage(GeneratedDatabase database) {
   registerModelRelations();
 }
 
-/// Register all model relations
+/// Register all model metadata
 void registerModelRelations() {
+  // === ID JSON KEYS ===
+  ModelInfoRegistryProvider.registerIdJsonKey('FavoritePlace', 'placeId');
+
   // === CASCADE DELETE RELATIONS ===
 
   // === FOREIGN KEY RELATIONS ===
@@ -582,5 +671,10 @@ extension SynquillStorageRepositories on SynquillStorage {
   /// Access repository for Todo models
   TodoRepository get todos {
     return getRepository<Todo>() as TodoRepository;
+  }
+
+  /// Access repository for FavoritePlace models
+  FavoritePlaceRepository get favoritePlaces {
+    return getRepository<FavoritePlace>() as FavoritePlaceRepository;
   }
 }

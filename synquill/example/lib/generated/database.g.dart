@@ -95,6 +95,7 @@ class SyncQueueItems extends Table {
     PlainModelTable,
     UserTable,
     TodoTable,
+    FavoritePlaceTable,
   ],
   daos: [
     GraphqlPostDao,
@@ -103,6 +104,7 @@ class SyncQueueItems extends Table {
     PlainModelDao,
     UserDao,
     TodoDao,
+    FavoritePlaceDao,
   ],
 )
 
@@ -140,7 +142,7 @@ class SynquillDatabase extends _$SynquillDatabase {
   late final SyncQueueDao _syncQueueDao = SyncQueueDao(this);
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   /// Provides migration strategy for schema upgrades.
   ///
@@ -208,6 +210,7 @@ class SynquillDatabase extends _$SynquillDatabase {
         PlainModelTable,
         UserTable,
         TodoTable,
+        FavoritePlaceTable,
       ];
 
   /// Returns user-defined DAO types
@@ -218,6 +221,7 @@ class SynquillDatabase extends _$SynquillDatabase {
         PlainModelDao,
         UserDao,
         TodoDao,
+        FavoritePlaceDao,
       ];
 
   /// Closes the database connection.

@@ -47,6 +47,27 @@ class SynquillRepository {
   });
 }
 
+/// Annotation that maps Synquill's internal model identity field to a
+/// non-default JSON key used by an API.
+///
+/// Place this annotation on the model's `id` field when `toJson()` and
+/// `fromJson()` serialize the same identity under a key other than `id`.
+///
+/// Example:
+/// ```dart
+/// @override
+/// @SynquillIdKey('placeId')
+/// @JsonKey(name: 'placeId')
+/// final String id;
+/// ```
+class SynquillIdKey {
+  /// The JSON key that represents the model id in API payloads.
+  final String key;
+
+  /// Creates a custom id JSON key mapping.
+  const SynquillIdKey(this.key);
+}
+
 /// Annotation to mark a field as a one-to-many relation.
 /// This field should be of type List\<T\> where T is the related model.
 class OneToMany {

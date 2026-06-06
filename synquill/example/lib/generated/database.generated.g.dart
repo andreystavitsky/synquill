@@ -22,6 +22,10 @@ mixin _$UserDaoMixin on DatabaseAccessor<SynquillDatabase> {
 mixin _$TodoDaoMixin on DatabaseAccessor<SynquillDatabase> {
   $TodoTableTable get todoTable => attachedDatabase.todoTable;
 }
+mixin _$FavoritePlaceDaoMixin on DatabaseAccessor<SynquillDatabase> {
+  $FavoritePlaceTableTable get favoritePlaceTable =>
+      attachedDatabase.favoritePlaceTable;
+}
 
 class $SyncQueueItemsTable extends SyncQueueItems
     with TableInfo<$SyncQueueItemsTable, SyncQueueItem> {
@@ -2492,6 +2496,253 @@ class TodoTableCompanion extends UpdateCompanion<Todo> {
   }
 }
 
+class $FavoritePlaceTableTable extends FavoritePlaceTable
+    with TableInfo<$FavoritePlaceTableTable, FavoritePlace> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $FavoritePlaceTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+      'id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _titleMeta = const VerificationMeta('title');
+  @override
+  late final GeneratedColumn<String> title = GeneratedColumn<String>(
+      'title', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _addressMeta =
+      const VerificationMeta('address');
+  @override
+  late final GeneratedColumn<String> address = GeneratedColumn<String>(
+      'address', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _lastSyncedAtMeta =
+      const VerificationMeta('lastSyncedAt');
+  @override
+  late final GeneratedColumn<DateTime> lastSyncedAt = GeneratedColumn<DateTime>(
+      'last_synced_at', aliasedName, true,
+      type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  static const VerificationMeta _createdAtMeta =
+      const VerificationMeta('createdAt');
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+      'created_at', aliasedName, true,
+      type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  static const VerificationMeta _updatedAtMeta =
+      const VerificationMeta('updatedAt');
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+      'updated_at', aliasedName, true,
+      type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  @override
+  late final GeneratedColumnWithTypeConverter<SyncStatus?, String> syncStatus =
+      GeneratedColumn<String>('sync_status', aliasedName, true,
+              type: DriftSqlType.string,
+              requiredDuringInsert: false,
+              defaultValue: const Constant('synced'))
+          .withConverter<SyncStatus?>(
+              $FavoritePlaceTableTable.$convertersyncStatus);
+  @override
+  List<GeneratedColumn> get $columns =>
+      [id, title, address, lastSyncedAt, createdAt, updatedAt, syncStatus];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'favorite_places';
+  @override
+  VerificationContext validateIntegrity(Insertable<FavoritePlace> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('title')) {
+      context.handle(
+          _titleMeta, title.isAcceptableOrUnknown(data['title']!, _titleMeta));
+    } else if (isInserting) {
+      context.missing(_titleMeta);
+    }
+    if (data.containsKey('address')) {
+      context.handle(_addressMeta,
+          address.isAcceptableOrUnknown(data['address']!, _addressMeta));
+    } else if (isInserting) {
+      context.missing(_addressMeta);
+    }
+    if (data.containsKey('last_synced_at')) {
+      context.handle(
+          _lastSyncedAtMeta,
+          lastSyncedAt.isAcceptableOrUnknown(
+              data['last_synced_at']!, _lastSyncedAtMeta));
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(_createdAtMeta,
+          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(_updatedAtMeta,
+          updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  FavoritePlace map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return FavoritePlace.fromDb(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
+      title: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}title'])!,
+      address: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}address'])!,
+      createdAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at']),
+      updatedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}updated_at']),
+      lastSyncedAt: attachedDatabase.typeMapping.read(
+          DriftSqlType.dateTime, data['${effectivePrefix}last_synced_at']),
+    );
+  }
+
+  @override
+  $FavoritePlaceTableTable createAlias(String alias) {
+    return $FavoritePlaceTableTable(attachedDatabase, alias);
+  }
+
+  static TypeConverter<SyncStatus?, String?> $convertersyncStatus =
+      const SyncStatusConverter();
+}
+
+class FavoritePlaceTableCompanion extends UpdateCompanion<FavoritePlace> {
+  final Value<String> id;
+  final Value<String> title;
+  final Value<String> address;
+  final Value<DateTime?> lastSyncedAt;
+  final Value<DateTime?> createdAt;
+  final Value<DateTime?> updatedAt;
+  final Value<SyncStatus?> syncStatus;
+  final Value<int> rowid;
+  const FavoritePlaceTableCompanion({
+    this.id = const Value.absent(),
+    this.title = const Value.absent(),
+    this.address = const Value.absent(),
+    this.lastSyncedAt = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.syncStatus = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  FavoritePlaceTableCompanion.insert({
+    required String id,
+    required String title,
+    required String address,
+    this.lastSyncedAt = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.syncStatus = const Value.absent(),
+    this.rowid = const Value.absent(),
+  })  : id = Value(id),
+        title = Value(title),
+        address = Value(address);
+  static Insertable<FavoritePlace> custom({
+    Expression<String>? id,
+    Expression<String>? title,
+    Expression<String>? address,
+    Expression<DateTime>? lastSyncedAt,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<String>? syncStatus,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (title != null) 'title': title,
+      if (address != null) 'address': address,
+      if (lastSyncedAt != null) 'last_synced_at': lastSyncedAt,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (syncStatus != null) 'sync_status': syncStatus,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  FavoritePlaceTableCompanion copyWith(
+      {Value<String>? id,
+      Value<String>? title,
+      Value<String>? address,
+      Value<DateTime?>? lastSyncedAt,
+      Value<DateTime?>? createdAt,
+      Value<DateTime?>? updatedAt,
+      Value<SyncStatus?>? syncStatus,
+      Value<int>? rowid}) {
+    return FavoritePlaceTableCompanion(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      address: address ?? this.address,
+      lastSyncedAt: lastSyncedAt ?? this.lastSyncedAt,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      syncStatus: syncStatus ?? this.syncStatus,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (title.present) {
+      map['title'] = Variable<String>(title.value);
+    }
+    if (address.present) {
+      map['address'] = Variable<String>(address.value);
+    }
+    if (lastSyncedAt.present) {
+      map['last_synced_at'] = Variable<DateTime>(lastSyncedAt.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (syncStatus.present) {
+      map['sync_status'] = Variable<String>($FavoritePlaceTableTable
+          .$convertersyncStatus
+          .toSql(syncStatus.value));
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('FavoritePlaceTableCompanion(')
+          ..write('id: $id, ')
+          ..write('title: $title, ')
+          ..write('address: $address, ')
+          ..write('lastSyncedAt: $lastSyncedAt, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('syncStatus: $syncStatus, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$SynquillDatabase extends GeneratedDatabase {
   _$SynquillDatabase(QueryExecutor e) : super(e);
   $SynquillDatabaseManager get managers => $SynquillDatabaseManager(this);
@@ -2504,6 +2755,8 @@ abstract class _$SynquillDatabase extends GeneratedDatabase {
       $PlainModelTableTable(this);
   late final $UserTableTable userTable = $UserTableTable(this);
   late final $TodoTableTable todoTable = $TodoTableTable(this);
+  late final $FavoritePlaceTableTable favoritePlaceTable =
+      $FavoritePlaceTableTable(this);
   late final Index idxModelId = Index('idx_model_id',
       'CREATE INDEX idx_model_id ON sync_queue_items (model_id)');
   late final Index idxModelType = Index('idx_model_type',
@@ -2534,6 +2787,8 @@ abstract class _$SynquillDatabase extends GeneratedDatabase {
       PlainModelDao(this as SynquillDatabase);
   late final UserDao userDao = UserDao(this as SynquillDatabase);
   late final TodoDao todoDao = TodoDao(this as SynquillDatabase);
+  late final FavoritePlaceDao favoritePlaceDao =
+      FavoritePlaceDao(this as SynquillDatabase);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -2546,6 +2801,7 @@ abstract class _$SynquillDatabase extends GeneratedDatabase {
         plainModelTable,
         userTable,
         todoTable,
+        favoritePlaceTable,
         idxModelId,
         idxModelType,
         idxOperation,
@@ -4241,6 +4497,217 @@ typedef $$TodoTableTableProcessedTableManager = ProcessedTableManager<
     (Todo, BaseReferences<_$SynquillDatabase, $TodoTableTable, Todo>),
     Todo,
     PrefetchHooks Function()>;
+typedef $$FavoritePlaceTableTableCreateCompanionBuilder
+    = FavoritePlaceTableCompanion Function({
+  required String id,
+  required String title,
+  required String address,
+  Value<DateTime?> lastSyncedAt,
+  Value<DateTime?> createdAt,
+  Value<DateTime?> updatedAt,
+  Value<SyncStatus?> syncStatus,
+  Value<int> rowid,
+});
+typedef $$FavoritePlaceTableTableUpdateCompanionBuilder
+    = FavoritePlaceTableCompanion Function({
+  Value<String> id,
+  Value<String> title,
+  Value<String> address,
+  Value<DateTime?> lastSyncedAt,
+  Value<DateTime?> createdAt,
+  Value<DateTime?> updatedAt,
+  Value<SyncStatus?> syncStatus,
+  Value<int> rowid,
+});
+
+class $$FavoritePlaceTableTableFilterComposer
+    extends Composer<_$SynquillDatabase, $FavoritePlaceTableTable> {
+  $$FavoritePlaceTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get title => $composableBuilder(
+      column: $table.title, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get address => $composableBuilder(
+      column: $table.address, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get lastSyncedAt => $composableBuilder(
+      column: $table.lastSyncedAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+      column: $table.updatedAt, builder: (column) => ColumnFilters(column));
+
+  ColumnWithTypeConverterFilters<SyncStatus?, SyncStatus, String>
+      get syncStatus => $composableBuilder(
+          column: $table.syncStatus,
+          builder: (column) => ColumnWithTypeConverterFilters(column));
+}
+
+class $$FavoritePlaceTableTableOrderingComposer
+    extends Composer<_$SynquillDatabase, $FavoritePlaceTableTable> {
+  $$FavoritePlaceTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get title => $composableBuilder(
+      column: $table.title, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get address => $composableBuilder(
+      column: $table.address, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get lastSyncedAt => $composableBuilder(
+      column: $table.lastSyncedAt,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+      column: $table.updatedAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get syncStatus => $composableBuilder(
+      column: $table.syncStatus, builder: (column) => ColumnOrderings(column));
+}
+
+class $$FavoritePlaceTableTableAnnotationComposer
+    extends Composer<_$SynquillDatabase, $FavoritePlaceTableTable> {
+  $$FavoritePlaceTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get title =>
+      $composableBuilder(column: $table.title, builder: (column) => column);
+
+  GeneratedColumn<String> get address =>
+      $composableBuilder(column: $table.address, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get lastSyncedAt => $composableBuilder(
+      column: $table.lastSyncedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<SyncStatus?, String> get syncStatus =>
+      $composableBuilder(
+          column: $table.syncStatus, builder: (column) => column);
+}
+
+class $$FavoritePlaceTableTableTableManager extends RootTableManager<
+    _$SynquillDatabase,
+    $FavoritePlaceTableTable,
+    FavoritePlace,
+    $$FavoritePlaceTableTableFilterComposer,
+    $$FavoritePlaceTableTableOrderingComposer,
+    $$FavoritePlaceTableTableAnnotationComposer,
+    $$FavoritePlaceTableTableCreateCompanionBuilder,
+    $$FavoritePlaceTableTableUpdateCompanionBuilder,
+    (
+      FavoritePlace,
+      BaseReferences<_$SynquillDatabase, $FavoritePlaceTableTable,
+          FavoritePlace>
+    ),
+    FavoritePlace,
+    PrefetchHooks Function()> {
+  $$FavoritePlaceTableTableTableManager(
+      _$SynquillDatabase db, $FavoritePlaceTableTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$FavoritePlaceTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$FavoritePlaceTableTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$FavoritePlaceTableTableAnnotationComposer(
+                  $db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<String> id = const Value.absent(),
+            Value<String> title = const Value.absent(),
+            Value<String> address = const Value.absent(),
+            Value<DateTime?> lastSyncedAt = const Value.absent(),
+            Value<DateTime?> createdAt = const Value.absent(),
+            Value<DateTime?> updatedAt = const Value.absent(),
+            Value<SyncStatus?> syncStatus = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              FavoritePlaceTableCompanion(
+            id: id,
+            title: title,
+            address: address,
+            lastSyncedAt: lastSyncedAt,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+            syncStatus: syncStatus,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required String id,
+            required String title,
+            required String address,
+            Value<DateTime?> lastSyncedAt = const Value.absent(),
+            Value<DateTime?> createdAt = const Value.absent(),
+            Value<DateTime?> updatedAt = const Value.absent(),
+            Value<SyncStatus?> syncStatus = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              FavoritePlaceTableCompanion.insert(
+            id: id,
+            title: title,
+            address: address,
+            lastSyncedAt: lastSyncedAt,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+            syncStatus: syncStatus,
+            rowid: rowid,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ));
+}
+
+typedef $$FavoritePlaceTableTableProcessedTableManager = ProcessedTableManager<
+    _$SynquillDatabase,
+    $FavoritePlaceTableTable,
+    FavoritePlace,
+    $$FavoritePlaceTableTableFilterComposer,
+    $$FavoritePlaceTableTableOrderingComposer,
+    $$FavoritePlaceTableTableAnnotationComposer,
+    $$FavoritePlaceTableTableCreateCompanionBuilder,
+    $$FavoritePlaceTableTableUpdateCompanionBuilder,
+    (
+      FavoritePlace,
+      BaseReferences<_$SynquillDatabase, $FavoritePlaceTableTable,
+          FavoritePlace>
+    ),
+    FavoritePlace,
+    PrefetchHooks Function()>;
 
 class $SynquillDatabaseManager {
   final _$SynquillDatabase _db;
@@ -4259,4 +4726,6 @@ class $SynquillDatabaseManager {
       $$UserTableTableTableManager(_db, _db.userTable);
   $$TodoTableTableTableManager get todoTable =>
       $$TodoTableTableTableManager(_db, _db.todoTable);
+  $$FavoritePlaceTableTableTableManager get favoritePlaceTable =>
+      $$FavoritePlaceTableTableTableManager(_db, _db.favoritePlaceTable);
 }

@@ -29,7 +29,7 @@ void main() async {
   );
 
   // Initialize the SynquillStorage system
-  @SynquillDatabaseVersion(3)
+  @SynquillDatabaseVersion(4)
   final database = SynquillDatabase(
     LazyDatabase(
       () => driftDatabase(
@@ -98,6 +98,12 @@ Future<void> _setupInitialData(Migrator migrator) async {
         ('getting-started-post', 'Getting Started with Posts', 'Try creating your own posts using the floating action button. Posts are automatically synced with the backend when connected to the internet.', '1', strftime('%s', 'now'), strftime('%s', 'now'))
     ''');
 
+    await migrator.database.customStatement('''
+      INSERT INTO favorite_places (id, title, address, created_at, updated_at) 
+      VALUES 
+        ('place-1', 'Trailhead', 'North Ridge', strftime('%s', 'now'), strftime('%s', 'now'))
+    ''');
+
     log.info('Initial user, todos, and posts created successfully');
   } catch (e) {
     log.warning('Failed to create initial data: $e');
@@ -127,6 +133,12 @@ Future<void> _performMigration(Migrator migrator, int from, int to) async {
     log.info('Creating graphql_posts table');
     final db = migrator.database as SynquillDatabase;
     await migrator.createTable(db.graphqlPostTable);
+  }
+
+  if (from < 4) {
+    log.info('Creating favorite_places table');
+    final db = migrator.database as SynquillDatabase;
+    await migrator.createTable(db.favoritePlaceTable);
   }
 
   log.info('Custom migration completed');

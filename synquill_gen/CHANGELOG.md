@@ -1,3 +1,10 @@
+## 0.9.0
+
+### Added
+- Added code generation support for `@SynquillIdKey`.
+- Generated model metadata now registers custom API JSON id keys with the
+  runtime registry.
+
 ## 0.8.3
 
 ### Changed

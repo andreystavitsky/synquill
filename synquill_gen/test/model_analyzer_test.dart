@@ -1,5 +1,6 @@
 import 'package:analyzer/dart/element/type.dart';
 import 'package:analyzer/dart/element/nullability_suffix.dart';
+import 'package:source_gen/source_gen.dart';
 import 'package:test/test.dart';
 import 'package:synquill_gen/synquill_gen.dart';
 
@@ -38,6 +39,61 @@ void main() {
       // Verify that OneToMany fields are not indexed
       expect(oneToManyField.isIndexed, isFalse);
       expect(oneToManyField.isOneToMany, isTrue);
+    });
+  });
+
+  group('ModelAnalyzer custom id JSON key validation', () {
+    test('extracts custom id JSON key from id field', () {
+      expect(
+        ModelAnalyzer.validateIdJsonKeyCandidates(
+          'FavoritePlace',
+          const {'id': 'placeId'},
+        ),
+        'placeId',
+      );
+    });
+
+    test('defaults id JSON key to id', () {
+      expect(
+        ModelAnalyzer.validateIdJsonKeyCandidates(
+          'FavoritePlace',
+          const {},
+        ),
+        'id',
+      );
+    });
+
+    test('rejects custom id key on non-id fields', () {
+      expect(
+        () => ModelAnalyzer.validateIdJsonKeyCandidates(
+          'FavoritePlace',
+          const {'externalId': 'placeId'},
+        ),
+        throwsA(isA<InvalidGenerationSourceError>()),
+      );
+    });
+
+    test('rejects duplicate custom id key annotations', () {
+      expect(
+        () => ModelAnalyzer.validateIdJsonKeyCandidates(
+          'FavoritePlace',
+          const {
+            'id': 'placeId',
+            'externalId': 'externalPlaceId',
+          },
+        ),
+        throwsA(isA<InvalidGenerationSourceError>()),
+      );
+    });
+
+    test('rejects empty custom id key', () {
+      expect(
+        () => ModelAnalyzer.validateIdJsonKeyCandidates(
+          'FavoritePlace',
+          const {'id': ''},
+        ),
+        throwsA(isA<InvalidGenerationSourceError>()),
+      );
     });
   });
 }

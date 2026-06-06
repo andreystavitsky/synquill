@@ -11,6 +11,7 @@ import 'package:synquill_example/models/local_note.dart';
 import 'package:synquill_example/models/plain_model.dart';
 import 'package:synquill_example/models/user.dart';
 import 'package:synquill_example/models/todo.dart';
+import 'package:synquill_example/models/favorite_place.dart';
 import 'package:synquill_example/adapters/json_api_adapter.dart';
 import 'package:synquill_example/generated/database.generated.dart';
 export 'package:synquill_example/generated/database.generated.dart';

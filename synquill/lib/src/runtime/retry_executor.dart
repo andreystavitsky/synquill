@@ -7,6 +7,7 @@ import 'package:drift/drift.dart';
 import 'package:logging/logging.dart';
 import 'package:synquill/src/core/database_provider.dart';
 import 'package:synquill/src/core/exceptions.dart';
+import 'package:synquill/src/core/model_info_registry_provider.dart';
 import 'package:synquill/src/core/repository_mixins/repository_types.dart';
 import 'package:synquill/src/core/sync_status.dart';
 import 'package:synquill/src/core/synquill_data_model.dart';
@@ -363,6 +364,7 @@ class RetryExecutor {
     final payload = taskData['payload'] as String;
     final operation = taskData['op'] as String;
     final taskId = taskData['id'] as int;
+    final queueModelId = taskData['model_id'];
 
     // Parse optional JSON fields
     final headers = _parseJsonField<Map<String, String>>(
@@ -382,12 +384,13 @@ class RetryExecutor {
 
     // Parse model data from payload
     final modelData = _parseModelData(payload);
-    final modelId = _extractModelId(modelData);
+    final modelId = _extractModelId(modelData, modelType, queueModelId);
 
     return NetworkTask<void>(
       exec: () => _executeApiOperation(
         syncOp,
         modelType,
+        modelId,
         modelData,
         headers,
         extra,
@@ -447,18 +450,36 @@ class RetryExecutor {
   }
 
   /// Extracts model ID from model data.
-  String _extractModelId(Map<String, dynamic> modelData) {
-    final modelId = modelData['id'];
-    if (modelId is! String || modelId.isEmpty) {
-      throw InvalidSyncQueueTaskException('Model data missing ID');
+  String _extractModelId(
+    Map<String, dynamic> modelData,
+    String modelType,
+    Object? queueModelId,
+  ) {
+    final idJsonKey = ModelInfoRegistryProvider.getIdJsonKey(modelType);
+    if (idJsonKey != 'id') {
+      final customModelId = modelData[idJsonKey];
+      if (customModelId is String && customModelId.isNotEmpty) {
+        return customModelId;
+      }
     }
-    return modelId;
+
+    final modelId = modelData['id'];
+    if (modelId is String && modelId.isNotEmpty) {
+      return modelId;
+    }
+
+    if (queueModelId is String && queueModelId.isNotEmpty) {
+      return queueModelId;
+    }
+
+    throw InvalidSyncQueueTaskException('Model data missing ID');
   }
 
   /// Executes the actual API operation for a sync task.
   Future<void> _executeApiOperation(
     SyncOperation operation,
     String modelType,
+    String modelId,
     Map<String, dynamic> modelData,
     Map<String, String>? headers,
     Map<String, dynamic>? extra,
@@ -471,6 +492,7 @@ class RetryExecutor {
       await _performSyncOperation(
         operation,
         repository,
+        modelId,
         modelData,
         headers,
         extra,
@@ -514,6 +536,7 @@ class RetryExecutor {
   Future<void> _performSyncOperation(
     SyncOperation operation,
     SynquillRepositoryBase<SynquillDataModel<dynamic>> repository,
+    String modelId,
     Map<String, dynamic> modelData,
     Map<String, String>? headers,
     Map<String, dynamic>? extra,
@@ -521,12 +544,19 @@ class RetryExecutor {
   ) async {
     switch (operation) {
       case SyncOperation.create:
-        await _performCreateOperation(repository, modelData, headers, extra);
+        await _performCreateOperation(
+          repository,
+          modelId,
+          modelData,
+          headers,
+          extra,
+        );
         break;
 
       case SyncOperation.update:
         await _performUpdateOperation(
           repository,
+          modelId,
           modelData,
           headers,
           extra,
@@ -535,7 +565,7 @@ class RetryExecutor {
         break;
 
       case SyncOperation.delete:
-        await _performDeleteOperation(repository, modelData, headers, extra);
+        await _performDeleteOperation(repository, modelId, headers, extra);
         break;
 
       // Read operations are intentionally not supported in the retry executor.
@@ -553,6 +583,7 @@ class RetryExecutor {
   /// Performs create operation with local existence check.
   Future<void> _performCreateOperation(
     SynquillRepositoryBase<SynquillDataModel<dynamic>> repository,
+    String modelId,
     Map<String, dynamic> modelData,
     Map<String, String>? headers,
     Map<String, dynamic>? extra,
@@ -565,7 +596,6 @@ class RetryExecutor {
       return;
     }
     // For create operations, check if model still exists locally
-    final modelId = modelData['id'] as String;
     final existingModel = await repository.fetchFromLocal(modelId);
 
     if (existingModel == null) {
@@ -593,6 +623,7 @@ class RetryExecutor {
   /// Performs update operation with fallback to create on 404.
   Future<void> _performUpdateOperation(
     SynquillRepositoryBase<SynquillDataModel<dynamic>> repository,
+    String modelId,
     Map<String, dynamic> modelData,
     Map<String, String>? headers,
     Map<String, dynamic>? extra,
@@ -606,7 +637,6 @@ class RetryExecutor {
       return;
     }
     // For update operations, check if model still exists locally
-    final modelId = modelData['id'] as String;
     final existingModel = await repository.fetchFromLocal(modelId);
 
     if (existingModel == null) {
@@ -633,6 +663,7 @@ class RetryExecutor {
     } on ApiExceptionNotFound catch (originalError) {
       await _handleUpdateNotFoundFallback(
         repository,
+        modelId,
         modelData,
         headers,
         extra,
@@ -645,6 +676,7 @@ class RetryExecutor {
   /// Handles update operation fallback when model is not found (404).
   Future<void> _handleUpdateNotFoundFallback(
     SynquillRepositoryBase<SynquillDataModel<dynamic>> repository,
+    String modelId,
     Map<String, dynamic> modelData,
     Map<String, String>? headers,
     Map<String, dynamic>? extra,
@@ -658,7 +690,6 @@ class RetryExecutor {
       );
       return;
     }
-    final modelId = modelData['id'] as String;
 
     _log.info(
       'Update operation for ${repository.runtimeType} $modelId failed '
@@ -731,7 +762,7 @@ class RetryExecutor {
   /// Performs delete operation.
   Future<void> _performDeleteOperation(
     SynquillRepositoryBase<SynquillDataModel<dynamic>> repository,
-    Map<String, dynamic> modelData,
+    String id,
     Map<String, String>? headers,
     Map<String, dynamic>? extra,
   ) async {
@@ -744,7 +775,6 @@ class RetryExecutor {
       );
       return;
     }
-    final id = modelData['id'] as String;
     await repository.apiAdapter.deleteOne(id, headers: headers, extra: extra);
   }
 

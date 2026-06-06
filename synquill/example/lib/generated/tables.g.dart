@@ -254,3 +254,40 @@ class TodoTable extends Table {
   @override
   Set<Column> get primaryKey => {id};
 }
+
+/// Drift table definition for FavoritePlace entities
+///
+/// This table stores FavoritePlace data with automatic sync metadata
+/// and supports offline storage with eventual consistency.
+@UseRowClass(FavoritePlace, constructor: 'fromDb')
+class FavoritePlaceTable extends Table {
+  @override
+  String get tableName => 'favorite_places';
+
+  /// id column for FavoritePlace
+  TextColumn get id => text().named('id')();
+
+  /// title column for FavoritePlace
+  TextColumn get title => text()();
+
+  /// address column for FavoritePlace
+  TextColumn get address => text()();
+
+  /// lastSyncedAt column for FavoritePlace
+  DateTimeColumn get lastSyncedAt => dateTime().nullable()();
+
+  /// createdAt column for FavoritePlace
+  DateTimeColumn get createdAt => dateTime().nullable()();
+
+  /// updatedAt column for FavoritePlace
+  DateTimeColumn get updatedAt => dateTime().nullable()();
+
+  /// syncStatus column for FavoritePlace
+  TextColumn get syncStatus => text()
+      .nullable()
+      .withDefault(const Constant('synced'))
+      .map(const SyncStatusConverter())();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}

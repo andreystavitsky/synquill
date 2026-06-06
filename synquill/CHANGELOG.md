@@ -1,3 +1,15 @@
+## 0.9.0
+
+### Added
+- Added `@SynquillIdKey` to map `SynquillDataModel.id` to custom API JSON
+  keys such as `placeId`.
+- Retry sync now resolves queued task identity from the configured custom id
+  key, payload `id`, then `sync_queue_items.model_id`.
+
+### Fixed
+- Local-first retry processing no longer fails when `toJson()` omits a literal
+  `id` key but the queued row already stores the model id.
+
 ## 0.8.3
 
 ### Changed

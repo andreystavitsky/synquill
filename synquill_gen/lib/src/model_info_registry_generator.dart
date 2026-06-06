@@ -2,14 +2,17 @@ import 'package:synquill_utils/synquill_utils.dart';
 
 import 'package:synquill_gen/src/model_info.dart';
 
-/// Generates model info registry code for cascade delete and foreign key
+/// Generates model info registry code for model metadata
 class ModelInfoRegistryGenerator {
   /// Generates model registry initialization code
   static String generateModelInfoRegistry(List<ModelInfo> models) {
     final buffer = StringBuffer();
 
-    buffer.writeln('/// Register all model relations');
+    buffer.writeln('/// Register all model metadata');
     buffer.writeln('void registerModelRelations() {');
+
+    // Generate custom id JSON key registrations
+    _generateIdJsonKeyRegistrations(buffer, models);
 
     // Generate cascade delete registrations
     _generateCascadeDeleteRegistrations(buffer, models);
@@ -19,6 +22,25 @@ class ModelInfoRegistryGenerator {
 
     buffer.writeln('}');
     return buffer.toString();
+  }
+
+  /// Generates custom id JSON key registration code.
+  static void _generateIdJsonKeyRegistrations(
+    StringBuffer buffer,
+    List<ModelInfo> models,
+  ) {
+    buffer.writeln('  // === ID JSON KEYS ===');
+
+    for (final model in models) {
+      if (model.idJsonKey != 'id') {
+        buffer.writeln(
+          '  ModelInfoRegistryProvider.registerIdJsonKey('
+          '\'${model.className}\', \'${model.idJsonKey}\');',
+        );
+      }
+    }
+
+    buffer.writeln();
   }
 
   /// Generates cascade delete relation registration code

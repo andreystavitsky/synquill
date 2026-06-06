@@ -14,6 +14,7 @@ import 'package:synquill_gen/src/adapter_info.dart';
 const _oneToManyChecker = TypeChecker.fromRuntime(OneToMany);
 const _manyToOneChecker = TypeChecker.fromRuntime(ManyToOne);
 const _indexedChecker = TypeChecker.fromRuntime(Indexed);
+const _synquillIdKeyChecker = TypeChecker.fromRuntime(SynquillIdKey);
 
 /// Analyzes Dart source files to extract model information
 class ModelAnalyzer {
@@ -84,6 +85,7 @@ class ModelAnalyzer {
             }
 
             final fields = extractFields(element, relations);
+            final idJsonKey = extractIdJsonKey(element);
 
             annotatedModels.add(
               ModelInfo(
@@ -96,6 +98,7 @@ class ModelAnalyzer {
                 relations: relations,
                 localOnly: localOnly,
                 idGeneration: idGeneration,
+                idJsonKey: idJsonKey,
               ),
             );
           }
@@ -331,6 +334,74 @@ class ModelAnalyzer {
     }
 
     return fields;
+  }
+
+  /// Extract and validate custom JSON key metadata for the model id field.
+  static String extractIdJsonKey(ClassElement element) {
+    final candidates = <String, String?>{};
+    final candidateElements = <String, Element>{};
+
+    for (final field in _collectAllFields(element)) {
+      if (field.isStatic || !field.isPublic) {
+        continue;
+      }
+
+      final annotation = _synquillIdKeyChecker.firstAnnotationOf(field);
+      if (annotation != null) {
+        final reader = ConstantReader(annotation);
+        candidates[field.name] = reader.peek('key')?.stringValue;
+        candidateElements[field.name] = field;
+      }
+    }
+
+    return validateIdJsonKeyCandidates(
+      element.name,
+      candidates,
+      classElement: element,
+      fieldElements: candidateElements,
+    );
+  }
+
+  /// Validates custom id JSON key metadata collected from a model.
+  static String validateIdJsonKeyCandidates(
+    String className,
+    Map<String, String?> candidates, {
+    Element? classElement,
+    Map<String, Element>? fieldElements,
+  }) {
+    if (candidates.isEmpty) {
+      return 'id';
+    }
+
+    if (candidates.length > 1) {
+      throw InvalidGenerationSourceError(
+        'Class "$className" has multiple @SynquillIdKey annotations. '
+        'Only the id field may declare a custom id JSON key.',
+        element: classElement,
+      );
+    }
+
+    final fieldName = candidates.keys.single;
+    if (fieldName != 'id') {
+      throw InvalidGenerationSourceError(
+        'Field "$fieldName" in class "$className" has '
+        '@SynquillIdKey annotation. @SynquillIdKey can only be applied to '
+        'the id field because SynquillDataModel.id is the internal model '
+        'identity.',
+        element: fieldElements?[fieldName],
+      );
+    }
+
+    final key = candidates[fieldName];
+    if (key == null || key.isEmpty) {
+      throw InvalidGenerationSourceError(
+        'Field "id" in class "$className" has an empty '
+        '@SynquillIdKey value. Provide the JSON key used by the API.',
+        element: fieldElements?[fieldName],
+      );
+    }
+
+    return key;
   }
 
   /// Extract the target type from a relation annotation

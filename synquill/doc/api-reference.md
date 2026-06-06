@@ -281,7 +281,10 @@ Abstract base class for all data models in the Synquill system.
 ```dart
 String get id
 ```
-Unique identifier for the model instance.
+Unique identifier for the model instance. This is Synquill's internal identity
+used by local storage, sync queue rows, relationships, and retry processing.
+If an API serializes the same identity under another JSON key, annotate the
+`id` field with `@SynquillIdKey`.
 
 #### Required Methods
 
@@ -673,6 +676,31 @@ class MyModel extends SynquillDataModel<MyModel> {
 
 - `adapters`: List of API adapter mixins to apply
 - `relations`: List of relationship definitions
+
+### @SynquillIdKey
+
+Field annotation for models whose API JSON uses a non-default key for
+`SynquillDataModel.id`.
+
+```dart
+@JsonSerializable()
+@SynquillRepository(adapters: [PlacesApiAdapter])
+class FavoritePlace extends SynquillDataModel<FavoritePlace> {
+  @override
+  @SynquillIdKey('placeId')
+  @JsonKey(name: 'placeId')
+  final String id;
+
+  final String title;
+
+  FavoritePlace({String? id, required this.title})
+      : id = id ?? generateCuid();
+}
+```
+
+`@SynquillIdKey` can only be placed on the `id` field. It does not rename the
+local database id column; it tells generated runtime metadata which JSON key
+contains the model id during API sync and retry reconstruction.
 
 ### Relationship Annotations
 

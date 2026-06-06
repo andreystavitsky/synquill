@@ -108,13 +108,13 @@ void main() {
       DatabaseProvider.reset();
     });
 
-    test('marks payload without id dead without incrementing attempts',
+    test('marks task without payload or queue id dead without incrementing',
         () async {
       await initStorage();
 
       final taskId = await insertTask(
         modelType: 'TestUser',
-        modelId: 'missing-id',
+        modelId: '',
         operation: SyncOperation.delete.name,
         payload: '{}',
       );
@@ -262,6 +262,137 @@ void main() {
       expect(task['attempt_count'], 1);
       expect(task['next_retry_at'], isNotNull);
     });
+
+    test('resolves retry task id from registered custom JSON key', () async {
+      SynquillRepositoryProvider.reset();
+      DatabaseProvider.reset();
+      TestPlaceRepository.clearLocal();
+
+      database = TestDatabase(NativeDatabase.memory());
+      final placeAdapter = TestPlaceApiAdapter();
+
+      SynquillRepositoryProvider.register<TestPlace>(
+        (db) => TestPlaceRepository(db as TestDatabase, placeAdapter),
+      );
+      ModelInfoRegistryProvider.registerIdJsonKey('TestPlace', 'placeId');
+
+      await SynquillStorage.init(
+        database: database,
+        config: const SynquillStorageConfig(
+          foregroundPollInterval: Duration(minutes: 1),
+          backgroundPollInterval: Duration(minutes: 1),
+          initialRetryDelay: Duration(milliseconds: 5),
+          minRetryDelay: Duration(milliseconds: 1),
+          maxRetryAttempts: 3,
+          jitterPercent: 0,
+        ),
+        enableInternetMonitoring: false,
+        connectivityChecker: () async => true,
+      );
+
+      syncQueueDao = SyncQueueDao(database);
+      final placeRepository = TestPlaceRepository(database, placeAdapter);
+      placeRepository.addLocalPlace(
+        TestPlace(id: 'place-1', title: 'Favorite'),
+      );
+
+      final createTaskId = await insertTask(
+        modelType: 'TestPlace',
+        modelId: 'place-1',
+        operation: SyncOperation.create.name,
+        payload: jsonEncode({'placeId': 'place-1', 'title': 'Favorite'}),
+      );
+      final updateTaskId = await insertTask(
+        modelType: 'TestPlace',
+        modelId: 'place-1',
+        operation: SyncOperation.update.name,
+        payload: jsonEncode({'placeId': 'place-1', 'title': 'Favorite'}),
+      );
+      final deleteTaskId = await insertTask(
+        modelType: 'TestPlace',
+        modelId: 'place-1',
+        operation: SyncOperation.delete.name,
+        payload: jsonEncode({'placeId': 'place-1', 'title': 'Favorite'}),
+      );
+
+      await SynquillStorage.retryExecutor.processDueTasksNow(forceSync: true);
+
+      expect(await syncQueueDao.getItemById(createTaskId), isNull);
+      expect(await syncQueueDao.getItemById(updateTaskId), isNull);
+      expect(await syncQueueDao.getItemById(deleteTaskId), isNull);
+      expect(placeAdapter.createdIds, ['place-1']);
+      expect(placeAdapter.updatedIds, ['place-1']);
+      expect(placeAdapter.deletedIds, ['place-1']);
+      expect(placeAdapter.lastPayloadHadCanonicalId, isFalse);
+    });
+
+    test('prefers registered custom JSON key over payload id', () async {
+      SynquillRepositoryProvider.reset();
+      DatabaseProvider.reset();
+      TestPlaceRepository.clearLocal();
+
+      database = TestDatabase(NativeDatabase.memory());
+      final placeAdapter = TestPlaceApiAdapter();
+
+      SynquillRepositoryProvider.register<TestPlace>(
+        (db) => TestPlaceRepository(db as TestDatabase, placeAdapter),
+      );
+      ModelInfoRegistryProvider.registerIdJsonKey('TestPlace', 'placeId');
+
+      await SynquillStorage.init(
+        database: database,
+        config: const SynquillStorageConfig(
+          foregroundPollInterval: Duration(minutes: 1),
+          backgroundPollInterval: Duration(minutes: 1),
+          initialRetryDelay: Duration(milliseconds: 5),
+          minRetryDelay: Duration(milliseconds: 1),
+          maxRetryAttempts: 3,
+          jitterPercent: 0,
+        ),
+        enableInternetMonitoring: false,
+        connectivityChecker: () async => true,
+      );
+
+      syncQueueDao = SyncQueueDao(database);
+      final placeRepository = TestPlaceRepository(database, placeAdapter);
+      placeRepository.addLocalPlace(
+        TestPlace(id: 'place-1', title: 'Favorite'),
+      );
+
+      final taskId = await insertTask(
+        modelType: 'TestPlace',
+        modelId: 'place-1',
+        operation: SyncOperation.update.name,
+        payload: jsonEncode({
+          'id': 'wrong-id',
+          'placeId': 'place-1',
+          'title': 'Favorite',
+        }),
+      );
+
+      final task = await processAndFetch(taskId);
+
+      expect(task, isNull);
+      expect(placeAdapter.updatedIds, ['place-1']);
+    });
+
+    test('falls back to sync queue model_id when payload omits identity',
+        () async {
+      await initStorage();
+
+      final taskId = await insertTask(
+        modelType: 'TestUser',
+        modelId: 'queue-only-delete-id',
+        operation: SyncOperation.delete.name,
+        payload: jsonEncode({'name': 'No ID Payload'}),
+      );
+
+      final task = await processAndFetch(taskId);
+
+      expect(task, isNull);
+      expect(mockAdapter.operationLog,
+          contains('deleteOne(queue-only-delete-id)'));
+    });
   });
 }
 
@@ -307,5 +438,197 @@ class ThrowingMockApiAdapter extends MockApiAdapter {
       throw error;
     }
     return super.deleteOne(id, headers: headers, extra: extra);
+  }
+}
+
+class TestPlace extends SynquillDataModel<TestPlace> {
+  @override
+  final String id;
+  final String title;
+
+  TestPlace({required this.id, required this.title});
+
+  @override
+  TestPlace fromJson(Map<String, dynamic> json) {
+    return TestPlace(
+      id: json['placeId'] as String,
+      title: json['title'] as String,
+    );
+  }
+
+  @override
+  Map<String, dynamic> toJson() {
+    return {'placeId': id, 'title': title};
+  }
+}
+
+class TestPlaceRepository extends SynquillRepositoryBase<TestPlace> {
+  final TestPlaceApiAdapter _apiAdapter;
+  static final Map<String, TestPlace> _localData = {};
+
+  TestPlaceRepository(super.db, this._apiAdapter);
+
+  static void clearLocal() {
+    _localData.clear();
+  }
+
+  void addLocalPlace(TestPlace place) {
+    _localData[place.id] = place;
+  }
+
+  @override
+  ApiAdapterBase<TestPlace> get apiAdapter => _apiAdapter;
+
+  @override
+  bool get localOnly => false;
+
+  @override
+  Future<TestPlace?> fetchFromLocal(
+    String id, {
+    QueryParams? queryParams,
+  }) async {
+    return _localData[id];
+  }
+
+  @override
+  Future<List<TestPlace>> fetchAllFromLocal({QueryParams? queryParams}) async {
+    return _localData.values.toList();
+  }
+
+  @override
+  Future<TestPlace?> fetchFromRemote(
+    String id, {
+    QueryParams? queryParams,
+    Map<String, dynamic>? extra,
+    Map<String, String>? headers,
+  }) async {
+    return _apiAdapter.findOne(
+      id,
+      queryParams: queryParams,
+      headers: headers,
+      extra: extra,
+    );
+  }
+
+  @override
+  Future<List<TestPlace>> fetchAllFromRemote({
+    QueryParams? queryParams,
+    Map<String, dynamic>? extra,
+    Map<String, String>? headers,
+  }) async {
+    return _apiAdapter.findAll(
+      queryParams: queryParams,
+      headers: headers,
+      extra: extra,
+    );
+  }
+
+  @override
+  Future<void> removeFromLocalIfExists(String id) async {
+    _localData.remove(id);
+  }
+
+  @override
+  Future<void> saveToLocal(
+    TestPlace item, {
+    Map<String, dynamic>? extra,
+  }) async {
+    _localData[item.id] = item;
+  }
+
+  @override
+  Stream<TestPlace?> watchFromLocal(String id, {QueryParams? queryParams}) {
+    return Stream.value(_localData[id]);
+  }
+
+  @override
+  Stream<List<TestPlace>> watchAllFromLocal({QueryParams? queryParams}) {
+    return Stream.value(_localData.values.toList());
+  }
+}
+
+class TestPlaceApiAdapter extends ApiAdapterBase<TestPlace> {
+  final List<String> createdIds = [];
+  final List<String> updatedIds = [];
+  final List<String> deletedIds = [];
+  bool lastPayloadHadCanonicalId = false;
+
+  @override
+  Uri get baseUrl => Uri.parse('https://test.example.com/api/v1/');
+
+  @override
+  String get type => 'place';
+
+  @override
+  String get pluralType => 'places';
+
+  @override
+  TestPlace fromJson(Map<String, dynamic> json) {
+    lastPayloadHadCanonicalId = json.containsKey('id');
+    return TestPlace(
+      id: json['placeId'] as String,
+      title: json['title'] as String,
+    );
+  }
+
+  @override
+  Map<String, dynamic> toJson(TestPlace model) => model.toJson();
+
+  @override
+  Future<TestPlace?> findOne(
+    String id, {
+    Map<String, String>? headers,
+    QueryParams? queryParams,
+    Map<String, dynamic>? extra,
+  }) async {
+    return null;
+  }
+
+  @override
+  Future<List<TestPlace>> findAll({
+    Map<String, String>? headers,
+    QueryParams? queryParams,
+    Map<String, dynamic>? extra,
+  }) async {
+    return const [];
+  }
+
+  @override
+  Future<TestPlace?> createOne(
+    TestPlace model, {
+    Map<String, String>? headers,
+    Map<String, dynamic>? extra,
+  }) async {
+    createdIds.add(model.id);
+    return model;
+  }
+
+  @override
+  Future<TestPlace?> updateOne(
+    TestPlace model, {
+    Map<String, String>? headers,
+    Map<String, dynamic>? extra,
+  }) async {
+    updatedIds.add(model.id);
+    return model;
+  }
+
+  @override
+  Future<TestPlace?> replaceOne(
+    TestPlace model, {
+    Map<String, String>? headers,
+    Map<String, dynamic>? extra,
+  }) async {
+    updatedIds.add(model.id);
+    return model;
+  }
+
+  @override
+  Future<void> deleteOne(
+    String id, {
+    Map<String, String>? headers,
+    Map<String, dynamic>? extra,
+  }) async {
+    deletedIds.add(id);
   }
 }

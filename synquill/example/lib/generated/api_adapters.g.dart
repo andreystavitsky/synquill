@@ -99,3 +99,27 @@ class _TodoAdapter extends BasicApiAdapter<Todo>
     }
   }
 }
+
+/// Generated adapter for FavoritePlace
+class _FavoritePlaceAdapter extends BasicApiAdapter<FavoritePlace>
+    with JsonApiAdapter<FavoritePlace>, FavoritePlaceApiAdapter {
+  @override
+  FavoritePlace fromJson(Map<String, dynamic> json) {
+    // Try to call fromJson if it exists, otherwise throw
+    try {
+      return FavoritePlace.fromJson(json);
+    } on NoSuchMethodError {
+      throw UnimplementedError('fromJson not implemented for FavoritePlace');
+    }
+  }
+
+  @override
+  Map<String, dynamic> toJson(FavoritePlace model) {
+    // Try to call toJson if it exists, otherwise throw
+    try {
+      return model.toJson();
+    } on NoSuchMethodError {
+      throw UnimplementedError('toJson not implemented for FavoritePlace');
+    }
+  }
+}
