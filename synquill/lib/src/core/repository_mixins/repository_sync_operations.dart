@@ -3,12 +3,23 @@ import 'dart:convert' as convert;
 import 'package:cuid2/cuid2.dart';
 import 'package:logging/logging.dart';
 import 'package:synquill/src/adapters/api_adapter.dart';
+import 'package:synquill/src/core/exceptions.dart';
 import 'package:synquill/src/core/repository_mixins/repository_types.dart';
 import 'package:synquill/src/core/synquill_data_model.dart';
 import 'package:synquill/src/core/synquill_storage.dart';
 import 'package:synquill/src/drift/sync_queue_dao.dart';
 import 'package:synquill/src/runtime/network_task.dart';
 import 'package:synquill/src/runtime/request_queue.dart';
+
+class _SaveSyncQueueEntry {
+  final int syncQueueId;
+  final SyncOperation operation;
+
+  const _SaveSyncQueueEntry({
+    required this.syncQueueId,
+    required this.operation,
+  });
+}
 
 /// Mixin providing sync operations and queue management for repositories.
 ///
@@ -38,6 +49,130 @@ mixin RepositorySyncOperations<T extends SynquillDataModel<T>> {
   /// to be synchronized with the remote API when online. Ensures
   /// reliable sync and conflict resolution in offline/online scenarios.
   RequestQueueManager get queueManager;
+
+  /// The stream controller for repository change events.
+  StreamController<RepositoryChange<T>> get changeController;
+
+  /// Emits a created or updated change event for a saved item.
+  void emitSavedChange(T item, {required bool isExisting}) {
+    changeController.add(
+      isExisting
+          ? RepositoryChange.updated(item)
+          : RepositoryChange.created(item),
+    );
+  }
+
+  /// Emits an updated change event.
+  void emitUpdatedChange(T item) {
+    changeController.add(RepositoryChange.updated(item));
+  }
+
+  /// Emits a deleted change event.
+  void emitDeletedChange(String id, [T? item]) {
+    changeController.add(RepositoryChange.deleted(id, item));
+  }
+
+  /// Emits an error change event.
+  void emitErrorChange(Object error, StackTrace stackTrace) {
+    changeController.add(RepositoryChange.error(error, stackTrace));
+  }
+
+  /// Creates and runs a remote task on the foreground queue.
+  Future<R> enqueueForegroundRemoteTask<R>({
+    required Future<R> Function() execute,
+    required SyncOperation operation,
+    required String modelId,
+    required String idempotencyKey,
+    required String taskName,
+  }) async {
+    final task = NetworkTask<R>(
+      exec: execute,
+      idempotencyKey: idempotencyKey,
+      operation: operation,
+      modelType: T.toString(),
+      modelId: modelId,
+      taskName: taskName,
+    );
+
+    return await queueManager.enqueueTask(
+      task,
+      queueType: QueueType.foreground,
+    );
+  }
+
+  /// Runs a remoteFirst write task with shared error mapping and events.
+  Future<R> runRemoteFirstWriteTask<R>({
+    required Future<R> Function() execute,
+    required SyncOperation operation,
+    required String modelId,
+    required String idempotencyKey,
+    required String taskName,
+    required String failureDescription,
+    FutureOr<R> Function(ApiExceptionGone error, StackTrace stackTrace)? onGone,
+  }) async {
+    try {
+      return await enqueueForegroundRemoteTask<R>(
+        execute: execute,
+        operation: operation,
+        modelId: modelId,
+        idempotencyKey: idempotencyKey,
+        taskName: taskName,
+      );
+    } on OfflineException catch (error, stackTrace) {
+      log.warning(
+        'OfflineException during remoteFirst $failureDescription. '
+        'Operation failed as per policy.',
+        error,
+        stackTrace,
+      );
+      emitErrorChange(error, stackTrace);
+      rethrow;
+    } on ApiExceptionGone catch (error, stackTrace) {
+      if (onGone != null) {
+        return await onGone(error, stackTrace);
+      }
+      _throwRemoteFirstApiFailure<R>(
+        failureDescription,
+        error,
+        stackTrace,
+      );
+    } on ApiException catch (error, stackTrace) {
+      _throwRemoteFirstApiFailure<R>(
+        failureDescription,
+        error,
+        stackTrace,
+      );
+    } catch (error, stackTrace) {
+      log.severe(
+        'Unexpected error during remoteFirst $failureDescription.',
+        error,
+        stackTrace,
+      );
+      emitErrorChange(error, stackTrace);
+      throw SynquillStorageException(
+        'Failed to $failureDescription with remoteFirst policy: $error',
+        stackTrace,
+      );
+    }
+  }
+
+  Never _throwRemoteFirstApiFailure<R>(
+    String failureDescription,
+    ApiException error,
+    StackTrace stackTrace,
+  ) {
+    log.severe(
+      'ApiException during remoteFirst $failureDescription.',
+      error,
+      stackTrace,
+    );
+    emitErrorChange(error, stackTrace);
+    throw SynquillStorageException(
+      'Failed to $failureDescription with remoteFirst policy due to '
+      'API error: $error',
+      stackTrace,
+    );
+  }
 
   /// Executes a sync operation for background queue processing.
   ///
@@ -140,6 +275,23 @@ mixin RepositorySyncOperations<T extends SynquillDataModel<T>> {
     Map<String, String>? headers,
     Map<String, dynamic>? extra,
   ) async {
+    final entry = await _prepareSyncQueueForSave(
+      item,
+      operation,
+      idempotencyKey,
+      headers,
+      extra,
+    );
+    return entry.syncQueueId;
+  }
+
+  Future<_SaveSyncQueueEntry> _prepareSyncQueueForSave(
+    T item,
+    SyncOperation operation,
+    String idempotencyKey,
+    Map<String, String>? headers,
+    Map<String, dynamic>? extra,
+  ) async {
     final syncQueueDao = SyncQueueDao(SynquillStorage.database);
     int syncQueueId;
 
@@ -222,7 +374,10 @@ mixin RepositorySyncOperations<T extends SynquillDataModel<T>> {
       log.fine('Created sync queue entry $syncQueueId for ${item.id}');
     }
 
-    return syncQueueId;
+    return _SaveSyncQueueEntry(
+      syncQueueId: syncQueueId,
+      operation: operation,
+    );
   }
 
   /// Attempts immediate sync execution and removes queue entry on success.
@@ -238,15 +393,41 @@ mixin RepositorySyncOperations<T extends SynquillDataModel<T>> {
     Map<String, String>? headers,
     Map<String, dynamic>? extra,
   ) async {
+    final syncTask = NetworkTask<void>(
+      exec: () => executeSyncOperation(operation, item, headers, extra),
+      idempotencyKey: idempotencyKey,
+      operation: operation,
+      modelType: T.toString(),
+      modelId: item.id,
+      taskName: 'BackgroundSync-${T.toString()}-${item.id}',
+    );
+
+    await executeBackgroundTaskAndCleanup(syncTask, syncQueueId);
+  }
+
+  /// Starts immediate sync execution without blocking the caller.
+  ///
+  /// On success the sync queue entry is removed. On failure the queue entry is
+  /// left in place so RetryExecutor can retry it later.
+  void startBackgroundTaskAndCleanup(
+    NetworkTask<void> syncTask,
+    int syncQueueId,
+  ) {
+    unawaited(executeBackgroundTaskAndCleanup(syncTask, syncQueueId));
+  }
+
+  /// Executes a prepared background task and removes its queue entry
+  /// on success.
+  Future<void> executeBackgroundTaskAndCleanup(
+    NetworkTask<void> syncTask,
+    int syncQueueId,
+  ) async {
     final syncQueueDao = SyncQueueDao(SynquillStorage.database);
 
     try {
-      await enqueueImmediateSyncTask(
-        operation,
-        item,
-        idempotencyKey,
-        headers,
-        extra,
+      await queueManager.enqueueTask(
+        syncTask,
+        queueType: QueueType.background,
       );
 
       // If immediate sync succeeded, remove from sync queue
@@ -256,7 +437,7 @@ mixin RepositorySyncOperations<T extends SynquillDataModel<T>> {
       );
     } catch (e, stackTrace) {
       log.warning(
-        'Immediate background sync failed for ${item.id}, '
+        'Immediate background sync failed for ${syncTask.modelId}, '
         'task will be retried by RetryExecutor',
         e,
         stackTrace,
@@ -270,8 +451,8 @@ mixin RepositorySyncOperations<T extends SynquillDataModel<T>> {
   ///
   /// This method coordinates the full background sync workflow:
   /// 1. Creates or updates sync queue entries
-  /// 2. Attempts immediate sync execution
-  /// 3. Manages queue cleanup on success
+  /// 2. Starts immediate sync execution without blocking the caller
+  /// 3. Manages queue cleanup on immediate-sync success
   ///
   /// This ensures proper background sync behavior while maintaining
   /// local-first semantics.
@@ -287,7 +468,7 @@ mixin RepositorySyncOperations<T extends SynquillDataModel<T>> {
 
     try {
       // Manage sync queue entry (create/update as needed)
-      final syncQueueId = await manageSyncQueueForSave(
+      final syncQueueEntry = await _prepareSyncQueueForSave(
         item,
         operation,
         idempotencyKey,
@@ -295,15 +476,21 @@ mixin RepositorySyncOperations<T extends SynquillDataModel<T>> {
         extra,
       );
 
-      // Try immediate sync execution
-      await tryImmediateSyncAndCleanup(
-        operation,
-        item,
-        idempotencyKey,
-        syncQueueId,
-        headers,
-        extra,
+      // Try immediate sync execution without blocking localFirst saves.
+      final syncTask = NetworkTask<void>(
+        exec: () => executeSyncOperation(
+          syncQueueEntry.operation,
+          item,
+          headers,
+          extra,
+        ),
+        idempotencyKey: idempotencyKey,
+        operation: syncQueueEntry.operation,
+        modelType: T.toString(),
+        modelId: item.id,
+        taskName: 'ImmediateSync-${T.toString()}-${item.id}',
       );
+      startBackgroundTaskAndCleanup(syncTask, syncQueueEntry.syncQueueId);
     } catch (e, stackTrace) {
       log.warning(
         'Error during background sync processing for ${item.id}',

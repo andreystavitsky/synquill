@@ -41,6 +41,7 @@ class _MixinQueryRepository
     with
         RepositoryLocalOperations<TestUser>,
         RepositoryRemoteOperations<TestUser>,
+        RepositorySyncOperations<TestUser>,
         RepositoryDeleteOperations<TestUser>,
         RepositoryRealtimeOperations<TestUser>,
         RepositoryQueryOperations<TestUser> {

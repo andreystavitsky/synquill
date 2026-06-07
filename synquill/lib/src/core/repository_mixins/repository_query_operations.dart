@@ -7,6 +7,7 @@ import 'package:synquill/src/core/repository_mixins/repository_delete_operations
 import 'package:synquill/src/core/repository_mixins/repository_local_operations.dart';
 import 'package:synquill/src/core/repository_mixins/repository_realtime_operations.dart';
 import 'package:synquill/src/core/repository_mixins/repository_remote_operations.dart';
+import 'package:synquill/src/core/repository_mixins/repository_sync_operations.dart';
 import 'package:synquill/src/core/repository_mixins/repository_types.dart';
 import 'package:synquill/src/core/synquill_data_model.dart';
 import 'package:synquill/src/core/synquill_repository_provider.dart';
@@ -18,6 +19,7 @@ mixin RepositoryQueryOperations<T extends SynquillDataModel<T>>
     on
         RepositoryLocalOperations<T>,
         RepositoryRemoteOperations<T>,
+        RepositorySyncOperations<T>,
         RepositoryDeleteOperations<T>,
         RepositoryRealtimeOperations<T> {
   /// Gets the default load policy from global configuration.
@@ -62,10 +64,8 @@ mixin RepositoryQueryOperations<T extends SynquillDataModel<T>>
       case DataLoadPolicy.remoteFirst:
         log.info('Policy: remoteFirst. Fetching $T $id from remote API');
         try {
-          // Create a NetworkTask for remoteFirst query operation
-          // and route through foreground queue for immediate execution
-          final remoteFirstFetchTask = NetworkTask<T?>(
-            exec: () => fetchFromRemote(
+          final T? remoteItem = await enqueueForegroundRemoteTask<T?>(
+            execute: () => fetchFromRemote(
               id,
               extra: extra,
               queryParams: queryParams,
@@ -73,15 +73,8 @@ mixin RepositoryQueryOperations<T extends SynquillDataModel<T>>
             ),
             idempotencyKey: '$id-remoteFirst-fetch-${cuid()}',
             operation: SyncOperation.read,
-            modelType: T.toString(),
             modelId: id,
             taskName: 'remoteFirst_fetch_$T',
-          );
-
-          // Execute via foreground queue
-          final T? remoteItem = await queueManager.enqueueTask(
-            remoteFirstFetchTask,
-            queueType: QueueType.foreground,
           );
 
           if (remoteItem != null) {
@@ -392,10 +385,9 @@ mixin RepositoryQueryOperations<T extends SynquillDataModel<T>>
       case DataLoadPolicy.remoteFirst:
         log.info('Policy: remoteFirst. Fetching all $T from remote API');
         try {
-          // Create a NetworkTask for remoteFirst findAll operation
-          // and route through foreground queue for immediate execution
-          final remoteFirstFetchAllTask = NetworkTask<List<T>>(
-            exec: () => fetchAllFromRemote(
+          final List<T> remoteItems =
+              await enqueueForegroundRemoteTask<List<T>>(
+            execute: () => fetchAllFromRemote(
               queryParams: queryParams,
               extra: extra,
               headers: headers,
@@ -403,15 +395,8 @@ mixin RepositoryQueryOperations<T extends SynquillDataModel<T>>
             idempotencyKey: 'all-remoteFirst-fetch-'
                 '${cuid()}',
             operation: SyncOperation.read,
-            modelType: T.toString(),
             modelId: 'all',
             taskName: 'remoteFirst_fetchAll_$T',
-          );
-
-          // Execute via foreground queue
-          final List<T> remoteItems = await queueManager.enqueueTask(
-            remoteFirstFetchAllTask,
-            queueType: QueueType.foreground,
           );
 
           // Unlike findOne, an empty list from fetchAllFromRemote is

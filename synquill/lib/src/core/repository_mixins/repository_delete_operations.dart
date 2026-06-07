@@ -3,16 +3,15 @@ import 'dart:convert' as convert;
 import 'package:cuid2/cuid2.dart';
 import 'package:logging/logging.dart';
 import 'package:synquill/src/adapters/api_adapter.dart';
-import 'package:synquill/src/core/exceptions.dart';
 import 'package:synquill/src/core/model_info_registry_provider.dart';
 import 'package:synquill/src/core/query_parameters.dart';
 import 'package:synquill/src/core/repository_mixins/repository_local_operations.dart';
+import 'package:synquill/src/core/repository_mixins/repository_sync_operations.dart';
 import 'package:synquill/src/core/repository_mixins/repository_types.dart';
 import 'package:synquill/src/core/synquill_data_model.dart';
 import 'package:synquill/src/core/synquill_repository_provider.dart';
 import 'package:synquill/src/core/synquill_storage.dart';
 import 'package:synquill/src/drift/sync_queue_dao.dart';
-import 'package:synquill/src/runtime/network_task.dart';
 import 'package:synquill/src/runtime/request_queue.dart';
 
 /// Mixin providing delete and cascade delete operations for repositories.
@@ -23,7 +22,7 @@ import 'package:synquill/src/runtime/request_queue.dart';
 /// - Smart delete queue management
 /// - Local storage removal methods
 mixin RepositoryDeleteOperations<T extends SynquillDataModel<T>>
-    on RepositoryLocalOperations<T> {
+    on RepositoryLocalOperations<T>, RepositorySyncOperations<T> {
   /// The logger instance for this repository.
   ///
   /// Used for logging all repository operations, errors, and debug
@@ -37,6 +36,7 @@ mixin RepositoryDeleteOperations<T extends SynquillDataModel<T>>
   /// Notifies listeners about changes to the repository, such as item
   /// deletions, insertions, or errors. This enables reactive updates
   /// in the UI or other system components when repository state changes.
+  @override
   StreamController<RepositoryChange<T>> get changeController;
 
   /// The API adapter used for remote operations.
@@ -44,6 +44,7 @@ mixin RepositoryDeleteOperations<T extends SynquillDataModel<T>>
   /// Handles communication with the remote REST API for CRUD operations
   /// on the model type [T]. This adapter abstracts network calls and
   /// error handling for remote data sync.
+  @override
   ApiAdapterBase<T> get apiAdapter;
 
   /// The request queue manager for handling queued operations.
@@ -51,6 +52,7 @@ mixin RepositoryDeleteOperations<T extends SynquillDataModel<T>>
   /// Manages the local queue of pending operations (such as deletes)
   /// to be synchronized with the remote API when online. Ensures
   /// reliable sync and conflict resolution in offline/online scenarios.
+  @override
   RequestQueueManager get queueManager;
 
   /// The default save policy for this repository.
@@ -164,7 +166,7 @@ mixin RepositoryDeleteOperations<T extends SynquillDataModel<T>>
         );
 
         await removeFromLocalIfExists(id);
-        changeController.add(RepositoryChange.deleted(id));
+        emitDeletedChange(id);
         log.fine('Local delete for $id successful.');
 
         return;
@@ -181,96 +183,49 @@ mixin RepositoryDeleteOperations<T extends SynquillDataModel<T>>
             extra: extra,
           );
           await removeFromLocalIfExists(id);
-          changeController.add(RepositoryChange.deleted(id));
+          emitDeletedChange(id);
           log.fine('Local delete for $id successful '
               '(local-only repository, remoteFirst policy).');
           return;
         }
         log.info('Policy: remoteFirst. Deleting $T from remote API first.');
-        try {
-          // Create a NetworkTask for remoteFirst delete operation
-          // and route through foreground queue for immediate execution
-          final remoteFirstDeleteTask = NetworkTask<void>(
-            exec: () =>
-                apiAdapter.deleteOne(id, extra: extra, headers: headers),
-            idempotencyKey: '$id-remoteFirst-delete-'
-                '${cuid()}',
-            operation: SyncOperation.delete,
-            modelType: T.toString(),
-            modelId: id,
-            taskName: 'remoteFirst_delete_$T',
-          );
+        final remoteWasDeleted = await runRemoteFirstWriteTask<bool>(
+          execute: () async {
+            await apiAdapter.deleteOne(id, extra: extra, headers: headers);
+            return true;
+          },
+          operation: SyncOperation.delete,
+          modelId: id,
+          idempotencyKey: '$id-remoteFirst-delete-${cuid()}',
+          taskName: 'remoteFirst_delete_$T',
+          failureDescription: 'delete $T $id',
+          onGone: (e, stackTrace) {
+            // If remote says not found, ensure local is also gone.
+            log.fine(
+              'Item $id not found on remote during remoteFirst delete. '
+              'Ensuring local removal.',
+              e,
+              stackTrace,
+            );
+            return false;
+          },
+        );
 
-          // Execute via foreground queue
-          await queueManager.enqueueTask(
-            remoteFirstDeleteTask,
-            queueType: QueueType.foreground,
-          );
-
+        if (remoteWasDeleted) {
           log.fine(
             'Remote delete for $id successful. Removing from local copy.',
           );
-
-          await _handleSmartDelete(
-            modelId: id,
-            payload: payload,
-            scheduleDelete: false,
-            headers: headers,
-            extra: extra,
-          );
-          await removeFromLocalIfExists(id);
-          changeController.add(RepositoryChange.deleted(id));
-        } on OfflineException catch (e, stackTrace) {
-          log.warning(
-            'OfflineException during remoteFirst delete for $T $id. '
-            'Operation failed as per policy.',
-            e,
-            stackTrace,
-          );
-          changeController.add(RepositoryChange.error(e, stackTrace));
-          rethrow;
-        } on ApiExceptionGone catch (e, stackTrace) {
-          // If remote says not found, it's good to ensure local is also gone.
-          log.fine(
-            'Item $id not found on remote during remoteFirst delete. '
-            'Ensuring local removal.',
-            e,
-            stackTrace,
-          );
-          await _handleSmartDelete(
-            modelId: id,
-            payload: payload,
-            scheduleDelete: false,
-            headers: headers,
-            extra: extra,
-          );
-          await removeFromLocalIfExists(id);
-          changeController.add(RepositoryChange.deleted(id));
-          // Not rethrowing as the desired state (item gone) is achieved.
-        } on ApiException catch (e, stackTrace) {
-          log.severe(
-            'ApiException during remoteFirst delete for $T $id.',
-            e,
-            stackTrace,
-          );
-          changeController.add(RepositoryChange.error(e, stackTrace));
-          throw SynquillStorageException(
-            'Failed to delete $T $id with remoteFirst policy due to '
-            'API error: $e',
-            stackTrace,
-          );
-        } catch (e, stackTrace) {
-          log.severe(
-            'Unexpected error during remoteFirst delete for $T $id.',
-            e,
-            stackTrace,
-          );
-          changeController.add(RepositoryChange.error(e, stackTrace));
-          throw SynquillStorageException(
-            'Failed to delete $T $id with remoteFirst policy: $e',
-            stackTrace,
-          );
         }
+
+        await _handleSmartDelete(
+          modelId: id,
+          payload: payload,
+          scheduleDelete: false,
+          headers: headers,
+          extra: extra,
+        );
+        await removeFromLocalIfExists(id);
+        emitDeletedChange(id);
         return;
     }
   }
