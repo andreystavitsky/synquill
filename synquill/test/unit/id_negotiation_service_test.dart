@@ -63,6 +63,29 @@ void main() {
       // But we should be able to get the original temporary client ID
       expect(service.getTemporaryClientId(newModel), equals(tempClientId));
     });
+
+    test('replaceIdEverywhere honors custom id JSON key metadata', () {
+      ModelInfoRegistryProvider.registerIdJsonKey(
+        'CustomServerIdModel',
+        'serverKey',
+      );
+      addTearDown(ModelInfoRegistryProvider.reset);
+
+      final customService = IdNegotiationService<CustomServerIdModel>(
+        usesServerGeneratedId: true,
+      );
+      final model = CustomServerIdModel(
+        id: 'temporary-id',
+        name: 'Custom Model',
+      );
+
+      final newModel = customService.replaceIdEverywhere(model, 'server-id');
+
+      expect(newModel.id, equals('server-id'));
+      expect(newModel.name, equals(model.name));
+      expect(newModel.toJson(), isNot(containsPair('id', 'server-id')));
+      expect(newModel.toJson(), containsPair('serverKey', 'server-id'));
+    });
   });
 
   group('Repository Integration Tests', () {
@@ -128,4 +151,29 @@ void main() {
       expect(newModel.name, equals(model.name));
     });
   });
+}
+
+class CustomServerIdModel extends SynquillDataModel<CustomServerIdModel> {
+  @override
+  final String id;
+  final String name;
+
+  CustomServerIdModel({
+    required this.id,
+    required this.name,
+  });
+
+  @override
+  Map<String, dynamic> toJson() => {
+        'serverKey': id,
+        'name': name,
+      };
+
+  @override
+  CustomServerIdModel fromJson(Map<String, dynamic> json) {
+    return CustomServerIdModel(
+      id: json['serverKey'] as String,
+      name: json['name'] as String,
+    );
+  }
 }

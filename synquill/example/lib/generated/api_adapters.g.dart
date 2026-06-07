@@ -6,7 +6,7 @@ part of '../synquill.generated.dart';
 
 /// Generated adapter for GraphqlPost
 class _GraphqlPostAdapter extends GraphQLApiAdapter<GraphqlPost>
-    with GraphqlPostApiAdapter {
+     with GraphqlPostApiAdapter {
   @override
   GraphqlPost fromJson(Map<String, dynamic> json) {
     // Try to call fromJson if it exists, otherwise throw
@@ -28,9 +28,10 @@ class _GraphqlPostAdapter extends GraphQLApiAdapter<GraphqlPost>
   }
 }
 
+
 /// Generated adapter for Post
 class _PostAdapter extends BasicApiAdapter<Post>
-    with JsonApiAdapter<Post>, PostApiAdapter {
+     with JsonApiAdapter<Post>, PostApiAdapter {
   @override
   Post fromJson(Map<String, dynamic> json) {
     // Try to call fromJson if it exists, otherwise throw
@@ -52,9 +53,10 @@ class _PostAdapter extends BasicApiAdapter<Post>
   }
 }
 
+
 /// Generated adapter for User
 class _UserAdapter extends BasicApiAdapter<User>
-    with JsonApiAdapter<User>, UserApiAdapter {
+     with JsonApiAdapter<User>, UserApiAdapter {
   @override
   User fromJson(Map<String, dynamic> json) {
     // Try to call fromJson if it exists, otherwise throw
@@ -76,9 +78,10 @@ class _UserAdapter extends BasicApiAdapter<User>
   }
 }
 
+
 /// Generated adapter for Todo
 class _TodoAdapter extends BasicApiAdapter<Todo>
-    with JsonApiAdapter<Todo>, TodoApiAdapter {
+     with JsonApiAdapter<Todo>, TodoApiAdapter {
   @override
   Todo fromJson(Map<String, dynamic> json) {
     // Try to call fromJson if it exists, otherwise throw
@@ -100,9 +103,10 @@ class _TodoAdapter extends BasicApiAdapter<Todo>
   }
 }
 
+
 /// Generated adapter for FavoritePlace
 class _FavoritePlaceAdapter extends BasicApiAdapter<FavoritePlace>
-    with JsonApiAdapter<FavoritePlace>, FavoritePlaceApiAdapter {
+     with JsonApiAdapter<FavoritePlace>, FavoritePlaceApiAdapter {
   @override
   FavoritePlace fromJson(Map<String, dynamic> json) {
     // Try to call fromJson if it exists, otherwise throw
@@ -123,3 +127,5 @@ class _FavoritePlaceAdapter extends BasicApiAdapter<FavoritePlace>
     }
   }
 }
+
+

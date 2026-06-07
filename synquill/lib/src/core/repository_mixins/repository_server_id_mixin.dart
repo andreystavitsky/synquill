@@ -17,9 +17,13 @@ mixin RepositoryServerIdMixin<T extends SynquillDataModel<T>>
   /// Initialize the ID negotiation service
   /// This should be called in the repository constructor
   @protected
-  void initializeIdNegotiationService({required bool usesServerGeneratedId}) {
+  void initializeIdNegotiationService({
+    required bool usesServerGeneratedId,
+    String? idJsonKey,
+  }) {
     _idNegotiationService = IdNegotiationService<T>(
       usesServerGeneratedId: usesServerGeneratedId,
+      idJsonKey: idJsonKey,
     );
   }
 

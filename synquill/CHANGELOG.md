@@ -3,12 +3,17 @@
 ### Added
 - Added `@SynquillIdKey` to map `SynquillDataModel.id` to custom API JSON
   keys such as `placeId`.
+- Models using `json_serializable` can now rely on `@JsonKey(name: ...)` on the
+  `id` field; Synquill infers the same custom id JSON key automatically unless
+  `@SynquillIdKey` is present.
 - Retry sync now resolves queued task identity from the configured custom id
   key, payload `id`, then `sync_queue_items.model_id`.
 
 ### Fixed
 - Local-first retry processing no longer fails when `toJson()` omits a literal
   `id` key but the queued row already stores the model id.
+- Server-generated ID replacement now honors the configured API JSON id key
+  before rebuilding a model from JSON.
 
 ## 0.8.3
 

@@ -102,7 +102,6 @@ class Post extends SynquillDataModel<Post> {
 @SynquillRepository(adapters: [JsonApiAdapter, FavoritePlaceApiAdapter])
 class FavoritePlace extends SynquillDataModel<FavoritePlace> {
   @override
-  @SynquillIdKey('placeId')
   @JsonKey(name: 'placeId')
   final String id;
 

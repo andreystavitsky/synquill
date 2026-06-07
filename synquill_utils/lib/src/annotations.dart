@@ -53,11 +53,14 @@ class SynquillRepository {
 /// Place this annotation on the model's `id` field when `toJson()` and
 /// `fromJson()` serialize the same identity under a key other than `id`.
 ///
+/// Models that use `json_serializable` can usually rely on
+/// `@JsonKey(name: ...)` instead. Use this annotation as an explicit override
+/// or for serializers that do not expose `JsonKey` metadata.
+///
 /// Example:
 /// ```dart
 /// @override
 /// @SynquillIdKey('placeId')
-/// @JsonKey(name: 'placeId')
 /// final String id;
 /// ```
 class SynquillIdKey {

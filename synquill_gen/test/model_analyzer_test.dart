@@ -63,6 +63,39 @@ void main() {
       );
     });
 
+    test('infers id JSON key from JsonKey name on id field', () {
+      expect(
+        ModelAnalyzer.validateIdJsonKeyCandidates(
+          'FavoritePlace',
+          const {},
+          inferredJsonKeyCandidates: const {'id': 'placeId'},
+        ),
+        'placeId',
+      );
+    });
+
+    test('prefers SynquillIdKey over inferred JsonKey name', () {
+      expect(
+        ModelAnalyzer.validateIdJsonKeyCandidates(
+          'FavoritePlace',
+          const {'id': 'apiPlaceId'},
+          inferredJsonKeyCandidates: const {'id': 'placeId'},
+        ),
+        'apiPlaceId',
+      );
+    });
+
+    test('ignores JsonKey name on non-id fields', () {
+      expect(
+        ModelAnalyzer.validateIdJsonKeyCandidates(
+          'FavoritePlace',
+          const {},
+          inferredJsonKeyCandidates: const {'title': 'placeTitle'},
+        ),
+        'id',
+      );
+    });
+
     test('rejects custom id key on non-id fields', () {
       expect(
         () => ModelAnalyzer.validateIdJsonKeyCandidates(
@@ -91,6 +124,17 @@ void main() {
         () => ModelAnalyzer.validateIdJsonKeyCandidates(
           'FavoritePlace',
           const {'id': ''},
+        ),
+        throwsA(isA<InvalidGenerationSourceError>()),
+      );
+    });
+
+    test('rejects empty inferred JsonKey name on id field', () {
+      expect(
+        () => ModelAnalyzer.validateIdJsonKeyCandidates(
+          'FavoritePlace',
+          const {},
+          inferredJsonKeyCandidates: const {'id': ''},
         ),
         throwsA(isA<InvalidGenerationSourceError>()),
       );

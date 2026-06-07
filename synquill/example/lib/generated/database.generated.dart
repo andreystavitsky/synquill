@@ -14,3 +14,4 @@ part 'tables.g.dart';
 part 'dao.g.dart';
 part 'database.g.dart';
 part 'database.generated.g.dart';
+

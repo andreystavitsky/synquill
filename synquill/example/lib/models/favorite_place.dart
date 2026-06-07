@@ -30,7 +30,6 @@ mixin FavoritePlaceApiAdapter on BasicApiAdapter<FavoritePlace> {
 )
 class FavoritePlace extends SynquillDataModel<FavoritePlace> {
   @override
-  @SynquillIdKey('placeId')
   @JsonKey(name: 'placeId')
   final String id;
 

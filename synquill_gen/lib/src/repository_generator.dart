@@ -128,6 +128,7 @@ class $adapterClassName extends $baseClass<$className>
     }
 
     final mixinClause = mixins.join(', ');
+    final idJsonKeyLiteral = BuilderUtils.dartStringLiteral(model.idJsonKey);
 
     // Generate constructor with ID negotiation service initialization
     final constructorBody = model.usesServerGeneratedId
@@ -138,7 +139,10 @@ class $adapterClassName extends $baseClass<$className>
   $repositoryName(super.db) {
     _dao = $daoName(db as SynquillDatabase);
     // Initialize ID negotiation service for server-generated ID models
-    initializeIdNegotiationService(usesServerGeneratedId: true);
+    initializeIdNegotiationService(
+      usesServerGeneratedId: true,
+      idJsonKey: $idJsonKeyLiteral,
+    );
   }'''
         : '''
   /// Creates a new $className repository instance (local-only mode)
@@ -225,6 +229,7 @@ $constructorBody
     }
 
     final mixinClause = mixins.join(', ');
+    final idJsonKeyLiteral = BuilderUtils.dartStringLiteral(model.idJsonKey);
 
     final hasAdapters = model.adapters != null && model.adapters!.isNotEmpty;
 
@@ -252,7 +257,10 @@ $constructorBody
   $repositoryName(super.db) {
     _dao = $daoName(db as SynquillDatabase);
     // Initialize ID negotiation service for server-generated ID models
-    initializeIdNegotiationService(usesServerGeneratedId: true);
+    initializeIdNegotiationService(
+      usesServerGeneratedId: true,
+      idJsonKey: $idJsonKeyLiteral,
+    );
   }'''
         : '''
   /// Creates a new $className repository instance

@@ -1,4 +1,5 @@
 import 'package:logging/logging.dart';
+import 'package:synquill/src/core/model_info_registry_provider.dart';
 import 'package:synquill/src/core/synquill_data_model.dart';
 
 /// Status of ID negotiation process for server-generated IDs.
@@ -72,8 +73,22 @@ class IdNegotiationService<T extends SynquillDataModel<T>> {
   /// Whether this model type uses server-generated IDs
   final bool usesServerGeneratedId;
 
+  /// JSON key that represents [SynquillDataModel.id] in API payloads.
+  final String idJsonKey;
+
   /// Constructor
-  IdNegotiationService({required this.usesServerGeneratedId});
+  IdNegotiationService({
+    required this.usesServerGeneratedId,
+    String? idJsonKey,
+  }) : idJsonKey = idJsonKey ?? ModelInfoRegistryProvider.getIdJsonKey('$T') {
+    if (this.idJsonKey.isEmpty) {
+      throw ArgumentError.value(
+        this.idJsonKey,
+        'idJsonKey',
+        'ID JSON key cannot be empty',
+      );
+    }
+  }
 
   /// Check if a model uses server-generated IDs
   bool modelUsesServerGeneratedId(T model) {
@@ -125,7 +140,7 @@ class IdNegotiationService<T extends SynquillDataModel<T>> {
 
     // Create new instance with server-assigned ID
     final json = model.toJson();
-    json['id'] = newId;
+    json[idJsonKey] = newId;
     final newModel = model.fromJson(json);
 
     // Transfer metadata to new ID if we had temporary metadata

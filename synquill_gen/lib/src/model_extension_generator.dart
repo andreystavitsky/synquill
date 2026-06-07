@@ -2,6 +2,7 @@
 
 import 'package:synquill_utils/synquill_utils.dart';
 
+import 'package:synquill_gen/src/builder_utils.dart';
 import 'package:synquill_gen/src/model_info.dart';
 
 /// Generates model extension methods for loading related objects
@@ -366,6 +367,7 @@ class ModelExtensionGenerator {
     final buffer = StringBuffer();
     final className = model.className;
     final mixinName = '${className}IdManagement';
+    final idJsonKeyLiteral = BuilderUtils.dartStringLiteral(model.idJsonKey);
 
     buffer.writeln('/// Generated ID management extension for $className');
     buffer.writeln('extension $mixinName on $className {');
@@ -382,7 +384,7 @@ class ModelExtensionGenerator {
         'assigns a different ID');
     buffer.writeln('  $className \$replaceIdEverywhere(String newId) {');
     buffer.writeln('    final json = toJson();');
-    buffer.writeln('    json[\'id\'] = newId;');
+    buffer.writeln('    json[$idJsonKeyLiteral] = newId;');
     buffer.writeln('    return fromJson(json);');
     buffer.writeln('  }');
 

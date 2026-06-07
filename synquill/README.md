@@ -106,12 +106,12 @@ class User extends SynquillDataModel<User> {
 }
 
 // APIs can expose the same Synquill id under a different JSON key.
-// `id` remains the internal model identity used by local storage and sync.
+// `id` remains the internal model identity used by local storage, sync,
+// retry reconstruction, and server-generated ID replacement.
 @JsonSerializable()
 @SynquillRepository(adapters: [JsonApiAdapter, FavoritePlaceApiAdapter])
 class FavoritePlace extends SynquillDataModel<FavoritePlace> {
   @override
-  @SynquillIdKey('placeId')
   @JsonKey(name: 'placeId')
   final String id;
   final String title;

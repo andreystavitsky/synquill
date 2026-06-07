@@ -4,7 +4,7 @@
 part of '../synquill.generated.dart';
 
 /// Concrete repository implementation for GraphqlPost
-class GraphqlPostRepository extends SynquillRepositoryBase<GraphqlPost>
+class GraphqlPostRepository extends SynquillRepositoryBase<GraphqlPost> 
     with RepositoryHelpersMixin<GraphqlPost> {
   late final GraphqlPostDao _dao;
   late final ApiAdapterBase<GraphqlPost> _apiAdapter = _GraphqlPostAdapter();
@@ -17,7 +17,7 @@ class GraphqlPostRepository extends SynquillRepositoryBase<GraphqlPost>
   }
 
   /// Creates a new GraphqlPost repository instance
-  ///
+  /// 
   /// [db] The database instance to use for data operations
   GraphqlPostRepository(super.db) {
     _dao = GraphqlPostDao(db as SynquillDatabase);
@@ -35,58 +35,80 @@ class GraphqlPostRepository extends SynquillRepositoryBase<GraphqlPost>
   bool get localOnly => false;
 
   @override
-  Future<GraphqlPost?> fetchFromRemote(String id,
-      {QueryParams? queryParams,
-      Map<String, String>? headers,
-      Map<String, dynamic>? extra}) async {
+  Future<GraphqlPost?> fetchFromRemote(
+    String id, {
+    QueryParams? queryParams, 
+    Map<String, String>? headers, 
+    Map<String, dynamic>? extra
+  }) async {
     try {
-      final result = await apiAdapter.findOne(id,
-          queryParams: queryParams, headers: headers, extra: extra);
+      final result = await apiAdapter.findOne(
+        id,
+        queryParams: queryParams,
+        headers: headers,
+        extra: extra
+      );
       _log.fine(
-          'fetchFromRemote() for GraphqlPost successful: found item with id $id');
+        'fetchFromRemote() for GraphqlPost successful: found item with id $id'
+      );
       return result;
     } on ApiExceptionNotFound {
       _log.fine(
-          'fetchFromRemote() for GraphqlPost: item with id $id not found in '
-          'remote API');
-      // Rethrow the exception so SynquillRepositoryBase can remove the
+        'fetchFromRemote() for GraphqlPost: item with id $id not found in '
+        'remote API'
+      );
+      // Rethrow the exception so SynquillRepositoryBase can remove the 
       // item from local storage
       rethrow;
     } on ApiExceptionGone {
       _log.fine(
-          'fetchFromRemote() for GraphqlPost: item with id $id is gone from '
-          'remote API');
-      // Rethrow the exception so SynquillRepositoryBase can remove the
+        'fetchFromRemote() for GraphqlPost: item with id $id is gone from '
+        'remote API'
+      );
+      // Rethrow the exception so SynquillRepositoryBase can remove the 
       // item from local storage
       rethrow;
     } catch (e, stackTrace) {
       _log.warning(
-          'fetchFromRemote() for GraphqlPost failed for id $id', e, stackTrace);
+        'fetchFromRemote() for GraphqlPost failed for id $id', 
+        e, 
+        stackTrace
+      );
       rethrow;
     }
   }
 
   @override
-  Future<List<GraphqlPost>> fetchAllFromRemote(
-      {QueryParams? queryParams,
-      Map<String, String>? headers,
-      Map<String, dynamic>? extra}) async {
+  Future<List<GraphqlPost>> fetchAllFromRemote({
+    QueryParams? queryParams, 
+    Map<String, String>? headers, 
+    Map<String, dynamic>? extra
+  }) async {
     try {
       final result = await apiAdapter.findAll(
-          queryParams: queryParams, headers: headers, extra: extra);
-      _log.fine('fetchAllFromRemote() for GraphqlPost successful: '
-          'found ${result.length} items');
+        queryParams: queryParams,
+        headers: headers,
+        extra: extra
+      );
+      _log.fine(
+        'fetchAllFromRemote() for GraphqlPost successful: '
+        'found ${result.length} items'
+      );
       return result;
     } catch (e, stackTrace) {
       _log.warning(
-          'fetchAllFromRemote() for GraphqlPost failed', e, stackTrace);
+        'fetchAllFromRemote() for GraphqlPost failed', 
+        e, 
+        stackTrace
+      );
       rethrow;
     }
   }
 }
 
+
 /// Concrete repository implementation for Post
-class PostRepository extends SynquillRepositoryBase<Post>
+class PostRepository extends SynquillRepositoryBase<Post> 
     with RepositoryHelpersMixin<Post> {
   late final PostDao _dao;
   late final ApiAdapterBase<Post> _apiAdapter = _PostAdapter();
@@ -99,7 +121,7 @@ class PostRepository extends SynquillRepositoryBase<Post>
   }
 
   /// Creates a new Post repository instance
-  ///
+  /// 
   /// [db] The database instance to use for data operations
   PostRepository(super.db) {
     _dao = PostDao(db as SynquillDatabase);
@@ -117,57 +139,82 @@ class PostRepository extends SynquillRepositoryBase<Post>
   bool get localOnly => false;
 
   @override
-  Future<Post?> fetchFromRemote(String id,
-      {QueryParams? queryParams,
-      Map<String, String>? headers,
-      Map<String, dynamic>? extra}) async {
+  Future<Post?> fetchFromRemote(
+    String id, {
+    QueryParams? queryParams, 
+    Map<String, String>? headers, 
+    Map<String, dynamic>? extra
+  }) async {
     try {
-      final result = await apiAdapter.findOne(id,
-          queryParams: queryParams, headers: headers, extra: extra);
+      final result = await apiAdapter.findOne(
+        id,
+        queryParams: queryParams,
+        headers: headers,
+        extra: extra
+      );
       _log.fine(
-          'fetchFromRemote() for Post successful: found item with id $id');
+        'fetchFromRemote() for Post successful: found item with id $id'
+      );
       return result;
     } on ApiExceptionNotFound {
-      _log.fine('fetchFromRemote() for Post: item with id $id not found in '
-          'remote API');
-      // Rethrow the exception so SynquillRepositoryBase can remove the
+      _log.fine(
+        'fetchFromRemote() for Post: item with id $id not found in '
+        'remote API'
+      );
+      // Rethrow the exception so SynquillRepositoryBase can remove the 
       // item from local storage
       rethrow;
     } on ApiExceptionGone {
-      _log.fine('fetchFromRemote() for Post: item with id $id is gone from '
-          'remote API');
-      // Rethrow the exception so SynquillRepositoryBase can remove the
+      _log.fine(
+        'fetchFromRemote() for Post: item with id $id is gone from '
+        'remote API'
+      );
+      // Rethrow the exception so SynquillRepositoryBase can remove the 
       // item from local storage
       rethrow;
     } catch (e, stackTrace) {
       _log.warning(
-          'fetchFromRemote() for Post failed for id $id', e, stackTrace);
+        'fetchFromRemote() for Post failed for id $id', 
+        e, 
+        stackTrace
+      );
       rethrow;
     }
   }
 
   @override
-  Future<List<Post>> fetchAllFromRemote(
-      {QueryParams? queryParams,
-      Map<String, String>? headers,
-      Map<String, dynamic>? extra}) async {
+  Future<List<Post>> fetchAllFromRemote({
+    QueryParams? queryParams, 
+    Map<String, String>? headers, 
+    Map<String, dynamic>? extra
+  }) async {
     try {
       final result = await apiAdapter.findAll(
-          queryParams: queryParams, headers: headers, extra: extra);
-      _log.fine('fetchAllFromRemote() for Post successful: '
-          'found ${result.length} items');
+        queryParams: queryParams,
+        headers: headers,
+        extra: extra
+      );
+      _log.fine(
+        'fetchAllFromRemote() for Post successful: '
+        'found ${result.length} items'
+      );
       return result;
     } catch (e, stackTrace) {
-      _log.warning('fetchAllFromRemote() for Post failed', e, stackTrace);
+      _log.warning(
+        'fetchAllFromRemote() for Post failed', 
+        e, 
+        stackTrace
+      );
       rethrow;
     }
   }
 }
 
+
 /// Local-only repository implementation for LocalNote
 /// This repository only works with local database and does not sync with
 /// remote API
-class LocalNoteRepository extends SynquillRepositoryBase<LocalNote>
+class LocalNoteRepository extends SynquillRepositoryBase<LocalNote> 
     with RepositoryHelpersMixin<LocalNote> {
   late final LocalNoteDao _dao;
   static Logger get _log {
@@ -179,7 +226,7 @@ class LocalNoteRepository extends SynquillRepositoryBase<LocalNote>
   }
 
   /// Creates a new LocalNote repository instance (local-only mode)
-  ///
+  /// 
   /// [db] The database instance to use for data operations
   LocalNoteRepository(super.db) {
     _dao = LocalNoteDao(db as SynquillDatabase);
@@ -191,39 +238,46 @@ class LocalNoteRepository extends SynquillRepositoryBase<LocalNote>
   @override
   ApiAdapterBase<LocalNote> get apiAdapter {
     throw UnsupportedError(
-        'API adapter not available for local-only repository LocalNote. '
-        'This repository was configured with localOnly=true and does not '
-        'support remote operations.');
+      'API adapter not available for local-only repository LocalNote. '
+      'This repository was configured with localOnly=true and does not '
+      'support remote operations.'
+    );
   }
 
   @override
   bool get localOnly => true;
 
   @override
-  Future<LocalNote?> fetchFromRemote(String id,
-      {QueryParams? queryParams,
-      Map<String, String>? headers,
-      Map<String, dynamic>? extra}) async {
+  Future<LocalNote?> fetchFromRemote(
+    String id, {
+    QueryParams? queryParams, 
+    Map<String, String>? headers, 
+    Map<String, dynamic>? extra
+  }) async {
     _log.fine(
-        'fetchFromRemote() called on local-only repository for LocalNote, '
-        'returning null');
+      'fetchFromRemote() called on local-only repository for LocalNote, '
+      'returning null'
+    );
     return null;
   }
 
   @override
-  Future<List<LocalNote>> fetchAllFromRemote(
-      {QueryParams? queryParams,
-      Map<String, String>? headers,
-      Map<String, dynamic>? extra}) async {
+  Future<List<LocalNote>> fetchAllFromRemote({
+    QueryParams? queryParams, 
+    Map<String, String>? headers, 
+    Map<String, dynamic>? extra
+  }) async {
     _log.fine(
-        'fetchAllFromRemote() called on local-only repository for LocalNote, '
-        'returning empty list');
+      'fetchAllFromRemote() called on local-only repository for LocalNote, '
+      'returning empty list'
+    );
     return [];
   }
 }
 
+
 /// Concrete repository implementation for PlainModel
-class PlainModelRepository extends SynquillRepositoryBase<PlainModel>
+class PlainModelRepository extends SynquillRepositoryBase<PlainModel> 
     with RepositoryHelpersMixin<PlainModel> {
   late final PlainModelDao _dao;
   static Logger get _log {
@@ -235,7 +289,7 @@ class PlainModelRepository extends SynquillRepositoryBase<PlainModel>
   }
 
   /// Creates a new PlainModel repository instance
-  ///
+  /// 
   /// [db] The database instance to use for data operations
   PlainModelRepository(super.db) {
     _dao = PlainModelDao(db as SynquillDatabase);
@@ -253,57 +307,80 @@ class PlainModelRepository extends SynquillRepositoryBase<PlainModel>
   bool get localOnly => false;
 
   @override
-  Future<PlainModel?> fetchFromRemote(String id,
-      {QueryParams? queryParams,
-      Map<String, String>? headers,
-      Map<String, dynamic>? extra}) async {
+  Future<PlainModel?> fetchFromRemote(
+    String id, {
+    QueryParams? queryParams, 
+    Map<String, String>? headers, 
+    Map<String, dynamic>? extra
+  }) async {
     try {
-      final result = await apiAdapter.findOne(id,
-          queryParams: queryParams, headers: headers, extra: extra);
+      final result = await apiAdapter.findOne(
+        id,
+        queryParams: queryParams,
+        headers: headers,
+        extra: extra
+      );
       _log.fine(
-          'fetchFromRemote() for PlainModel successful: found item with id $id');
+        'fetchFromRemote() for PlainModel successful: found item with id $id'
+      );
       return result;
     } on ApiExceptionNotFound {
       _log.fine(
-          'fetchFromRemote() for PlainModel: item with id $id not found in '
-          'remote API');
-      // Rethrow the exception so SynquillRepositoryBase can remove the
+        'fetchFromRemote() for PlainModel: item with id $id not found in '
+        'remote API'
+      );
+      // Rethrow the exception so SynquillRepositoryBase can remove the 
       // item from local storage
       rethrow;
     } on ApiExceptionGone {
       _log.fine(
-          'fetchFromRemote() for PlainModel: item with id $id is gone from '
-          'remote API');
-      // Rethrow the exception so SynquillRepositoryBase can remove the
+        'fetchFromRemote() for PlainModel: item with id $id is gone from '
+        'remote API'
+      );
+      // Rethrow the exception so SynquillRepositoryBase can remove the 
       // item from local storage
       rethrow;
     } catch (e, stackTrace) {
       _log.warning(
-          'fetchFromRemote() for PlainModel failed for id $id', e, stackTrace);
+        'fetchFromRemote() for PlainModel failed for id $id', 
+        e, 
+        stackTrace
+      );
       rethrow;
     }
   }
 
   @override
-  Future<List<PlainModel>> fetchAllFromRemote(
-      {QueryParams? queryParams,
-      Map<String, String>? headers,
-      Map<String, dynamic>? extra}) async {
+  Future<List<PlainModel>> fetchAllFromRemote({
+    QueryParams? queryParams, 
+    Map<String, String>? headers, 
+    Map<String, dynamic>? extra
+  }) async {
     try {
       final result = await apiAdapter.findAll(
-          queryParams: queryParams, headers: headers, extra: extra);
-      _log.fine('fetchAllFromRemote() for PlainModel successful: '
-          'found ${result.length} items');
+        queryParams: queryParams,
+        headers: headers,
+        extra: extra
+      );
+      _log.fine(
+        'fetchAllFromRemote() for PlainModel successful: '
+        'found ${result.length} items'
+      );
       return result;
     } catch (e, stackTrace) {
-      _log.warning('fetchAllFromRemote() for PlainModel failed', e, stackTrace);
+      _log.warning(
+        'fetchAllFromRemote() for PlainModel failed', 
+        e, 
+        stackTrace
+      );
       rethrow;
     }
   }
 }
 
+
 /// Concrete repository implementation for User
-class UserRepository extends SynquillRepositoryBase<User>
+class UserRepository extends SynquillRepositoryBase<User> 
     with RepositoryHelpersMixin<User> {
   late final UserDao _dao;
   late final ApiAdapterBase<User> _apiAdapter = _UserAdapter();
@@ -316,7 +393,7 @@ class UserRepository extends SynquillRepositoryBase<User>
   }
 
   /// Creates a new User repository instance
-  ///
+  /// 
   /// [db] The database instance to use for data operations
   UserRepository(super.db) {
     _dao = UserDao(db as SynquillDatabase);
@@ -334,55 +411,80 @@ class UserRepository extends SynquillRepositoryBase<User>
   bool get localOnly => false;
 
   @override
-  Future<User?> fetchFromRemote(String id,
-      {QueryParams? queryParams,
-      Map<String, String>? headers,
-      Map<String, dynamic>? extra}) async {
+  Future<User?> fetchFromRemote(
+    String id, {
+    QueryParams? queryParams, 
+    Map<String, String>? headers, 
+    Map<String, dynamic>? extra
+  }) async {
     try {
-      final result = await apiAdapter.findOne(id,
-          queryParams: queryParams, headers: headers, extra: extra);
+      final result = await apiAdapter.findOne(
+        id,
+        queryParams: queryParams,
+        headers: headers,
+        extra: extra
+      );
       _log.fine(
-          'fetchFromRemote() for User successful: found item with id $id');
+        'fetchFromRemote() for User successful: found item with id $id'
+      );
       return result;
     } on ApiExceptionNotFound {
-      _log.fine('fetchFromRemote() for User: item with id $id not found in '
-          'remote API');
-      // Rethrow the exception so SynquillRepositoryBase can remove the
+      _log.fine(
+        'fetchFromRemote() for User: item with id $id not found in '
+        'remote API'
+      );
+      // Rethrow the exception so SynquillRepositoryBase can remove the 
       // item from local storage
       rethrow;
     } on ApiExceptionGone {
-      _log.fine('fetchFromRemote() for User: item with id $id is gone from '
-          'remote API');
-      // Rethrow the exception so SynquillRepositoryBase can remove the
+      _log.fine(
+        'fetchFromRemote() for User: item with id $id is gone from '
+        'remote API'
+      );
+      // Rethrow the exception so SynquillRepositoryBase can remove the 
       // item from local storage
       rethrow;
     } catch (e, stackTrace) {
       _log.warning(
-          'fetchFromRemote() for User failed for id $id', e, stackTrace);
+        'fetchFromRemote() for User failed for id $id', 
+        e, 
+        stackTrace
+      );
       rethrow;
     }
   }
 
   @override
-  Future<List<User>> fetchAllFromRemote(
-      {QueryParams? queryParams,
-      Map<String, String>? headers,
-      Map<String, dynamic>? extra}) async {
+  Future<List<User>> fetchAllFromRemote({
+    QueryParams? queryParams, 
+    Map<String, String>? headers, 
+    Map<String, dynamic>? extra
+  }) async {
     try {
       final result = await apiAdapter.findAll(
-          queryParams: queryParams, headers: headers, extra: extra);
-      _log.fine('fetchAllFromRemote() for User successful: '
-          'found ${result.length} items');
+        queryParams: queryParams,
+        headers: headers,
+        extra: extra
+      );
+      _log.fine(
+        'fetchAllFromRemote() for User successful: '
+        'found ${result.length} items'
+      );
       return result;
     } catch (e, stackTrace) {
-      _log.warning('fetchAllFromRemote() for User failed', e, stackTrace);
+      _log.warning(
+        'fetchAllFromRemote() for User failed', 
+        e, 
+        stackTrace
+      );
       rethrow;
     }
   }
 }
 
+
 /// Concrete repository implementation for Todo
-class TodoRepository extends SynquillRepositoryBase<Todo>
+class TodoRepository extends SynquillRepositoryBase<Todo> 
     with RepositoryHelpersMixin<Todo> {
   late final TodoDao _dao;
   late final ApiAdapterBase<Todo> _apiAdapter = _TodoAdapter();
@@ -395,7 +497,7 @@ class TodoRepository extends SynquillRepositoryBase<Todo>
   }
 
   /// Creates a new Todo repository instance
-  ///
+  /// 
   /// [db] The database instance to use for data operations
   TodoRepository(super.db) {
     _dao = TodoDao(db as SynquillDatabase);
@@ -413,59 +515,83 @@ class TodoRepository extends SynquillRepositoryBase<Todo>
   bool get localOnly => false;
 
   @override
-  Future<Todo?> fetchFromRemote(String id,
-      {QueryParams? queryParams,
-      Map<String, String>? headers,
-      Map<String, dynamic>? extra}) async {
+  Future<Todo?> fetchFromRemote(
+    String id, {
+    QueryParams? queryParams, 
+    Map<String, String>? headers, 
+    Map<String, dynamic>? extra
+  }) async {
     try {
-      final result = await apiAdapter.findOne(id,
-          queryParams: queryParams, headers: headers, extra: extra);
+      final result = await apiAdapter.findOne(
+        id,
+        queryParams: queryParams,
+        headers: headers,
+        extra: extra
+      );
       _log.fine(
-          'fetchFromRemote() for Todo successful: found item with id $id');
+        'fetchFromRemote() for Todo successful: found item with id $id'
+      );
       return result;
     } on ApiExceptionNotFound {
-      _log.fine('fetchFromRemote() for Todo: item with id $id not found in '
-          'remote API');
-      // Rethrow the exception so SynquillRepositoryBase can remove the
+      _log.fine(
+        'fetchFromRemote() for Todo: item with id $id not found in '
+        'remote API'
+      );
+      // Rethrow the exception so SynquillRepositoryBase can remove the 
       // item from local storage
       rethrow;
     } on ApiExceptionGone {
-      _log.fine('fetchFromRemote() for Todo: item with id $id is gone from '
-          'remote API');
-      // Rethrow the exception so SynquillRepositoryBase can remove the
+      _log.fine(
+        'fetchFromRemote() for Todo: item with id $id is gone from '
+        'remote API'
+      );
+      // Rethrow the exception so SynquillRepositoryBase can remove the 
       // item from local storage
       rethrow;
     } catch (e, stackTrace) {
       _log.warning(
-          'fetchFromRemote() for Todo failed for id $id', e, stackTrace);
+        'fetchFromRemote() for Todo failed for id $id', 
+        e, 
+        stackTrace
+      );
       rethrow;
     }
   }
 
   @override
-  Future<List<Todo>> fetchAllFromRemote(
-      {QueryParams? queryParams,
-      Map<String, String>? headers,
-      Map<String, dynamic>? extra}) async {
+  Future<List<Todo>> fetchAllFromRemote({
+    QueryParams? queryParams, 
+    Map<String, String>? headers, 
+    Map<String, dynamic>? extra
+  }) async {
     try {
       final result = await apiAdapter.findAll(
-          queryParams: queryParams, headers: headers, extra: extra);
-      _log.fine('fetchAllFromRemote() for Todo successful: '
-          'found ${result.length} items');
+        queryParams: queryParams,
+        headers: headers,
+        extra: extra
+      );
+      _log.fine(
+        'fetchAllFromRemote() for Todo successful: '
+        'found ${result.length} items'
+      );
       return result;
     } catch (e, stackTrace) {
-      _log.warning('fetchAllFromRemote() for Todo failed', e, stackTrace);
+      _log.warning(
+        'fetchAllFromRemote() for Todo failed', 
+        e, 
+        stackTrace
+      );
       rethrow;
     }
   }
 }
 
+
 /// Concrete repository implementation for FavoritePlace
-class FavoritePlaceRepository extends SynquillRepositoryBase<FavoritePlace>
+class FavoritePlaceRepository extends SynquillRepositoryBase<FavoritePlace> 
     with RepositoryHelpersMixin<FavoritePlace> {
   late final FavoritePlaceDao _dao;
-  late final ApiAdapterBase<FavoritePlace> _apiAdapter =
-      _FavoritePlaceAdapter();
+  late final ApiAdapterBase<FavoritePlace> _apiAdapter = _FavoritePlaceAdapter();
   static Logger get _log {
     try {
       return SynquillStorage.logger;
@@ -475,7 +601,7 @@ class FavoritePlaceRepository extends SynquillRepositoryBase<FavoritePlace>
   }
 
   /// Creates a new FavoritePlace repository instance
-  ///
+  /// 
   /// [db] The database instance to use for data operations
   FavoritePlaceRepository(super.db) {
     _dao = FavoritePlaceDao(db as SynquillDatabase);
@@ -493,55 +619,77 @@ class FavoritePlaceRepository extends SynquillRepositoryBase<FavoritePlace>
   bool get localOnly => false;
 
   @override
-  Future<FavoritePlace?> fetchFromRemote(String id,
-      {QueryParams? queryParams,
-      Map<String, String>? headers,
-      Map<String, dynamic>? extra}) async {
+  Future<FavoritePlace?> fetchFromRemote(
+    String id, {
+    QueryParams? queryParams, 
+    Map<String, String>? headers, 
+    Map<String, dynamic>? extra
+  }) async {
     try {
-      final result = await apiAdapter.findOne(id,
-          queryParams: queryParams, headers: headers, extra: extra);
+      final result = await apiAdapter.findOne(
+        id,
+        queryParams: queryParams,
+        headers: headers,
+        extra: extra
+      );
       _log.fine(
-          'fetchFromRemote() for FavoritePlace successful: found item with id $id');
+        'fetchFromRemote() for FavoritePlace successful: found item with id $id'
+      );
       return result;
     } on ApiExceptionNotFound {
       _log.fine(
-          'fetchFromRemote() for FavoritePlace: item with id $id not found in '
-          'remote API');
-      // Rethrow the exception so SynquillRepositoryBase can remove the
+        'fetchFromRemote() for FavoritePlace: item with id $id not found in '
+        'remote API'
+      );
+      // Rethrow the exception so SynquillRepositoryBase can remove the 
       // item from local storage
       rethrow;
     } on ApiExceptionGone {
       _log.fine(
-          'fetchFromRemote() for FavoritePlace: item with id $id is gone from '
-          'remote API');
-      // Rethrow the exception so SynquillRepositoryBase can remove the
+        'fetchFromRemote() for FavoritePlace: item with id $id is gone from '
+        'remote API'
+      );
+      // Rethrow the exception so SynquillRepositoryBase can remove the 
       // item from local storage
       rethrow;
     } catch (e, stackTrace) {
-      _log.warning('fetchFromRemote() for FavoritePlace failed for id $id', e,
-          stackTrace);
+      _log.warning(
+        'fetchFromRemote() for FavoritePlace failed for id $id', 
+        e, 
+        stackTrace
+      );
       rethrow;
     }
   }
 
   @override
-  Future<List<FavoritePlace>> fetchAllFromRemote(
-      {QueryParams? queryParams,
-      Map<String, String>? headers,
-      Map<String, dynamic>? extra}) async {
+  Future<List<FavoritePlace>> fetchAllFromRemote({
+    QueryParams? queryParams, 
+    Map<String, String>? headers, 
+    Map<String, dynamic>? extra
+  }) async {
     try {
       final result = await apiAdapter.findAll(
-          queryParams: queryParams, headers: headers, extra: extra);
-      _log.fine('fetchAllFromRemote() for FavoritePlace successful: '
-          'found ${result.length} items');
+        queryParams: queryParams,
+        headers: headers,
+        extra: extra
+      );
+      _log.fine(
+        'fetchAllFromRemote() for FavoritePlace successful: '
+        'found ${result.length} items'
+      );
       return result;
     } catch (e, stackTrace) {
       _log.warning(
-          'fetchAllFromRemote() for FavoritePlace failed', e, stackTrace);
+        'fetchAllFromRemote() for FavoritePlace failed', 
+        e, 
+        stackTrace
+      );
       rethrow;
     }
   }
 }
+
 
 /// Register all repository factories with SynquillRepositoryProvider
 void registerAllRepositories() {
@@ -584,15 +732,16 @@ void registerModelDependencies() {
 void initializeSynquillStorage(GeneratedDatabase database) {
   // Set up global database access
   DatabaseProvider.setInstance(database);
-
+  
   // Register all repository factories
   registerAllRepositories();
-
+  
   // Register model dependencies for hierarchical sync
   registerModelDependencies();
-
+  
   // Register model relations (cascade delete and foreign keys)
   registerModelRelations();
+  
 }
 
 /// Register all model metadata
@@ -677,4 +826,7 @@ extension SynquillStorageRepositories on SynquillStorage {
   FavoritePlaceRepository get favoritePlaces {
     return getRepository<FavoritePlace>() as FavoritePlaceRepository;
   }
+
 }
+
+
