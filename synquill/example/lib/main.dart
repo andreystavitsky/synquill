@@ -160,10 +160,10 @@ class TodoApp extends StatelessWidget {
   }
 }
 
-/// Background task dispatcher for WorkManager
+/// App-level background task dispatcher for Workmanager
 ///
-/// This function demonstrates proper usage of SynquillStorage background sync
-/// methods with required pragma annotation for isolate accessibility.
+/// This function demonstrates calling SynquillStorage sync helpers from an
+/// app-owned scheduler callback with the required pragma annotation.
 @pragma('vm:entry-point')
 void callbackDispatcher() {
   Workmanager().executeTask((task, inputData) async {
@@ -198,7 +198,7 @@ void callbackDispatcher() {
         initializeFn: initializeSynquillStorage,
       );
 
-      // Process background sync tasks
+      // Process queued Synquill sync work
       await SynquillStorage.processBackgroundSync();
 
       // close the SynquillStorage instance to avoid resource leaks

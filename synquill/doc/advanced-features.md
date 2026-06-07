@@ -122,7 +122,7 @@ final database = SynquillDatabase(
 
 ### Background Isolate Configuration
 
-If you are using background sync (e.g., with Workmanager), you must provide the same migration and initialization parameters in your background isolate's database setup:
+If your app runs Synquill background sync from an external scheduler (e.g., Workmanager), you must provide the same migration and initialization parameters in your background isolate's database setup:
 
 ```dart
 @pragma('vm:entry-point')

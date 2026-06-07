@@ -2,13 +2,16 @@ import 'dart:async';
 import 'package:logging/logging.dart';
 import 'package:synquill/src/core/synquill_storage.dart';
 
-/// Background sync manager for handling platform-specific background tasks.
+/// Runtime helper for processing queued sync work from app lifecycle events
+/// or externally scheduled background callbacks.
 ///
-/// This class integrates with WorkManager on Android and BGTaskScheduler
-/// on iOS to enable background synchronization when the app is not active.
+/// This class does not register or own platform scheduler jobs. Apps that need
+/// OS-scheduled execution should configure Workmanager, BGTaskScheduler, or
+/// another scheduler in app code, then call [processBackgroundSyncTasks] or
+/// `SynquillStorage.processBackgroundSync()` from that callback.
 ///
-/// This implements the cross-isolate communication and background task
-/// scheduling from the technical specification.
+/// The manager coordinates retry executor mode changes, manual queue
+/// processing, readiness checks, and shutdown of Synquill runtime work.
 class BackgroundSyncManager {
   static BackgroundSyncManager? _instance;
   static Logger? _logger;
@@ -23,12 +26,11 @@ class BackgroundSyncManager {
     return _instance!;
   }
 
-  /// Initializes the background sync system.
+  /// Initializes the background sync runtime helper.
   ///
-  /// This method should be called during app initialization to register
-  /// background task handlers and configure platform-specific settings.
-  ///
-
+  /// This method prepares Synquill's runtime helper state. It does not
+  /// register platform background task handlers or configure OS scheduler
+  /// settings.
   static Future<void> initialize() async {
     _logger = Logger('BackgroundSyncManager');
 
@@ -43,13 +45,13 @@ class BackgroundSyncManager {
     _logger!.info('BackgroundSyncManager initialization complete');
   }
 
-  /// Processes sync tasks in the background isolate.
+  /// Processes queued sync tasks using the retry executor.
   ///
-  /// This method runs the retry executor to process pending sync queue items
-  /// when the app is running in the background.
+  /// This method is suitable for app lifecycle hooks, manual triggers, and
+  /// callbacks invoked by an external platform scheduler configured by the app.
   ///
-  /// Background sync tasks are automatically terminated after 20 seconds
-  /// to prevent excessive resource usage and battery drain.
+  /// Processing is terminated after 20 seconds to prevent excessive resource
+  /// usage and battery drain.
   Future<void> processBackgroundSyncTasks({bool forceSync = false}) async {
     final logger = Logger('BackgroundSync');
 
@@ -89,14 +91,17 @@ class BackgroundSyncManager {
     }
   }
 
-  /// Cancels all background sync tasks.
+  /// Stops Synquill retry polling for background sync work.
+  ///
+  /// This does not unregister Workmanager, BGTaskScheduler, or other platform
+  /// scheduler jobs configured by the app. Cancel those jobs with the scheduler
+  /// package or platform API that registered them.
   Future<void> cancelBackgroundSync() async {
     if (!_isInitialized) return;
 
     try {
       // Stop the retry executor to prevent further background work
       await SynquillStorage.retryExecutor.stop();
-      // Platform specific cancellation would go here
       _logger!.info('Background sync cancelled successfully');
     } catch (e, stackTrace) {
       _logger!.warning('Failed to cancel background sync: $e', e, stackTrace);

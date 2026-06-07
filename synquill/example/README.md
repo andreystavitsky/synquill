@@ -10,7 +10,7 @@ favorite places that showcases:
 - **Model Definition**: How to create models with `@SynquillRepository` annotation
 - **Data Synchronization**: Demonstrating `localFirst` and `remoteFirst` policies
 - **Relationship Management**: One-to-many and many-to-one relationships between models
-- **Background Sync**: Automatic background synchronization with WorkManager
+- **Background Sync**: App-level Workmanager scheduling that invokes Synquill queued sync
 - **Real-time Updates**: Stream-based reactive UI with BLoC pattern
 - **Database Management**: Drift-powered local database with custom migrations
 
@@ -38,7 +38,7 @@ favorite places that showcases:
 - ✅ **Initial data setup**: Automatic demo data generation
 
 ### Synchronization Features
-- ✅ **Background sync**: Periodic sync every 15 minutes via WorkManager
+- ✅ **Background sync**: Periodic app-owned sync trigger every 15 minutes via Workmanager
 - ✅ **Connectivity monitoring**: Internet connection awareness
 - ✅ **Foreground/background modes**: Optimized sync behavior
 - ✅ **Queue management**: Configurable concurrency limits
@@ -275,7 +275,8 @@ void _startWatching() {
 
 ## Background Synchronization
 
-The app demonstrates robust background sync capabilities:
+The app demonstrates how to connect Synquill's runtime sync helper to an
+app-owned platform scheduler:
 
 ### WorkManager Integration
 ```dart

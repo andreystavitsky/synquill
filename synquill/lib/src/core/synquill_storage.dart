@@ -657,10 +657,12 @@ class SynquillStorage {
 
   /// Triggers background sync tasks to be processed immediately.
   ///
-  /// This method is used to manually trigger the processing of pending
-  /// sync queue items, typically from a background task or isolate.
+  /// This method is used to manually trigger the processing of pending sync
+  /// queue items, typically from an app lifecycle hook, a background isolate,
+  /// or an external scheduler callback configured by the app.
   ///
   /// It will process all due tasks in the sync queue using the retry executor.
+  /// It does not register or schedule platform background jobs.
   ///
   /// Throws [StateError] if [SynquillStorage] has not been initialized.
   ///
@@ -681,10 +683,11 @@ class SynquillStorage {
         .processBackgroundSyncTasks(forceSync: forceSync);
   }
 
-  /// Static method to trigger background sync tasks without an instance.
+  /// Static method to trigger queued sync processing without an instance.
   ///
-  /// This is useful for background isolates where you might not have
-  /// easy access to the instance but need to trigger sync processing.
+  /// This is useful for background isolates and external scheduler callbacks
+  /// where you might not have easy access to the instance but need to trigger
+  /// sync processing.
   ///
   /// Throws [StateError] if [SynquillStorage] has not been initialized.
   ///
@@ -720,9 +723,9 @@ class SynquillStorage {
   /// [logger] Optional logger for background operations.
   /// [initializeFn] Optional initialization function for repository setup.
   ///
-  /// Example usage in a background isolate:
+  /// Example usage in a background isolate started by app-owned scheduler code:
   /// ```dart
-  /// // In WorkManager or BGTaskScheduler callback
+  /// // In a Workmanager, BGTaskScheduler, or equivalent callback.
   /// await SynquillStorage.initForBackgroundIsolate(
   ///   database: myDatabase,
   ///   config: SynquillStorageConfig(),

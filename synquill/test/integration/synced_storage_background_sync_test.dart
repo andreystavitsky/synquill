@@ -292,9 +292,10 @@ void main() {
       print('Isolate test completed successfully: $result');
     });
 
-    test('pragma annotations prevent method tree-shaking in isolate', () async {
-      // This test verifies that all pragma-annotated methods are accessible
-      // from isolates by attempting to call them
+    test('pragma-annotated background sync methods are callable in isolate',
+        () async {
+      // This is a spawned-isolate smoke test. AOT tree-shaking behavior must be
+      // verified with a built app or build-level test.
       final receivePort = ReceivePort();
       final isolateCompleter = Completer<Map<String, dynamic>>();
 
@@ -319,7 +320,7 @@ void main() {
 
       receivePort.close();
 
-      // Verify all pragma-annotated methods are accessible
+      // Verify all pragma-annotated methods were callable in the isolate.
       expect(result['success'], isTrue, reason: result['error']?.toString());
       expect(result['initForBackgroundIsolateAccessible'], isTrue);
       expect(result['processBackgroundSyncAccessible'], isTrue);
@@ -450,16 +451,16 @@ void _pragmaTestIsolateEntryPoint(Map<String, dynamic> params) async {
       initializeFn: initializeSynquillStorage,
     );
 
-    // Test accessibility of pragma-annotated methods
-    // These method references should be available due to @pragma annotations
-    final initAccessible =
-        SynquillStorage.initForBackgroundIsolate.toString().isNotEmpty;
-    final processAccessible =
-        SynquillStorage.processBackgroundSync.toString().isNotEmpty;
-    final enableBackgroundAccessible =
-        SynquillStorage.enableBackgroundMode.toString().isNotEmpty;
-    final enableForegroundAccessible =
-        SynquillStorage.enableForegroundMode.toString().isNotEmpty;
+    const initAccessible = true;
+
+    SynquillStorage.enableBackgroundMode();
+    const enableBackgroundAccessible = true;
+
+    SynquillStorage.enableForegroundMode();
+    const enableForegroundAccessible = true;
+
+    await SynquillStorage.processBackgroundSync();
+    const processAccessible = true;
 
     await SynquillStorage.close();
 

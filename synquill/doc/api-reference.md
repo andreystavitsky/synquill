@@ -73,7 +73,9 @@ Returns the global dependency resolver instance.
 ```dart
 static BackgroundSyncManager get backgroundSyncManager
 ```
-Returns the global background sync manager instance.
+Returns the global background sync runtime helper. This helper processes
+queued sync work and switches retry polling modes. It does not register
+platform scheduler jobs.
 
 ```dart
 static SyncQueueDao get syncQueueDao
@@ -95,12 +97,14 @@ Retrieves a repository instance by model type string name.
 ```dart
 Future<void> processBackgroundSyncTasks()
 ```
-Triggers background sync tasks to be processed immediately.
+Triggers queued sync tasks to be processed immediately. Call this from app
+lifecycle hooks, manual sync controls, or app-owned background scheduler
+callbacks.
 
 ```dart
 static Future<void> processBackgroundSync()
 ```
-Static method to trigger background sync tasks without an instance.
+Static method to trigger queued sync processing without an instance.
 
 ```dart
 static void enableBackgroundMode()

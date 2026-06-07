@@ -11,7 +11,7 @@ A powerful Flutter package for offline-first data management with automatic REST
 
 ### Offline-First Architecture
 - **Local-first operations** with Drift-powered SQLite database
-- **Automatic background sync** with configurable retry mechanisms
+- **Background sync runtime helpers** with configurable retry mechanisms
 - **Smart queue management** for operations with related data dependencies
 - **Works completely offline** - sync when connectivity returns
 
@@ -19,7 +19,7 @@ A powerful Flutter package for offline-first data management with automatic REST
 - **Bidirectional sync** between local storage and REST/GraphQL APIs
 - **Configurable sync policies**: `localFirst`, `remoteFirst`, `localThenRemote`
 - **Dependency-based sync ordering** with hierarchical task resolution
-- **Background processing** capabilities, enabling integration with tools like WorkManager
+- **Background processing hooks** for app-owned schedulers such as Workmanager
 - **Retry logic** with exponential backoff for failed operations
 
 ### Model-Driven Development

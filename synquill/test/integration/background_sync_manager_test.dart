@@ -8,6 +8,7 @@
 // isReadyForBackgroundSync.
 
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:test/test.dart';
 import 'package:synquill/synquill_core.dart';
@@ -25,12 +26,14 @@ const _testConfig = SynquillStorageConfig(
   defaultLoadPolicy: DataLoadPolicy.localOnly,
   foregroundQueueConcurrency: 1,
   backgroundQueueConcurrency: 1,
+  foregroundPollInterval: Duration(milliseconds: 50),
+  backgroundPollInterval: Duration(minutes: 1),
   foregroundQueueCapacityTimeout: Duration(milliseconds: 100),
   backgroundQueueCapacityTimeout: Duration(milliseconds: 100),
   loadQueueCapacityTimeout: Duration(milliseconds: 100),
 );
 
-Future<TestDatabase> _initStorage() async {
+Future<({TestDatabase database, MockApiAdapter adapter})> _initStorage() async {
   final db = TestDatabase(NativeDatabase.memory());
   final mockAdapter = MockApiAdapter();
   SynquillRepositoryProvider.register<TestUser>(
@@ -41,7 +44,40 @@ Future<TestDatabase> _initStorage() async {
     config: _testConfig,
     enableInternetMonitoring: false,
   );
-  return db;
+  return (database: db, adapter: mockAdapter);
+}
+
+Future<int> _insertCreateTask({
+  required TestDatabase database,
+  required MockApiAdapter adapter,
+  required TestUser user,
+}) async {
+  TestUserRepository(database, adapter).addLocalUser(user);
+
+  return SyncQueueDao(database).insertItem(
+    modelId: user.id,
+    modelType: 'TestUser',
+    payload: jsonEncode(user.toJson()),
+    operation: SyncOperation.create.name,
+    idempotencyKey: 'background-sync-${user.id}',
+  );
+}
+
+Future<void> _waitFor(
+  FutureOr<bool> Function() condition, {
+  Duration timeout = const Duration(seconds: 2),
+  Duration interval = const Duration(milliseconds: 25),
+}) async {
+  final deadline = DateTime.now().add(timeout);
+
+  while (DateTime.now().isBefore(deadline)) {
+    if (await condition()) {
+      return;
+    }
+    await Future.delayed(interval);
+  }
+
+  fail('Timed out waiting for condition after $timeout');
 }
 
 // ---------------------------------------------------------------------------
@@ -49,8 +85,25 @@ Future<TestDatabase> _initStorage() async {
 // ---------------------------------------------------------------------------
 
 void main() {
+  late TestDatabase database;
+  late MockApiAdapter mockAdapter;
+  late bool warnAboutMultipleDatabases;
+
+  setUpAll(() {
+    warnAboutMultipleDatabases =
+        driftRuntimeOptions.dontWarnAboutMultipleDatabases;
+    driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
+  });
+
+  tearDownAll(() {
+    driftRuntimeOptions.dontWarnAboutMultipleDatabases =
+        warnAboutMultipleDatabases;
+  });
+
   setUp(() async {
-    await _initStorage();
+    final fixture = await _initStorage();
+    database = fixture.database;
+    mockAdapter = fixture.adapter;
   });
 
   tearDown(() async {
@@ -82,7 +135,9 @@ void main() {
       await BackgroundSyncManager.reset();
 
       // Re-init storage so retryExecutor is available again for tearDown.
-      await _initStorage();
+      final fixture = await _initStorage();
+      database = fixture.database;
+      mockAdapter = fixture.adapter;
 
       final after = BackgroundSyncManager.instance;
       expect(identical(before, after), isFalse,
@@ -92,49 +147,86 @@ void main() {
 
   // ─────────────────────────────────────────────────────────────────────────
   group('Mode switching', () {
-    test('enableBackgroundMode() does not throw', () {
-      final manager = SynquillStorage.backgroundSyncManager;
-      expect(() => manager.enableBackgroundMode(), returnsNormally);
-    });
-
-    test('enableForegroundMode() does not throw', () {
-      final manager = SynquillStorage.backgroundSyncManager;
-      expect(() => manager.enableForegroundMode(), returnsNormally);
-    });
-
-    test('enableForegroundMode(forceSync: true) triggers sync and completes',
+    test('background mode delays polling until foreground mode resumes it',
         () async {
       final manager = SynquillStorage.backgroundSyncManager;
-      // forceSync = true calls processBackgroundSyncTasks internally
-      // (fire-and-forget), then sets background mode to false.
-      // We just verify it does not throw.
-      expect(
-        () => manager.enableForegroundMode(forceSync: true),
-        returnsNormally,
+      final syncQueueDao = SyncQueueDao(database);
+      final user = TestUser(
+        id: 'mode-switch-user',
+        name: 'Mode Switch',
+        email: 'mode-switch@example.test',
       );
-      // Allow the internal async processing to settle.
+
+      manager.enableBackgroundMode();
+      final taskId = await _insertCreateTask(
+        database: database,
+        adapter: mockAdapter,
+        user: user,
+      );
+
       await Future.delayed(const Duration(milliseconds: 200));
+
+      expect(mockAdapter.operationLog, isEmpty);
+      expect(await syncQueueDao.getItemById(taskId), isNotNull);
+
+      manager.enableForegroundMode();
+
+      await _waitFor(
+          () async => await syncQueueDao.getItemById(taskId) == null);
+      expect(mockAdapter.operationLog, contains('createOne(${user.id})'));
     });
 
-    test('enableBackgroundMode then enableForegroundMode round-trip works', () {
+    test('enableForegroundMode(forceSync: true) drains pending queue task',
+        () async {
       final manager = SynquillStorage.backgroundSyncManager;
-      expect(() {
-        manager.enableBackgroundMode();
-        manager.enableForegroundMode();
-      }, returnsNormally);
+      final syncQueueDao = SyncQueueDao(database);
+      final user = TestUser(
+        id: 'force-sync-user',
+        name: 'Force Sync',
+        email: 'force-sync@example.test',
+      );
+
+      manager.enableBackgroundMode();
+      final taskId = await _insertCreateTask(
+        database: database,
+        adapter: mockAdapter,
+        user: user,
+      );
+
+      manager.enableForegroundMode(forceSync: true);
+
+      await _waitFor(
+          () async => await syncQueueDao.getItemById(taskId) == null);
+      expect(mockAdapter.operationLog, contains('createOne(${user.id})'));
     });
 
     test(
         'SynquillStorage.enableBackgroundMode '
-        'delegates to backgroundSyncManager', () {
-      // Should not throw.
-      expect(() => SynquillStorage.enableBackgroundMode(), returnsNormally);
-    });
+        'and enableForegroundMode delegate to backgroundSyncManager', () async {
+      final syncQueueDao = SyncQueueDao(database);
+      final user = TestUser(
+        id: 'storage-mode-user',
+        name: 'Storage Mode',
+        email: 'storage-mode@example.test',
+      );
 
-    test(
-        'SynquillStorage.enableForegroundMode '
-        'delegates to backgroundSyncManager', () {
-      expect(() => SynquillStorage.enableForegroundMode(), returnsNormally);
+      SynquillStorage.enableBackgroundMode();
+      final taskId = await _insertCreateTask(
+        database: database,
+        adapter: mockAdapter,
+        user: user,
+      );
+
+      await Future.delayed(const Duration(milliseconds: 200));
+
+      expect(mockAdapter.operationLog, isEmpty);
+      expect(await syncQueueDao.getItemById(taskId), isNotNull);
+
+      SynquillStorage.enableForegroundMode(forceSync: true);
+
+      await _waitFor(
+          () async => await syncQueueDao.getItemById(taskId) == null);
+      expect(mockAdapter.operationLog, contains('createOne(${user.id})'));
     });
   });
 
@@ -143,6 +235,28 @@ void main() {
     test('completes successfully when sync queue is empty', () async {
       final manager = SynquillStorage.backgroundSyncManager;
       await expectLater(manager.processBackgroundSyncTasks(), completes);
+    });
+
+    test('processes due sync queue items and removes successful tasks',
+        () async {
+      final manager = SynquillStorage.backgroundSyncManager;
+      final syncQueueDao = SyncQueueDao(database);
+      final user = TestUser(
+        id: 'process-due-user',
+        name: 'Process Due',
+        email: 'process-due@example.test',
+      );
+
+      final taskId = await _insertCreateTask(
+        database: database,
+        adapter: mockAdapter,
+        user: user,
+      );
+
+      await manager.processBackgroundSyncTasks(forceSync: true);
+
+      expect(await syncQueueDao.getItemById(taskId), isNull);
+      expect(mockAdapter.operationLog, contains('createOne(${user.id})'));
     });
 
     test('completes via SynquillStorage.instance method', () async {
@@ -169,9 +283,27 @@ void main() {
 
   // ─────────────────────────────────────────────────────────────────────────
   group('cancelBackgroundSync', () {
-    test('completes without error', () async {
+    test('stops retry polling and leaves persistent queue tasks untouched',
+        () async {
       final manager = SynquillStorage.backgroundSyncManager;
-      await expectLater(manager.cancelBackgroundSync(), completes);
+      final syncQueueDao = SyncQueueDao(database);
+      final user = TestUser(
+        id: 'cancel-sync-user',
+        name: 'Cancel Sync',
+        email: 'cancel-sync@example.test',
+      );
+
+      await manager.cancelBackgroundSync();
+      final taskId = await _insertCreateTask(
+        database: database,
+        adapter: mockAdapter,
+        user: user,
+      );
+
+      await Future.delayed(const Duration(milliseconds: 200));
+
+      expect(mockAdapter.operationLog, isEmpty);
+      expect(await syncQueueDao.getItemById(taskId), isNotNull);
     });
 
     test('is a no-op when BackgroundSyncManager is not initialized', () async {
@@ -182,7 +314,9 @@ void main() {
       await expectLater(freshManager.cancelBackgroundSync(), completes);
 
       // Re-init for tearDown.
-      await _initStorage();
+      final fixture = await _initStorage();
+      database = fixture.database;
+      mockAdapter = fixture.adapter;
     });
   });
 

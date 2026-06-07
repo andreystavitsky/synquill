@@ -56,7 +56,11 @@ import 'package:internet_connection_checker_plus/internet_connection_checker_plu
 
 ## Background Sync
 
-Configure automatic background synchronization with Workmanager:
+Synquill does not register platform scheduler jobs by itself. To run sync while
+the app is not active, configure a scheduler in your app, then call Synquill's
+runtime helper from that scheduler callback.
+
+Example app-level scheduling with Workmanager:
 
 ```dart
 void main() async {
@@ -81,10 +85,10 @@ void main() async {
   // ... 
 }
 
-/// Background task dispatcher for WorkManager
+/// App-level background task dispatcher for Workmanager
 ///
-/// This function demonstrates proper usage of SynquillStorage background sync
-/// methods with required pragma annotation for isolate accessibility.
+/// This function demonstrates calling SynquillStorage sync helpers from an
+/// app-owned scheduler callback with the required pragma annotation.
 @pragma('vm:entry-point')
 void callbackDispatcher() {
   Workmanager().executeTask((task, inputData) async {
@@ -114,7 +118,7 @@ void callbackDispatcher() {
         initializeFn: initializeSynquillStorage,
       );
 
-      // Process background sync tasks
+      // Process queued Synquill sync work
       await SynquillStorage.processBackgroundSync();
 
       // close the SynquillStorage instance to avoid resource leaks
@@ -133,7 +137,7 @@ void callbackDispatcher() {
 
 ## Background Sync Manager Controls
 
-Synquill provides runtime controls to adjust sync behavior based on your app's lifecycle state. These methods allow you to optimize battery usage and responsiveness by switching between foreground and background sync modes.
+Synquill provides runtime controls to adjust retry polling behavior based on your app's lifecycle state. These methods optimize battery usage and responsiveness by switching the retry executor between foreground and background modes. They do not register, start, or cancel platform scheduler jobs.
 
 ### App Lifecycle Integration
 
@@ -187,7 +191,7 @@ SynquillStorage.enableBackgroundMode();
 // Check if background sync manager is ready
 final isReady = SynquillStorage.backgroundSyncManager.isReadyForBackgroundSync;
 if (isReady) {
-  // Manually trigger background sync processing
+  // Manually process queued Synquill sync work
   await SynquillStorage.instance.processBackgroundSyncTasks();
 }
 ```
@@ -204,7 +208,7 @@ if (isReady) {
 - Lower polling frequency to conserve battery
 - Longer retry intervals to reduce CPU usage
 - Optimized for battery life when app is inactive
-- Automatic timeout (20 seconds) for background tasks
+- 20-second timeout when queued work is processed by the runtime helper
 
 ### Background Isolate Support
 
@@ -217,9 +221,9 @@ void backgroundTaskHandler() {
   SynquillStorage.enableBackgroundMode();
   SynquillStorage.enableForegroundMode();
   
-  // Process background sync tasks
+  // Process queued Synquill sync work
   await SynquillStorage.processBackgroundSync();
 }
 ```
 
-The background sync manager automatically handles mode transitions and ensures optimal performance regardless of your app's state.
+The background sync manager handles Synquill retry mode transitions and queued sync processing. Platform scheduling remains owned by your app and should be managed with the scheduler package or native API you use.

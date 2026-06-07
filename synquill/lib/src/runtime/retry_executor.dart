@@ -25,8 +25,8 @@ import 'package:synquill/src/runtime/retry_policy.dart';
 /// The RetryExecutor polls the sync_queue table for due tasks and manages
 /// retry scheduling with exponential backoff and jitter.
 ///
-/// This implements the background sync component from the technical
-/// specification.
+/// This is the retry component used by Synquill's background sync runtime
+/// helper and manual sync triggers.
 class RetryExecutor {
   final GeneratedDatabase _db;
   final RequestQueueManager _queueManager;
