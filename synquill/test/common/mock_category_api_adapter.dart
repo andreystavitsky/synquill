@@ -1,5 +1,5 @@
 // ignore_for_file: avoid_relative_lib_imports
-import 'package:synquill/src/test_models/index.dart';
+import '../support/test_models/index.dart';
 
 import 'dart:async';
 

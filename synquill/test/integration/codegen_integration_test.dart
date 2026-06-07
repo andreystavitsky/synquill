@@ -2,20 +2,20 @@ import 'package:test/test.dart';
 import 'dart:io';
 
 void main() {
+  final generatedDaoFile = File('test/support/generated/dao.g.dart');
+
   group('Code Generation Integration Tests', () {
     test(
       'generated code should not contain toCompanion method calls',
       () async {
         // Read the DAO generated file where saveModel methods are located
-        final daoFile = File('lib/generated/dao.g.dart');
-
         expect(
-          daoFile.existsSync(),
+          generatedDaoFile.existsSync(),
           isTrue,
           reason: 'DAO generated file should exist',
         );
 
-        final content = await daoFile.readAsString();
+        final content = await generatedDaoFile.readAsString();
 
         // Verify that toCompanion method calls are NOT present
         expect(
@@ -33,15 +33,13 @@ void main() {
 
     test('generated code should contain manual companion creation', () async {
       // Read the DAO generated file where saveModel methods are located
-      final daoFile = File('lib/generated/dao.g.dart');
-
       expect(
-        daoFile.existsSync(),
+        generatedDaoFile.existsSync(),
         isTrue,
         reason: 'DAO generated file should exist',
       );
 
-      final content = await daoFile.readAsString();
+      final content = await generatedDaoFile.readAsString();
 
       // Verify that manual companion creation is present for test models
       expect(
@@ -71,15 +69,13 @@ void main() {
       'generated code should have proper saveModel method structure',
       () async {
         // Read the DAO generated file where saveModel methods are located
-        final daoFile = File('lib/generated/dao.g.dart');
-
         expect(
-          daoFile.existsSync(),
+          generatedDaoFile.existsSync(),
           isTrue,
           reason: 'DAO generated file should exist',
         );
 
-        final content = await daoFile.readAsString();
+        final content = await generatedDaoFile.readAsString();
 
         // Check for proper saveModel method structure for test models
         expect(

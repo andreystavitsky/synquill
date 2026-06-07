@@ -7,9 +7,9 @@ import 'dart:async';
 
 import 'package:synquill/synquill_core.dart';
 
-import 'package:synquill/synquill.generated.dart';
+import '../support/synquill.generated.dart';
 
-import 'package:synquill/src/test_models/index.dart';
+import '../support/test_models/index.dart';
 
 import '../common/mock_plain_model_api_adapter.dart';
 import '../common/test_plain_model_repository.dart';

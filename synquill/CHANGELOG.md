@@ -1,3 +1,21 @@
+## 0.9.1
+
+### Changed
+- Moved Synquill's internal test models and generated fixture database out of
+  the runtime package and into `test/support`.
+- Disabled Synquill's own aggregate code generation target so
+  `dart run build_runner build` no longer recreates runtime
+  `lib/synquill.generated.dart` fixture output for the `synquill` package.
+
+### Migration note
+- Applications should import their own generated file, for example
+  `package:your_app/synquill.generated.dart`, not
+  `package:synquill/synquill.generated.dart`.
+- Code importing `package:synquill/src/test_models/...` or
+  `package:synquill/generated/database.generated.dart` was depending on
+  internal test fixtures and should move to app-owned models or test support
+  fixtures.
+
 ## 0.9.0
 
 ### Added

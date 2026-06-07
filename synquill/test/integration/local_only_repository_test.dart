@@ -1,8 +1,8 @@
-import 'package:synquill/synquill.generated.dart';
+import '../support/synquill.generated.dart';
 import 'package:test/test.dart';
 
 // Import from example project to get LocalNote model and generated code
-import 'package:synquill/src/test_models/index.dart';
+import '../support/test_models/index.dart';
 
 void main() {
   group('Local-only Repository Tests', () {

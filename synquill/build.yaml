@@ -8,3 +8,6 @@ targets:
         - $package$
       exclude:
         - example/**
+    builders:
+      synquill_gen|aggregateBuilder:
+        enabled: false

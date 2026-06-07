@@ -1,7 +1,7 @@
 import 'package:test/test.dart';
 import 'package:synquill/synquill.dart';
-import 'package:synquill/synquill.generated.dart';
-import 'package:synquill/src/test_models/test_server_id_model.dart';
+import '../support/synquill.generated.dart';
+import '../support/test_models/test_server_id_model.dart';
 
 /// Test for ID negotiation service and repository integration
 void main() {

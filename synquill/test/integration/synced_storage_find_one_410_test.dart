@@ -1,8 +1,8 @@
 // ignore_for_file: avoid_relative_lib_imports, avoid_print
 
 import 'package:test/test.dart';
-import 'package:synquill/synquill.generated.dart';
-import 'package:synquill/src/test_models/index.dart';
+import '../support/synquill.generated.dart';
+import '../support/test_models/index.dart';
 
 import '../common/mock_plain_model_api_adapter.dart';
 import '../common/test_plain_model_repository.dart';

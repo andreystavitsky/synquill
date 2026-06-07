@@ -75,7 +75,8 @@ abstract class SynquillDataModel<T extends SynquillDataModel<T>> {
   // Note: ID management methods ($usesServerGeneratedId,
   // $replaceIdEverywhere, etc.) are provided through generated extension
   // methods in the generated files.
-  // Import package:synquill/synquill.generated.dart to access these methods.
+  // Import your package's generated synquill.generated.dart file to access
+  // these methods.
 
   // JSON serialization methods will be provided by generated mixin
 

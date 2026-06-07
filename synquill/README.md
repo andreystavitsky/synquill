@@ -228,7 +228,7 @@ dart run build_runner watch --delete-conflicting-outputs
 
 ```dart
 import 'package:path_provider/path_provider.dart';
-import 'package:synquill/synquill.generated.dart';
+import 'package:your_app/synquill.generated.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

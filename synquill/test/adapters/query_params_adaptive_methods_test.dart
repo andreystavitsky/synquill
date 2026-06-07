@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:synquill/src/test_models/index.dart';
+import '../support/test_models/index.dart';
 import 'package:test/test.dart';
 import 'package:mockito/mockito.dart';
 

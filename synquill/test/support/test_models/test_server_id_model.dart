@@ -1,6 +1,6 @@
 // ignore_for_file: public_member_api_docs
 
-import 'package:synquill/src/test_models/index.dart';
+import 'index.dart';
 
 /// Test model using server-generated IDs
 @SynquillRepository(

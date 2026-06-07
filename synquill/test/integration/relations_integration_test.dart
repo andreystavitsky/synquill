@@ -6,10 +6,10 @@
 import 'dart:async';
 import 'package:test/test.dart';
 
-import 'package:synquill/synquill.generated.dart';
+import '../support/synquill.generated.dart';
 
-import 'package:synquill/src/test_models/index.dart';
-import 'package:synquill/src/test_models/relation_indexing_validation_test_models.dart';
+import '../support/test_models/index.dart';
+import '../support/test_models/relation_indexing_validation_test_models.dart';
 
 void main() {
   group('Relations Integration Tests', () {

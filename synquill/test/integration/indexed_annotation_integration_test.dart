@@ -1,9 +1,9 @@
 import 'package:test/test.dart';
 
-import 'package:synquill/synquill.generated.dart';
+import '../support/synquill.generated.dart';
 
 // Import the real Project model from the example that uses @Indexed
-import 'package:synquill/src/test_models/index.dart';
+import '../support/test_models/index.dart';
 
 void main() {
   group('Indexed annotation integration tests', () {

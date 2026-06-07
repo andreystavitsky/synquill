@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'package:test/test.dart';
 import 'package:synquill/synquill_core.dart';
-import 'package:synquill/synquill.generated.dart';
-import 'package:synquill/src/test_models/test_server_id_model.dart';
+import '../support/synquill.generated.dart';
+import '../support/test_models/test_server_id_model.dart';
 
 /// Mock API adapter that simulates server-generated IDs
 class MockServerIdAdapter extends ApiAdapterBase<ServerTestModel> {

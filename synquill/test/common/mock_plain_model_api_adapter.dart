@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'package:synquill/src/test_models/index.dart';
+import '../support/test_models/index.dart';
 
 /// Mock API adapter for PlainModel testing
 class MockPlainModelApiAdapter extends ApiAdapterBase<PlainModel> {
