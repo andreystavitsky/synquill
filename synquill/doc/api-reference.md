@@ -281,7 +281,11 @@ Abstract base class for all data models in the Synquill system.
 ```dart
 String get id
 ```
-Unique identifier for the model instance.
+Unique identifier for the model instance. This is Synquill's internal identity
+used by local storage, sync queue rows, relationships, and retry processing.
+If an API serializes the same identity under another JSON key, use
+`@JsonKey(name: ...)` on the `id` field for `json_serializable` models, or
+`@SynquillIdKey` as an explicit override/manual serializer mapping.
 
 #### Required Methods
 
@@ -673,6 +677,44 @@ class MyModel extends SynquillDataModel<MyModel> {
 
 - `adapters`: List of API adapter mixins to apply
 - `relations`: List of relationship definitions
+
+### @SynquillIdKey
+
+Field annotation for models whose API JSON uses a non-default key for
+`SynquillDataModel.id` and does not expose that mapping through
+`@JsonKey(name: ...)`, or when an explicit Synquill override is required.
+
+```dart
+class FavoritePlace extends SynquillDataModel<FavoritePlace> {
+  @override
+  @SynquillIdKey('placeId')
+  final String id;
+
+  FavoritePlace({required this.id});
+}
+```
+
+For `json_serializable` models, `@JsonKey(name: ...)` is enough:
+
+```dart
+@JsonSerializable()
+@SynquillRepository(adapters: [PlacesApiAdapter])
+class FavoritePlace extends SynquillDataModel<FavoritePlace> {
+  @override
+  @JsonKey(name: 'placeId')
+  final String id;
+
+  final String title;
+
+  FavoritePlace({String? id, required this.title})
+      : id = id ?? generateCuid();
+}
+```
+
+`@SynquillIdKey` can only be placed on the `id` field. It does not rename the
+local database id column; it tells generated runtime metadata which JSON key
+contains the model id during API sync and retry reconstruction. When both
+annotations are present, `@SynquillIdKey` takes precedence.
 
 ### Relationship Annotations
 

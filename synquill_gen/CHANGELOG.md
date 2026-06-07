@@ -1,3 +1,15 @@
+## 0.9.0
+
+### Added
+- Added code generation support for `@SynquillIdKey`.
+- Added inference of custom id JSON keys from `@JsonKey(name: ...)` on the
+  model `id` field when `@SynquillIdKey` is not present.
+- Generated model metadata now registers custom API JSON id keys with the
+  runtime registry.
+- Generated repositories pass custom id JSON keys into server-ID negotiation.
+- Generated `$replaceIdEverywhere` methods now update the configured API JSON
+  id key instead of hardcoding `id`.
+
 ## 0.8.3
 
 ### Changed

@@ -4,7 +4,7 @@
 part of 'database.generated.dart';
 
 /// Drift table definition for GraphqlPost entities
-///
+/// 
 /// This table stores GraphqlPost data with automatic sync metadata
 /// and supports offline storage with eventual consistency.
 @UseRowClass(GraphqlPost, constructor: 'fromDb')
@@ -14,37 +14,28 @@ class GraphqlPostTable extends Table {
 
   /// id column for GraphqlPost
   TextColumn get id => text().named('id')();
-
   /// title column for GraphqlPost
   TextColumn get title => text()();
-
   /// body column for GraphqlPost
   TextColumn get body => text()();
-
   /// userId column for GraphqlPost
   IntColumn get userId => integer()();
-
   /// lastSyncedAt column for GraphqlPost
   DateTimeColumn get lastSyncedAt => dateTime().nullable()();
-
   /// createdAt column for GraphqlPost
   DateTimeColumn get createdAt => dateTime().nullable()();
-
   /// updatedAt column for GraphqlPost
   DateTimeColumn get updatedAt => dateTime().nullable()();
-
   /// syncStatus column for GraphqlPost
-  TextColumn get syncStatus => text()
-      .nullable()
-      .withDefault(const Constant('synced'))
-      .map(const SyncStatusConverter())();
+  TextColumn get syncStatus => text().nullable().withDefault(const Constant('synced')).map(const SyncStatusConverter())();
 
   @override
   Set<Column> get primaryKey => {id};
 }
 
+
 /// Drift table definition for Post entities
-///
+/// 
 /// This table stores Post data with automatic sync metadata
 /// and supports offline storage with eventual consistency.
 @TableIndex(name: 'idx_posts_userId', columns: {#userId})
@@ -55,37 +46,28 @@ class PostTable extends Table {
 
   /// id column for Post
   TextColumn get id => text().named('id')();
-
   /// title column for Post
   TextColumn get title => text()();
-
   /// body column for Post
   TextColumn get body => text()();
-
   /// userId column for Post
   TextColumn get userId => text()();
-
   /// lastSyncedAt column for Post
   DateTimeColumn get lastSyncedAt => dateTime().nullable()();
-
   /// createdAt column for Post
   DateTimeColumn get createdAt => dateTime().nullable()();
-
   /// updatedAt column for Post
   DateTimeColumn get updatedAt => dateTime().nullable()();
-
   /// syncStatus column for Post
-  TextColumn get syncStatus => text()
-      .nullable()
-      .withDefault(const Constant('synced'))
-      .map(const SyncStatusConverter())();
+  TextColumn get syncStatus => text().nullable().withDefault(const Constant('synced')).map(const SyncStatusConverter())();
 
   @override
   Set<Column> get primaryKey => {id};
 }
 
+
 /// Drift table definition for LocalNote entities
-///
+/// 
 /// This table stores LocalNote data with automatic sync metadata
 /// and supports offline storage with eventual consistency.
 @TableIndex(name: 'idx_local_notes_ownerId', columns: {#ownerId})
@@ -96,37 +78,28 @@ class LocalNoteTable extends Table {
 
   /// id column for LocalNote
   TextColumn get id => text().named('id')();
-
   /// ownerId column for LocalNote
   TextColumn get ownerId => text()();
-
   /// content column for LocalNote
   TextColumn get content => text()();
-
   /// category column for LocalNote
   TextColumn get category => text().nullable()();
-
   /// lastSyncedAt column for LocalNote
   DateTimeColumn get lastSyncedAt => dateTime().nullable()();
-
   /// createdAt column for LocalNote
   DateTimeColumn get createdAt => dateTime().nullable()();
-
   /// updatedAt column for LocalNote
   DateTimeColumn get updatedAt => dateTime().nullable()();
-
   /// syncStatus column for LocalNote
-  TextColumn get syncStatus => text()
-      .nullable()
-      .withDefault(const Constant('synced'))
-      .map(const SyncStatusConverter())();
+  TextColumn get syncStatus => text().nullable().withDefault(const Constant('synced')).map(const SyncStatusConverter())();
 
   @override
   Set<Column> get primaryKey => {id};
 }
 
+
 /// Drift table definition for PlainModel entities
-///
+/// 
 /// This table stores PlainModel data with automatic sync metadata
 /// and supports offline storage with eventual consistency.
 @UseRowClass(PlainModel, constructor: 'fromDb')
@@ -136,34 +109,26 @@ class PlainModelTable extends Table {
 
   /// id column for PlainModel
   TextColumn get id => text().named('id')();
-
   /// name column for PlainModel
   TextColumn get name => text()();
-
   /// value column for PlainModel
   IntColumn get value => integer()();
-
   /// lastSyncedAt column for PlainModel
   DateTimeColumn get lastSyncedAt => dateTime().nullable()();
-
   /// createdAt column for PlainModel
   DateTimeColumn get createdAt => dateTime().nullable()();
-
   /// updatedAt column for PlainModel
   DateTimeColumn get updatedAt => dateTime().nullable()();
-
   /// syncStatus column for PlainModel
-  TextColumn get syncStatus => text()
-      .nullable()
-      .withDefault(const Constant('synced'))
-      .map(const SyncStatusConverter())();
+  TextColumn get syncStatus => text().nullable().withDefault(const Constant('synced')).map(const SyncStatusConverter())();
 
   @override
   Set<Column> get primaryKey => {id};
 }
 
+
 /// Drift table definition for User entities
-///
+/// 
 /// This table stores User data with automatic sync metadata
 /// and supports offline storage with eventual consistency.
 @UseRowClass(User, constructor: 'fromDb')
@@ -173,31 +138,24 @@ class UserTable extends Table {
 
   /// id column for User
   TextColumn get id => text().named('id')();
-
   /// name column for User
   TextColumn get name => text()();
-
   /// lastSyncedAt column for User
   DateTimeColumn get lastSyncedAt => dateTime().nullable()();
-
   /// createdAt column for User
   DateTimeColumn get createdAt => dateTime().nullable()();
-
   /// updatedAt column for User
   DateTimeColumn get updatedAt => dateTime().nullable()();
-
   /// syncStatus column for User
-  TextColumn get syncStatus => text()
-      .nullable()
-      .withDefault(const Constant('synced'))
-      .map(const SyncStatusConverter())();
+  TextColumn get syncStatus => text().nullable().withDefault(const Constant('synced')).map(const SyncStatusConverter())();
 
   @override
   Set<Column> get primaryKey => {id};
 }
 
+
 /// Drift table definition for Todo entities
-///
+/// 
 /// This table stores Todo data with automatic sync metadata
 /// and supports offline storage with eventual consistency.
 @TableIndex(name: 'idx_todos_userId', columns: {#userId})
@@ -208,49 +166,64 @@ class TodoTable extends Table {
 
   /// title column for Todo
   TextColumn get title => text()();
-
   /// isCompleted column for Todo
   BoolColumn get isCompleted => boolean()();
-
   /// userId column for Todo
   TextColumn get userId => text()();
-
   /// id column for Todo
   TextColumn get id => text().named('id')();
-
   /// birthday column for Todo
   DateTimeColumn get birthday => dateTime().nullable()();
-
   /// fullName column for Todo
   TextColumn get fullName => text().nullable()();
-
   /// avatarUrl column for Todo
   TextColumn get avatarUrl => text().nullable()();
-
   /// phoneNumber column for Todo
   TextColumn get phoneNumber => text().nullable()();
-
   /// email column for Todo
   TextColumn get email => text().nullable()();
-
   /// fetchedAt column for Todo
   DateTimeColumn get fetchedAt => dateTime()();
-
   /// lastSyncedAt column for Todo
   DateTimeColumn get lastSyncedAt => dateTime().nullable()();
-
   /// createdAt column for Todo
   DateTimeColumn get createdAt => dateTime().nullable()();
-
   /// updatedAt column for Todo
   DateTimeColumn get updatedAt => dateTime().nullable()();
-
   /// syncStatus column for Todo
-  TextColumn get syncStatus => text()
-      .nullable()
-      .withDefault(const Constant('synced'))
-      .map(const SyncStatusConverter())();
+  TextColumn get syncStatus => text().nullable().withDefault(const Constant('synced')).map(const SyncStatusConverter())();
 
   @override
   Set<Column> get primaryKey => {id};
 }
+
+
+/// Drift table definition for FavoritePlace entities
+/// 
+/// This table stores FavoritePlace data with automatic sync metadata
+/// and supports offline storage with eventual consistency.
+@UseRowClass(FavoritePlace, constructor: 'fromDb')
+class FavoritePlaceTable extends Table {
+  @override
+  String get tableName => 'favorite_places';
+
+  /// id column for FavoritePlace
+  TextColumn get id => text().named('id')();
+  /// title column for FavoritePlace
+  TextColumn get title => text()();
+  /// address column for FavoritePlace
+  TextColumn get address => text()();
+  /// lastSyncedAt column for FavoritePlace
+  DateTimeColumn get lastSyncedAt => dateTime().nullable()();
+  /// createdAt column for FavoritePlace
+  DateTimeColumn get createdAt => dateTime().nullable()();
+  /// updatedAt column for FavoritePlace
+  DateTimeColumn get updatedAt => dateTime().nullable()();
+  /// syncStatus column for FavoritePlace
+  TextColumn get syncStatus => text().nullable().withDefault(const Constant('synced')).map(const SyncStatusConverter())();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+

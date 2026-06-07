@@ -1,3 +1,7 @@
+## 0.9.0
+
+- Updated the `synquill` dependency constraint for the 0.9.x runtime.
+
 ## 0.8.2
 
 - Resolve critical runtime and generator issues.

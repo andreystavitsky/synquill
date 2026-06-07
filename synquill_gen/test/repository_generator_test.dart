@@ -149,6 +149,27 @@ void main() {
       );'''),
       );
     });
+
+    test('passes custom id JSON key to ID negotiation service', () {
+      final code = RepositoryGenerator.generateRepositoryClass(
+        _modelWithAdapters(
+          [
+            _adapter('RestTodoAdapter'),
+          ],
+          idGeneration: 'server',
+          idJsonKey: 'placeId',
+        ),
+      );
+
+      expect(
+        code,
+        contains('''
+    initializeIdNegotiationService(
+      usesServerGeneratedId: true,
+      idJsonKey: 'placeId',
+    );'''),
+      );
+    });
   });
 
   group('AdapterInfo', () {
@@ -173,6 +194,8 @@ void main() {
 ModelInfo _modelWithAdapters(
   List<AdapterInfo> adapters, {
   bool localOnly = false,
+  String idGeneration = 'client',
+  String idJsonKey = 'id',
 }) {
   return ModelInfo(
     className: 'Todo',
@@ -182,6 +205,8 @@ ModelInfo _modelWithAdapters(
     fields: const [],
     adapters: adapters,
     localOnly: localOnly,
+    idGeneration: idGeneration,
+    idJsonKey: idJsonKey,
   );
 }
 

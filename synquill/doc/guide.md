@@ -173,6 +173,53 @@ When you save a model with server-generated IDs:
 4. **Local Update**: Temporary ID is replaced everywhere with permanent ID
 5. **Relationship Updates**: All related models that reference this ID are automatically updated
 
+### Custom API ID JSON Keys
+
+`SynquillDataModel.id` is always Synquill's internal model identity. Local
+storage, sync queue rows, relationship updates, and retry ordering use that
+value. Some APIs expose the same identity under a different JSON key, such as
+`placeId`. When using `json_serializable`, Synquill infers this mapping from
+`@JsonKey(name: ...)` on the `id` field. Use `@SynquillIdKey` only when you
+need an explicit override or when your model uses a manual/non-json_serializable
+serializer.
+
+```dart
+@JsonSerializable()
+@SynquillRepository(adapters: [PlacesApiAdapter])
+class FavoritePlace extends SynquillDataModel<FavoritePlace> {
+  @override
+  @JsonKey(name: 'placeId')
+  final String id;
+
+  final String title;
+
+  FavoritePlace({String? id, required this.title})
+      : id = id ?? generateCuid();
+
+  factory FavoritePlace.fromJson(Map<String, dynamic> json) =>
+      _$FavoritePlaceFromJson(json);
+
+  @override
+  Map<String, dynamic> toJson() => _$FavoritePlaceToJson(this);
+}
+```
+
+With this model, `favoritePlace.id` is still the Synquill identity, while
+`favoritePlace.toJson()` emits `{"placeId": "..."}`. Local-first retries use
+the configured JSON key when it is present, then fall back to payload `id`,
+and finally to the durable `sync_queue_items.model_id` value when the payload
+omits an id. Server-generated ID replacement uses the same configured JSON key,
+so Synquill updates `placeId` before calling `fromJson()` and does not inject a
+synthetic `id` field into API JSON.
+
+If your serializer does not use `@JsonKey`, declare the mapping explicitly:
+
+```dart
+@override
+@SynquillIdKey('placeId')
+final String id;
+```
+
 ```dart
 // Before sync: model.id = "cuid_xyz123"
 final post = await repository.save(post, savePolicy: DataSavePolicy.localFirst);

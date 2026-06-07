@@ -36,6 +36,10 @@ class ModelInfo {
   /// Determines whether IDs are generated on client or server side.
   final String idGeneration;
 
+  /// JSON key that represents [SynquillDataModel.id] in API payloads.
+  /// Defaults to `id`.
+  final String idJsonKey;
+
   /// Creates a new instance of [ModelInfo].
   const ModelInfo({
     required this.className,
@@ -47,6 +51,7 @@ class ModelInfo {
     this.relations = const [],
     this.localOnly = false,
     this.idGeneration = 'client',
+    this.idJsonKey = 'id',
   });
 
   /// Whether this model uses server-generated IDs.

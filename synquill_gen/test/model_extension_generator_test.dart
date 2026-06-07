@@ -3,6 +3,41 @@ import 'package:synquill_gen/src/model_info.dart';
 import 'package:test/test.dart';
 
 void main() {
+  group('ModelExtensionGenerator id management', () {
+    test('uses custom id JSON key in replaceIdEverywhere', () {
+      final code = ModelExtensionGenerator.generateModelExtensions(
+        const ModelInfo(
+          className: 'FavoritePlace',
+          tableName: 'favorite_places',
+          endpoint: 'favorite_places',
+          importPath: 'favorite_place.dart',
+          fields: [],
+          idJsonKey: 'placeId',
+        ),
+        const [],
+      );
+
+      expect(code, contains("json['placeId'] = newId;"));
+      expect(code, isNot(contains("json['id'] = newId;")));
+    });
+
+    test('escapes custom id JSON key in replaceIdEverywhere', () {
+      final code = ModelExtensionGenerator.generateModelExtensions(
+        const ModelInfo(
+          className: 'FavoritePlace',
+          tableName: 'favorite_places',
+          endpoint: 'favorite_places',
+          importPath: 'favorite_place.dart',
+          fields: [],
+          idJsonKey: r"place'Id$bad\name",
+        ),
+        const [],
+      );
+
+      expect(code, contains(r"json['place\'Id\$bad\\name'] = newId;"));
+    });
+  });
+
   group('ModelExtensionGenerator realtime watch arguments', () {
     test('passes realtime arguments through OneToMany watch methods', () {
       final code = ModelExtensionGenerator.generateModelExtensions(

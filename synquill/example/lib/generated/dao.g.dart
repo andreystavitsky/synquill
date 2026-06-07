@@ -4,8 +4,8 @@
 part of 'database.generated.dart';
 
 /// Helper mixin for DAO classes to provide filtering and query operations
-mixin DaoHelpersMixin<Tbl extends Table, D>
-    on DatabaseAccessor<SynquillDatabase> {
+mixin DaoHelpersMixin<Tbl extends Table, D> 
+  on DatabaseAccessor<SynquillDatabase> {
   /// Apply query parameters (filters, sorting, pagination) to a query
   void applyQueryParams(
     SimpleSelectStatement<Tbl, D> query,
@@ -66,12 +66,12 @@ mixin DaoHelpersMixin<Tbl extends Table, D>
   ) {
     switch (filter.operator) {
       case FilterOperator.equals:
-        _applySingleValueFilter(
-            query, column, filter, fieldType, (col, val) => col.equals(val));
+        _applySingleValueFilter(query, column, filter, fieldType, 
+          (col, val) => col.equals(val));
         break;
       case FilterOperator.notEquals:
-        _applySingleValueFilter(query, column, filter, fieldType,
-            (col, val) => col.equals(val).not());
+        _applySingleValueFilter(query, column, filter, fieldType, 
+          (col, val) => col.equals(val).not());
         break;
       case FilterOperator.contains:
         if (fieldType == 'String' && filter.value is SingleValue) {
@@ -92,20 +92,20 @@ mixin DaoHelpersMixin<Tbl extends Table, D>
         }
         break;
       case FilterOperator.greaterThan:
-        _applyComparisonFilter(
-            query, column, filter, fieldType, _applyGreaterThan);
+        _applyComparisonFilter(query, column, filter, fieldType, 
+        _applyGreaterThan);
         break;
       case FilterOperator.greaterThanOrEqual:
-        _applyComparisonFilter(
-            query, column, filter, fieldType, _applyGreaterThanOrEqual);
+        _applyComparisonFilter(query, column, filter, fieldType, 
+        _applyGreaterThanOrEqual);
         break;
       case FilterOperator.lessThan:
-        _applyComparisonFilter(
-            query, column, filter, fieldType, _applyLessThan);
+        _applyComparisonFilter(query, column, filter, fieldType, 
+        _applyLessThan);
         break;
       case FilterOperator.lessThanOrEqual:
-        _applyComparisonFilter(
-            query, column, filter, fieldType, _applyLessThanOrEqual);
+        _applyComparisonFilter(query, column, filter, fieldType, 
+        _applyLessThanOrEqual);
         break;
       case FilterOperator.isNull:
         query.where((t) => column.isNull());
@@ -148,16 +148,13 @@ mixin DaoHelpersMixin<Tbl extends Table, D>
     Expression<Object> column,
     FilterCondition filter,
     String? fieldType,
-    void Function(
-            SimpleSelectStatement<Tbl, D>, Expression<Object>, Object, String)
-        operation,
+    void Function(SimpleSelectStatement<Tbl, D>, 
+    Expression<Object>, Object, String) operation,
   ) {
     if (filter.value is SingleValue) {
       final value = (filter.value as SingleValue).value;
-      if (fieldType != null &&
-          (fieldType == 'int' ||
-              fieldType == 'double' ||
-              fieldType == 'DateTime')) {
+      if (fieldType != null && (fieldType == 'int' 
+        || fieldType == 'double' || fieldType == 'DateTime')) {
         operation(query, column, value, fieldType);
       }
     }
@@ -173,15 +170,15 @@ mixin DaoHelpersMixin<Tbl extends Table, D>
     switch (fieldType) {
       case 'int':
         query.where((t) => (column as Expression<int>)
-            .isBiggerThan(Variable<int>(value as int)));
+          .isBiggerThan(Variable<int>(value as int)));
         break;
       case 'double':
         query.where((t) => (column as Expression<double>)
-            .isBiggerThan(Variable<double>(value as double)));
+          .isBiggerThan(Variable<double>(value as double)));
         break;
       case 'DateTime':
         query.where((t) => (column as Expression<DateTime>)
-            .isBiggerThan(Variable<DateTime>(value as DateTime)));
+          .isBiggerThan(Variable<DateTime>(value as DateTime)));
         break;
     }
   }
@@ -196,15 +193,15 @@ mixin DaoHelpersMixin<Tbl extends Table, D>
     switch (fieldType) {
       case 'int':
         query.where((t) => (column as Expression<int>)
-            .isBiggerOrEqual(Variable<int>(value as int)));
+          .isBiggerOrEqual(Variable<int>(value as int)));
         break;
       case 'double':
         query.where((t) => (column as Expression<double>)
-            .isBiggerOrEqual(Variable<double>(value as double)));
+          .isBiggerOrEqual(Variable<double>(value as double)));
         break;
       case 'DateTime':
         query.where((t) => (column as Expression<DateTime>)
-            .isBiggerOrEqual(Variable<DateTime>(value as DateTime)));
+          .isBiggerOrEqual(Variable<DateTime>(value as DateTime)));
         break;
     }
   }
@@ -219,15 +216,15 @@ mixin DaoHelpersMixin<Tbl extends Table, D>
     switch (fieldType) {
       case 'int':
         query.where((t) => (column as Expression<int>)
-            .isSmallerThan(Variable<int>(value as int)));
+          .isSmallerThan(Variable<int>(value as int)));
         break;
       case 'double':
         query.where((t) => (column as Expression<double>)
-            .isSmallerThan(Variable<double>(value as double)));
+          .isSmallerThan(Variable<double>(value as double)));
         break;
       case 'DateTime':
         query.where((t) => (column as Expression<DateTime>)
-            .isSmallerThan(Variable<DateTime>(value as DateTime)));
+          .isSmallerThan(Variable<DateTime>(value as DateTime)));
         break;
     }
   }
@@ -242,15 +239,15 @@ mixin DaoHelpersMixin<Tbl extends Table, D>
     switch (fieldType) {
       case 'int':
         query.where((t) => (column as Expression<int>)
-            .isSmallerOrEqual(Variable<int>(value as int)));
+          .isSmallerOrEqual(Variable<int>(value as int)));
         break;
       case 'double':
         query.where((t) => (column as Expression<double>)
-            .isSmallerOrEqual(Variable<double>(value as double)));
+          .isSmallerOrEqual(Variable<double>(value as double)));
         break;
       case 'DateTime':
         query.where((t) => (column as Expression<DateTime>)
-            .isSmallerOrEqual(Variable<DateTime>(value as DateTime)));
+          .isSmallerOrEqual(Variable<DateTime>(value as DateTime)));
         break;
     }
   }
@@ -265,56 +262,56 @@ mixin DaoHelpersMixin<Tbl extends Table, D>
   ) {
     if (filter.value is ListValue) {
       final listValues = (filter.value as ListValue).values;
-
+      
       switch (fieldType) {
         case 'String':
           final values = listValues.cast<String>();
-          query.where((t) => isInList
-              ? (column as Expression<String>).isIn(values)
-              : (column as Expression<String>).isNotIn(values));
+          query.where((t) => isInList 
+            ? (column as Expression<String>).isIn(values)
+            : (column as Expression<String>).isNotIn(values));
           break;
         case 'int':
           final values = listValues.cast<int>();
           query.where((t) => isInList
-              ? (column as Expression<int>).isIn(values)
-              : (column as Expression<int>).isNotIn(values));
+            ? (column as Expression<int>).isIn(values)
+            : (column as Expression<int>).isNotIn(values));
           break;
         case 'double':
           final values = listValues.cast<double>();
           query.where((t) => isInList
-              ? (column as Expression<double>).isIn(values)
-              : (column as Expression<double>).isNotIn(values));
+            ? (column as Expression<double>).isIn(values)
+            : (column as Expression<double>).isNotIn(values));
           break;
         case 'bool':
           final values = listValues.cast<bool>();
           query.where((t) => isInList
-              ? (column as Expression<bool>).isIn(values)
-              : (column as Expression<bool>).isNotIn(values));
+            ? (column as Expression<bool>).isIn(values)
+            : (column as Expression<bool>).isNotIn(values));
           break;
         case 'DateTime':
           final values = listValues.cast<DateTime>();
           query.where((t) => isInList
-              ? (column as Expression<DateTime>).isIn(values)
-              : (column as Expression<DateTime>).isNotIn(values));
+            ? (column as Expression<DateTime>).isIn(values)
+            : (column as Expression<DateTime>).isNotIn(values));
           break;
         case 'SyncStatus':
-          final statusNames = listValues
-              .map((e) => e is SyncStatus ? e.name : e.toString())
-              .toList();
+          final statusNames = listValues.map((e) => e is SyncStatus ?
+            e.name : e.toString()).toList();
           query.where((t) => isInList
-              ? (column as Expression<String>).isIn(statusNames)
-              : (column as Expression<String>).isNotIn(statusNames));
+            ? (column as Expression<String>).isIn(statusNames)
+            : (column as Expression<String>).isNotIn(statusNames));
           break;
         default:
           // Fallback for unhandled types
           final values = listValues.cast<Object>();
-          query.where(
-              (t) => isInList ? column.isIn(values) : column.isNotIn(values));
+          query.where((t) => isInList
+            ? column.isIn(values)
+            : column.isNotIn(values));
           break;
       }
     } else {
       throw ArgumentError('${isInList ? "inList" : "notInList"} '
-          'operator requires a ListValue');
+      'operator requires a ListValue');
     }
   }
 
@@ -325,49 +322,54 @@ mixin DaoHelpersMixin<Tbl extends Table, D>
   TableInfo<Tbl, D> get table;
 }
 
+
 /// Typed field selectors for GraphqlPost model
 class GraphqlPostFields {
   /// Field selector for id
-  static const FieldSelector<String> id = FieldSelector<String>('id', String);
+  static const FieldSelector<String> id = 
+      FieldSelector<String>('id', String);
 
   /// Field selector for title
-  static const FieldSelector<String> title =
+  static const FieldSelector<String> title = 
       FieldSelector<String>('title', String);
 
   /// Field selector for body
-  static const FieldSelector<String> body =
+  static const FieldSelector<String> body = 
       FieldSelector<String>('body', String);
 
   /// Field selector for userId
-  static const FieldSelector<int> userId = FieldSelector<int>('userId', int);
+  static const FieldSelector<int> userId = 
+      FieldSelector<int>('userId', int);
 
   /// Field selector for lastSyncedAt
-  static const FieldSelector<DateTime> lastSyncedAt =
+  static const FieldSelector<DateTime> lastSyncedAt = 
       FieldSelector<DateTime>('lastSyncedAt', DateTime);
 
   /// Field selector for createdAt
-  static const FieldSelector<DateTime> createdAt =
+  static const FieldSelector<DateTime> createdAt = 
       FieldSelector<DateTime>('createdAt', DateTime);
 
   /// Field selector for updatedAt
-  static const FieldSelector<DateTime> updatedAt =
+  static const FieldSelector<DateTime> updatedAt = 
       FieldSelector<DateTime>('updatedAt', DateTime);
 
   /// Field selector for syncStatus
-  static const FieldSelector<SyncStatus> syncStatus =
+  static const FieldSelector<SyncStatus> syncStatus = 
       FieldSelector<SyncStatus>('syncStatus', SyncStatus);
+
 }
 
+
+
 /// Data Access Object for GraphqlPost operations
-///
+/// 
 /// Provides CRUD operations and query methods for GraphqlPost entities
 /// in the SQLite database using Drift ORM.
 @DriftAccessor(tables: [GraphqlPostTable])
 class GraphqlPostDao extends DatabaseAccessor<SynquillDatabase>
-    with
-        _$GraphqlPostDaoMixin,
-        DaoHelpersMixin<GraphqlPostTable, GraphqlPost>,
-        BaseDaoMixin<GraphqlPost> {
+    with _$GraphqlPostDaoMixin,
+       DaoHelpersMixin<GraphqlPostTable, GraphqlPost>, 
+       BaseDaoMixin<GraphqlPost> {
   /// Creates a new GraphqlPost DAO instance
   GraphqlPostDao(super.attachedDatabase);
 
@@ -376,8 +378,8 @@ class GraphqlPostDao extends DatabaseAccessor<SynquillDatabase>
 
   /// Get graphqlpost data by ID
   Future<GraphqlPost?> getDataById(String id) =>
-      (select(graphqlPostTable)..where((t) => t.id.equals(id)))
-          .getSingleOrNull();
+      (select(graphqlPostTable)..where((t) =>
+        t.id.equals(id))).getSingleOrNull();
 
   /// Get all graphqlposts as model objects
   Future<List<GraphqlPost>> getAll({QueryParams? queryParams}) async {
@@ -404,8 +406,8 @@ class GraphqlPostDao extends DatabaseAccessor<SynquillDatabase>
   /// Save graphqlpost model
   @override
   Future<GraphqlPost> saveModel(GraphqlPost model) async {
-    final companion = GraphqlPostTableCompanion(
-        id: Value(model.id),
+    final companion = 
+     GraphqlPostTableCompanion(id: Value(model.id),
         title: Value(model.title),
         body: Value(model.body),
         userId: Value(model.userId),
@@ -510,8 +512,8 @@ class GraphqlPostDao extends DatabaseAccessor<SynquillDatabase>
 
   // Implementation of BaseDaoMixin methods
   @override
-  Future<GraphqlPost?> getByIdTyped(String id,
-      {QueryParams? queryParams}) async {
+  Future<GraphqlPost?> getByIdTyped(String id, 
+   {QueryParams? queryParams}) async {
     return await getById(id, queryParams: queryParams);
   }
 
@@ -545,50 +547,59 @@ class GraphqlPostDao extends DatabaseAccessor<SynquillDatabase>
 
   /// Delete all graphqlposts from the table
   @override
-  Future<int> deleteAll() => delete(graphqlPostTable).go();
+  Future<int> deleteAll() =>
+      delete(graphqlPostTable).go();
+
 }
+
 
 /// Typed field selectors for Post model
 class PostFields {
   /// Field selector for id
-  static const FieldSelector<String> id = FieldSelector<String>('id', String);
+  static const FieldSelector<String> id = 
+      FieldSelector<String>('id', String);
 
   /// Field selector for title
-  static const FieldSelector<String> title =
+  static const FieldSelector<String> title = 
       FieldSelector<String>('title', String);
 
   /// Field selector for body
-  static const FieldSelector<String> body =
+  static const FieldSelector<String> body = 
       FieldSelector<String>('body', String);
 
   /// Field selector for userId
-  static const FieldSelector<String> userId =
+  static const FieldSelector<String> userId = 
       FieldSelector<String>('userId', String);
 
   /// Field selector for lastSyncedAt
-  static const FieldSelector<DateTime> lastSyncedAt =
+  static const FieldSelector<DateTime> lastSyncedAt = 
       FieldSelector<DateTime>('lastSyncedAt', DateTime);
 
   /// Field selector for createdAt
-  static const FieldSelector<DateTime> createdAt =
+  static const FieldSelector<DateTime> createdAt = 
       FieldSelector<DateTime>('createdAt', DateTime);
 
   /// Field selector for updatedAt
-  static const FieldSelector<DateTime> updatedAt =
+  static const FieldSelector<DateTime> updatedAt = 
       FieldSelector<DateTime>('updatedAt', DateTime);
 
   /// Field selector for syncStatus
-  static const FieldSelector<SyncStatus> syncStatus =
+  static const FieldSelector<SyncStatus> syncStatus = 
       FieldSelector<SyncStatus>('syncStatus', SyncStatus);
+
 }
 
+
+
 /// Data Access Object for Post operations
-///
+/// 
 /// Provides CRUD operations and query methods for Post entities
 /// in the SQLite database using Drift ORM.
 @DriftAccessor(tables: [PostTable])
 class PostDao extends DatabaseAccessor<SynquillDatabase>
-    with _$PostDaoMixin, DaoHelpersMixin<PostTable, Post>, BaseDaoMixin<Post> {
+    with _$PostDaoMixin,
+       DaoHelpersMixin<PostTable, Post>, 
+       BaseDaoMixin<Post> {
   /// Creates a new Post DAO instance
   PostDao(super.attachedDatabase);
 
@@ -597,7 +608,8 @@ class PostDao extends DatabaseAccessor<SynquillDatabase>
 
   /// Get post data by ID
   Future<Post?> getDataById(String id) =>
-      (select(postTable)..where((t) => t.id.equals(id))).getSingleOrNull();
+      (select(postTable)..where((t) =>
+        t.id.equals(id))).getSingleOrNull();
 
   /// Get all posts as model objects
   Future<List<Post>> getAll({QueryParams? queryParams}) async {
@@ -624,8 +636,8 @@ class PostDao extends DatabaseAccessor<SynquillDatabase>
   /// Save post model
   @override
   Future<Post> saveModel(Post model) async {
-    final companion = PostTableCompanion(
-        id: Value(model.id),
+    final companion = 
+     PostTableCompanion(id: Value(model.id),
         title: Value(model.title),
         body: Value(model.body),
         userId: Value(model.userId),
@@ -730,7 +742,8 @@ class PostDao extends DatabaseAccessor<SynquillDatabase>
 
   // Implementation of BaseDaoMixin methods
   @override
-  Future<Post?> getByIdTyped(String id, {QueryParams? queryParams}) async {
+  Future<Post?> getByIdTyped(String id, 
+   {QueryParams? queryParams}) async {
     return await getById(id, queryParams: queryParams);
   }
 
@@ -764,53 +777,59 @@ class PostDao extends DatabaseAccessor<SynquillDatabase>
 
   /// Delete all posts from the table
   @override
-  Future<int> deleteAll() => delete(postTable).go();
+  Future<int> deleteAll() =>
+      delete(postTable).go();
+
 }
+
 
 /// Typed field selectors for LocalNote model
 class LocalNoteFields {
   /// Field selector for id
-  static const FieldSelector<String> id = FieldSelector<String>('id', String);
+  static const FieldSelector<String> id = 
+      FieldSelector<String>('id', String);
 
   /// Field selector for ownerId
-  static const FieldSelector<String> ownerId =
+  static const FieldSelector<String> ownerId = 
       FieldSelector<String>('ownerId', String);
 
   /// Field selector for content
-  static const FieldSelector<String> content =
+  static const FieldSelector<String> content = 
       FieldSelector<String>('content', String);
 
   /// Field selector for category
-  static const FieldSelector<String> category =
+  static const FieldSelector<String> category = 
       FieldSelector<String>('category', String);
 
   /// Field selector for lastSyncedAt
-  static const FieldSelector<DateTime> lastSyncedAt =
+  static const FieldSelector<DateTime> lastSyncedAt = 
       FieldSelector<DateTime>('lastSyncedAt', DateTime);
 
   /// Field selector for createdAt
-  static const FieldSelector<DateTime> createdAt =
+  static const FieldSelector<DateTime> createdAt = 
       FieldSelector<DateTime>('createdAt', DateTime);
 
   /// Field selector for updatedAt
-  static const FieldSelector<DateTime> updatedAt =
+  static const FieldSelector<DateTime> updatedAt = 
       FieldSelector<DateTime>('updatedAt', DateTime);
 
   /// Field selector for syncStatus
-  static const FieldSelector<SyncStatus> syncStatus =
+  static const FieldSelector<SyncStatus> syncStatus = 
       FieldSelector<SyncStatus>('syncStatus', SyncStatus);
+
 }
 
+
+
 /// Data Access Object for LocalNote operations
-///
+/// 
 /// Provides CRUD operations and query methods for LocalNote entities
 /// in the SQLite database using Drift ORM.
 @DriftAccessor(tables: [LocalNoteTable])
 class LocalNoteDao extends DatabaseAccessor<SynquillDatabase>
-    with
-        _$LocalNoteDaoMixin,
-        DaoHelpersMixin<LocalNoteTable, LocalNote>,
-        BaseDaoMixin<LocalNote> {
+    with _$LocalNoteDaoMixin,
+       DaoHelpersMixin<LocalNoteTable, LocalNote>, 
+       BaseDaoMixin<LocalNote> {
   /// Creates a new LocalNote DAO instance
   LocalNoteDao(super.attachedDatabase);
 
@@ -819,7 +838,8 @@ class LocalNoteDao extends DatabaseAccessor<SynquillDatabase>
 
   /// Get localnote data by ID
   Future<LocalNote?> getDataById(String id) =>
-      (select(localNoteTable)..where((t) => t.id.equals(id))).getSingleOrNull();
+      (select(localNoteTable)..where((t) =>
+        t.id.equals(id))).getSingleOrNull();
 
   /// Get all localnotes as model objects
   Future<List<LocalNote>> getAll({QueryParams? queryParams}) async {
@@ -846,8 +866,8 @@ class LocalNoteDao extends DatabaseAccessor<SynquillDatabase>
   /// Save localnote model
   @override
   Future<LocalNote> saveModel(LocalNote model) async {
-    final companion = LocalNoteTableCompanion(
-        id: Value(model.id),
+    final companion = 
+     LocalNoteTableCompanion(id: Value(model.id),
         ownerId: Value(model.ownerId),
         content: Value(model.content),
         category: Value(model.category),
@@ -952,7 +972,8 @@ class LocalNoteDao extends DatabaseAccessor<SynquillDatabase>
 
   // Implementation of BaseDaoMixin methods
   @override
-  Future<LocalNote?> getByIdTyped(String id, {QueryParams? queryParams}) async {
+  Future<LocalNote?> getByIdTyped(String id, 
+   {QueryParams? queryParams}) async {
     return await getById(id, queryParams: queryParams);
   }
 
@@ -986,48 +1007,55 @@ class LocalNoteDao extends DatabaseAccessor<SynquillDatabase>
 
   /// Delete all localnotes from the table
   @override
-  Future<int> deleteAll() => delete(localNoteTable).go();
+  Future<int> deleteAll() =>
+      delete(localNoteTable).go();
+
 }
+
 
 /// Typed field selectors for PlainModel model
 class PlainModelFields {
   /// Field selector for id
-  static const FieldSelector<String> id = FieldSelector<String>('id', String);
+  static const FieldSelector<String> id = 
+      FieldSelector<String>('id', String);
 
   /// Field selector for name
-  static const FieldSelector<String> name =
+  static const FieldSelector<String> name = 
       FieldSelector<String>('name', String);
 
   /// Field selector for value
-  static const FieldSelector<int> value = FieldSelector<int>('value', int);
+  static const FieldSelector<int> value = 
+      FieldSelector<int>('value', int);
 
   /// Field selector for lastSyncedAt
-  static const FieldSelector<DateTime> lastSyncedAt =
+  static const FieldSelector<DateTime> lastSyncedAt = 
       FieldSelector<DateTime>('lastSyncedAt', DateTime);
 
   /// Field selector for createdAt
-  static const FieldSelector<DateTime> createdAt =
+  static const FieldSelector<DateTime> createdAt = 
       FieldSelector<DateTime>('createdAt', DateTime);
 
   /// Field selector for updatedAt
-  static const FieldSelector<DateTime> updatedAt =
+  static const FieldSelector<DateTime> updatedAt = 
       FieldSelector<DateTime>('updatedAt', DateTime);
 
   /// Field selector for syncStatus
-  static const FieldSelector<SyncStatus> syncStatus =
+  static const FieldSelector<SyncStatus> syncStatus = 
       FieldSelector<SyncStatus>('syncStatus', SyncStatus);
+
 }
 
+
+
 /// Data Access Object for PlainModel operations
-///
+/// 
 /// Provides CRUD operations and query methods for PlainModel entities
 /// in the SQLite database using Drift ORM.
 @DriftAccessor(tables: [PlainModelTable])
 class PlainModelDao extends DatabaseAccessor<SynquillDatabase>
-    with
-        _$PlainModelDaoMixin,
-        DaoHelpersMixin<PlainModelTable, PlainModel>,
-        BaseDaoMixin<PlainModel> {
+    with _$PlainModelDaoMixin,
+       DaoHelpersMixin<PlainModelTable, PlainModel>, 
+       BaseDaoMixin<PlainModel> {
   /// Creates a new PlainModel DAO instance
   PlainModelDao(super.attachedDatabase);
 
@@ -1036,8 +1064,8 @@ class PlainModelDao extends DatabaseAccessor<SynquillDatabase>
 
   /// Get plainmodel data by ID
   Future<PlainModel?> getDataById(String id) =>
-      (select(plainModelTable)..where((t) => t.id.equals(id)))
-          .getSingleOrNull();
+      (select(plainModelTable)..where((t) =>
+        t.id.equals(id))).getSingleOrNull();
 
   /// Get all plainmodels as model objects
   Future<List<PlainModel>> getAll({QueryParams? queryParams}) async {
@@ -1064,8 +1092,8 @@ class PlainModelDao extends DatabaseAccessor<SynquillDatabase>
   /// Save plainmodel model
   @override
   Future<PlainModel> saveModel(PlainModel model) async {
-    final companion = PlainModelTableCompanion(
-        id: Value(model.id),
+    final companion = 
+     PlainModelTableCompanion(id: Value(model.id),
         name: Value(model.name),
         value: Value(model.value),
         lastSyncedAt: Value(model.lastSyncedAt),
@@ -1165,8 +1193,8 @@ class PlainModelDao extends DatabaseAccessor<SynquillDatabase>
 
   // Implementation of BaseDaoMixin methods
   @override
-  Future<PlainModel?> getByIdTyped(String id,
-      {QueryParams? queryParams}) async {
+  Future<PlainModel?> getByIdTyped(String id, 
+   {QueryParams? queryParams}) async {
     return await getById(id, queryParams: queryParams);
   }
 
@@ -1200,42 +1228,51 @@ class PlainModelDao extends DatabaseAccessor<SynquillDatabase>
 
   /// Delete all plainmodels from the table
   @override
-  Future<int> deleteAll() => delete(plainModelTable).go();
+  Future<int> deleteAll() =>
+      delete(plainModelTable).go();
+
 }
+
 
 /// Typed field selectors for User model
 class UserFields {
   /// Field selector for id
-  static const FieldSelector<String> id = FieldSelector<String>('id', String);
+  static const FieldSelector<String> id = 
+      FieldSelector<String>('id', String);
 
   /// Field selector for name
-  static const FieldSelector<String> name =
+  static const FieldSelector<String> name = 
       FieldSelector<String>('name', String);
 
   /// Field selector for lastSyncedAt
-  static const FieldSelector<DateTime> lastSyncedAt =
+  static const FieldSelector<DateTime> lastSyncedAt = 
       FieldSelector<DateTime>('lastSyncedAt', DateTime);
 
   /// Field selector for createdAt
-  static const FieldSelector<DateTime> createdAt =
+  static const FieldSelector<DateTime> createdAt = 
       FieldSelector<DateTime>('createdAt', DateTime);
 
   /// Field selector for updatedAt
-  static const FieldSelector<DateTime> updatedAt =
+  static const FieldSelector<DateTime> updatedAt = 
       FieldSelector<DateTime>('updatedAt', DateTime);
 
   /// Field selector for syncStatus
-  static const FieldSelector<SyncStatus> syncStatus =
+  static const FieldSelector<SyncStatus> syncStatus = 
       FieldSelector<SyncStatus>('syncStatus', SyncStatus);
+
 }
 
+
+
 /// Data Access Object for User operations
-///
+/// 
 /// Provides CRUD operations and query methods for User entities
 /// in the SQLite database using Drift ORM.
 @DriftAccessor(tables: [UserTable])
 class UserDao extends DatabaseAccessor<SynquillDatabase>
-    with _$UserDaoMixin, DaoHelpersMixin<UserTable, User>, BaseDaoMixin<User> {
+    with _$UserDaoMixin,
+       DaoHelpersMixin<UserTable, User>, 
+       BaseDaoMixin<User> {
   /// Creates a new User DAO instance
   UserDao(super.attachedDatabase);
 
@@ -1244,7 +1281,8 @@ class UserDao extends DatabaseAccessor<SynquillDatabase>
 
   /// Get user data by ID
   Future<User?> getDataById(String id) =>
-      (select(userTable)..where((t) => t.id.equals(id))).getSingleOrNull();
+      (select(userTable)..where((t) =>
+        t.id.equals(id))).getSingleOrNull();
 
   /// Get all users as model objects
   Future<List<User>> getAll({QueryParams? queryParams}) async {
@@ -1271,8 +1309,8 @@ class UserDao extends DatabaseAccessor<SynquillDatabase>
   /// Save user model
   @override
   Future<User> saveModel(User model) async {
-    final companion = UserTableCompanion(
-        id: Value(model.id),
+    final companion = 
+     UserTableCompanion(id: Value(model.id),
         name: Value(model.name),
         lastSyncedAt: Value(model.lastSyncedAt),
         createdAt: Value(model.createdAt ?? DateTime.now()),
@@ -1367,7 +1405,8 @@ class UserDao extends DatabaseAccessor<SynquillDatabase>
 
   // Implementation of BaseDaoMixin methods
   @override
-  Future<User?> getByIdTyped(String id, {QueryParams? queryParams}) async {
+  Future<User?> getByIdTyped(String id, 
+   {QueryParams? queryParams}) async {
     return await getById(id, queryParams: queryParams);
   }
 
@@ -1401,74 +1440,83 @@ class UserDao extends DatabaseAccessor<SynquillDatabase>
 
   /// Delete all users from the table
   @override
-  Future<int> deleteAll() => delete(userTable).go();
+  Future<int> deleteAll() =>
+      delete(userTable).go();
+
 }
+
 
 /// Typed field selectors for Todo model
 class TodoFields {
   /// Field selector for title
-  static const FieldSelector<String> title =
+  static const FieldSelector<String> title = 
       FieldSelector<String>('title', String);
 
   /// Field selector for isCompleted
-  static const FieldSelector<bool> isCompleted =
+  static const FieldSelector<bool> isCompleted = 
       FieldSelector<bool>('isCompleted', bool);
 
   /// Field selector for userId
-  static const FieldSelector<String> userId =
+  static const FieldSelector<String> userId = 
       FieldSelector<String>('userId', String);
 
   /// Field selector for id
-  static const FieldSelector<String> id = FieldSelector<String>('id', String);
+  static const FieldSelector<String> id = 
+      FieldSelector<String>('id', String);
 
   /// Field selector for birthday
-  static const FieldSelector<DateTime> birthday =
+  static const FieldSelector<DateTime> birthday = 
       FieldSelector<DateTime>('birthday', DateTime);
 
   /// Field selector for fullName
-  static const FieldSelector<String> fullName =
+  static const FieldSelector<String> fullName = 
       FieldSelector<String>('fullName', String);
 
   /// Field selector for avatarUrl
-  static const FieldSelector<String> avatarUrl =
+  static const FieldSelector<String> avatarUrl = 
       FieldSelector<String>('avatarUrl', String);
 
   /// Field selector for phoneNumber
-  static const FieldSelector<String> phoneNumber =
+  static const FieldSelector<String> phoneNumber = 
       FieldSelector<String>('phoneNumber', String);
 
   /// Field selector for email
-  static const FieldSelector<String> email =
+  static const FieldSelector<String> email = 
       FieldSelector<String>('email', String);
 
   /// Field selector for fetchedAt
-  static const FieldSelector<DateTime> fetchedAt =
+  static const FieldSelector<DateTime> fetchedAt = 
       FieldSelector<DateTime>('fetchedAt', DateTime);
 
   /// Field selector for lastSyncedAt
-  static const FieldSelector<DateTime> lastSyncedAt =
+  static const FieldSelector<DateTime> lastSyncedAt = 
       FieldSelector<DateTime>('lastSyncedAt', DateTime);
 
   /// Field selector for createdAt
-  static const FieldSelector<DateTime> createdAt =
+  static const FieldSelector<DateTime> createdAt = 
       FieldSelector<DateTime>('createdAt', DateTime);
 
   /// Field selector for updatedAt
-  static const FieldSelector<DateTime> updatedAt =
+  static const FieldSelector<DateTime> updatedAt = 
       FieldSelector<DateTime>('updatedAt', DateTime);
 
   /// Field selector for syncStatus
-  static const FieldSelector<SyncStatus> syncStatus =
+  static const FieldSelector<SyncStatus> syncStatus = 
       FieldSelector<SyncStatus>('syncStatus', SyncStatus);
+
 }
 
+
+
 /// Data Access Object for Todo operations
-///
+/// 
 /// Provides CRUD operations and query methods for Todo entities
 /// in the SQLite database using Drift ORM.
 @DriftAccessor(tables: [TodoTable])
 class TodoDao extends DatabaseAccessor<SynquillDatabase>
-    with _$TodoDaoMixin, DaoHelpersMixin<TodoTable, Todo>, BaseDaoMixin<Todo> {
+    with _$TodoDaoMixin,
+       DaoHelpersMixin<TodoTable, Todo>, 
+       BaseDaoMixin<Todo> {
   /// Creates a new Todo DAO instance
   TodoDao(super.attachedDatabase);
 
@@ -1477,7 +1525,8 @@ class TodoDao extends DatabaseAccessor<SynquillDatabase>
 
   /// Get todo data by ID
   Future<Todo?> getDataById(String id) =>
-      (select(todoTable)..where((t) => t.id.equals(id))).getSingleOrNull();
+      (select(todoTable)..where((t) =>
+        t.id.equals(id))).getSingleOrNull();
 
   /// Get all todos as model objects
   Future<List<Todo>> getAll({QueryParams? queryParams}) async {
@@ -1504,8 +1553,8 @@ class TodoDao extends DatabaseAccessor<SynquillDatabase>
   /// Save todo model
   @override
   Future<Todo> saveModel(Todo model) async {
-    final companion = TodoTableCompanion(
-        title: Value(model.title),
+    final companion = 
+     TodoTableCompanion(title: Value(model.title),
         isCompleted: Value(model.isCompleted),
         userId: Value(model.userId),
         id: Value(model.id),
@@ -1640,7 +1689,8 @@ class TodoDao extends DatabaseAccessor<SynquillDatabase>
 
   // Implementation of BaseDaoMixin methods
   @override
-  Future<Todo?> getByIdTyped(String id, {QueryParams? queryParams}) async {
+  Future<Todo?> getByIdTyped(String id, 
+   {QueryParams? queryParams}) async {
     return await getById(id, queryParams: queryParams);
   }
 
@@ -1674,5 +1724,231 @@ class TodoDao extends DatabaseAccessor<SynquillDatabase>
 
   /// Delete all todos from the table
   @override
-  Future<int> deleteAll() => delete(todoTable).go();
+  Future<int> deleteAll() =>
+      delete(todoTable).go();
+
 }
+
+
+/// Typed field selectors for FavoritePlace model
+class FavoritePlaceFields {
+  /// Field selector for id
+  static const FieldSelector<String> id = 
+      FieldSelector<String>('id', String);
+
+  /// Field selector for title
+  static const FieldSelector<String> title = 
+      FieldSelector<String>('title', String);
+
+  /// Field selector for address
+  static const FieldSelector<String> address = 
+      FieldSelector<String>('address', String);
+
+  /// Field selector for lastSyncedAt
+  static const FieldSelector<DateTime> lastSyncedAt = 
+      FieldSelector<DateTime>('lastSyncedAt', DateTime);
+
+  /// Field selector for createdAt
+  static const FieldSelector<DateTime> createdAt = 
+      FieldSelector<DateTime>('createdAt', DateTime);
+
+  /// Field selector for updatedAt
+  static const FieldSelector<DateTime> updatedAt = 
+      FieldSelector<DateTime>('updatedAt', DateTime);
+
+  /// Field selector for syncStatus
+  static const FieldSelector<SyncStatus> syncStatus = 
+      FieldSelector<SyncStatus>('syncStatus', SyncStatus);
+
+}
+
+
+
+/// Data Access Object for FavoritePlace operations
+/// 
+/// Provides CRUD operations and query methods for FavoritePlace entities
+/// in the SQLite database using Drift ORM.
+@DriftAccessor(tables: [FavoritePlaceTable])
+class FavoritePlaceDao extends DatabaseAccessor<SynquillDatabase>
+    with _$FavoritePlaceDaoMixin,
+       DaoHelpersMixin<FavoritePlaceTable, FavoritePlace>, 
+       BaseDaoMixin<FavoritePlace> {
+  /// Creates a new FavoritePlace DAO instance
+  FavoritePlaceDao(super.attachedDatabase);
+
+  /// Get all favoriteplaces as Drift data
+  Future<List<FavoritePlace>> getAllData() => select(favoritePlaceTable).get();
+
+  /// Get favoriteplace data by ID
+  Future<FavoritePlace?> getDataById(String id) =>
+      (select(favoritePlaceTable)..where((t) =>
+        t.id.equals(id))).getSingleOrNull();
+
+  /// Get all favoriteplaces as model objects
+  Future<List<FavoritePlace>> getAll({QueryParams? queryParams}) async {
+    queryParams ??= QueryParams.empty;
+    final query = select(favoritePlaceTable);
+    applyQueryParams(query, queryParams);
+    final dataList = await query.get();
+    return dataList;
+  }
+
+  /// Get favoriteplace by ID as model object
+  Future<FavoritePlace?> getById(String id, {QueryParams? queryParams}) async {
+    queryParams ??= QueryParams.empty;
+    final query = select(favoritePlaceTable)..where((t) => t.id.equals(id));
+    applyQueryParams(query, queryParams);
+    final data = await query.getSingleOrNull();
+    return data;
+  }
+
+  /// Insert or update favoriteplace
+  Future<int> insertOrUpdate(FavoritePlaceTableCompanion entry) =>
+      into(favoritePlaceTable).insertOnConflictUpdate(entry);
+
+  /// Save favoriteplace model
+  @override
+  Future<FavoritePlace> saveModel(FavoritePlace model) async {
+    final companion = 
+     FavoritePlaceTableCompanion(id: Value(model.id),
+        title: Value(model.title),
+        address: Value(model.address),
+        lastSyncedAt: Value(model.lastSyncedAt),
+        createdAt: Value(model.createdAt ?? DateTime.now()),
+        updatedAt: Value(model.updatedAt ?? DateTime.now()),
+        syncStatus: Value(model.syncStatus ?? SyncStatus.synced));
+    await insertOrUpdate(companion);
+    return model;
+  }
+
+  /// Delete favoriteplace by ID
+  @override
+  Future<int> deleteById(String id) =>
+      (delete(favoritePlaceTable)..where((t) => t.id.equals(id))).go();
+
+  /// Watch all favoriteplaces as a stream
+  Stream<List<FavoritePlace>> watchAll({QueryParams? queryParams}) {
+    queryParams ??= QueryParams.empty;
+    final query = select(favoritePlaceTable);
+    applyQueryParams(query, queryParams);
+    return query.watch();
+  }
+
+  /// Watch favoriteplace by ID as a stream
+  Stream<FavoritePlace?> watchById(String id, {QueryParams? queryParams}) {
+    queryParams ??= QueryParams.empty;
+    final query = select(favoritePlaceTable)..where((t) => t.id.equals(id));
+    applyQueryParams(query, queryParams);
+    return query.watchSingleOrNull();
+  }
+
+  /// The primary table this DAO operates on.
+  @override
+  TableInfo<FavoritePlaceTable, FavoritePlace> get table => favoritePlaceTable;
+
+  /// Get column expression for a field name
+  @override
+  Expression<Object>? getColumnForField(String fieldName) {
+    switch (fieldName) {
+      case 'id':
+        return favoritePlaceTable.id;
+      case 'title':
+        return favoritePlaceTable.title;
+      case 'address':
+        return favoritePlaceTable.address;
+      case 'lastSyncedAt':
+        return favoritePlaceTable.lastSyncedAt;
+      case 'createdAt':
+        return favoritePlaceTable.createdAt;
+      case 'updatedAt':
+        return favoritePlaceTable.updatedAt;
+      case 'syncStatus':
+        return favoritePlaceTable.syncStatus;
+      default:
+        return null;
+    }
+  }
+
+  /// Get the data type for a field name
+  @override
+  String? getFieldType(String fieldName) {
+    switch (fieldName) {
+      case 'id':
+        return 'String';
+      case 'title':
+        return 'String';
+      case 'address':
+        return 'String';
+      case 'lastSyncedAt':
+        return 'DateTime';
+      case 'createdAt':
+        return 'DateTime';
+      case 'updatedAt':
+        return 'DateTime';
+      case 'syncStatus':
+        return 'SyncStatus';
+      default:
+        return null;
+    }
+  }
+
+  /// Create ordering term for sorting
+  @override
+  OrderingTerm createOrderingTerm(SortCondition sort, FavoritePlaceTable table) {
+    final column = getColumnForField(sort.field.fieldName);
+    if (column == null) {
+      throw ArgumentError('Unknown field for sorting: ${sort.field.fieldName}');
+    }
+
+    return OrderingTerm(
+      expression: column,
+      mode: sort.direction == SortDirection.ascending
+          ? OrderingMode.asc
+          : OrderingMode.desc,
+    );
+  }
+
+  // Implementation of BaseDaoMixin methods
+  @override
+  Future<FavoritePlace?> getByIdTyped(String id, 
+   {QueryParams? queryParams}) async {
+    return await getById(id, queryParams: queryParams);
+  }
+
+  @override
+  Future<List<FavoritePlace>> getAllTyped({QueryParams? queryParams}) async {
+    return await getAll(queryParams: queryParams);
+  }
+
+  @override
+  Stream<FavoritePlace?> watchByIdTyped(String id, {QueryParams? queryParams}) {
+    return watchById(id, queryParams: queryParams);
+  }
+
+  @override
+  Stream<List<FavoritePlace>> watchAllTyped({QueryParams? queryParams}) {
+    return watchAll(queryParams: queryParams);
+  }
+
+  /// Returns all favoriteplaces whose IDs are not in [excludedIds].
+  @override
+  Future<List<FavoritePlace>> getAllExcludingIds(
+    Set<String> excludedIds, {
+    QueryParams? queryParams,
+  }) async {
+    queryParams ??= QueryParams.empty;
+    final query = select(favoritePlaceTable)
+      ..where((t) => t.id.isNotIn(excludedIds.toList()));
+    applyQueryParams(query, queryParams);
+    return query.get();
+  }
+
+  /// Delete all favoriteplaces from the table
+  @override
+  Future<int> deleteAll() =>
+      delete(favoritePlaceTable).go();
+
+}
+
+
+

@@ -6,7 +6,8 @@ part of '../synquill.generated.dart';
 /// Generated ID management extension for GraphqlPost
 extension GraphqlPostIdManagement on GraphqlPost {
   /// Whether this model uses server-generated IDs
-  bool get $usesServerGeneratedId => false;
+  bool get $usesServerGeneratedId => 
+      false;
 
   /// Create a new model instance with a different ID
   /// This is used during ID negotiation when server assigns a different ID
@@ -16,19 +17,23 @@ extension GraphqlPostIdManagement on GraphqlPost {
     return fromJson(json);
   }
 
-  /// Whether this model currently has a temporary ID
+  /// Whether this model currently has a temporary ID 
   /// (always false for client-generated IDs)
   bool get $hasTemporaryId => false;
 
-  /// Get temporary client ID for this model
+  /// Get temporary client ID for this model 
   /// (always null for client-generated IDs)
   String? get $temporaryClientId => null;
 }
 
+
+
+
 /// Generated ID management extension for Post
 extension PostIdManagement on Post {
   /// Whether this model uses server-generated IDs
-  bool get $usesServerGeneratedId => false;
+  bool get $usesServerGeneratedId => 
+      false;
 
   /// Create a new model instance with a different ID
   /// This is used during ID negotiation when server assigns a different ID
@@ -38,16 +43,17 @@ extension PostIdManagement on Post {
     return fromJson(json);
   }
 
-  /// Whether this model currently has a temporary ID
+  /// Whether this model currently has a temporary ID 
   /// (always false for client-generated IDs)
   bool get $hasTemporaryId => false;
 
-  /// Get temporary client ID for this model
+  /// Get temporary client ID for this model 
   /// (always null for client-generated IDs)
   String? get $temporaryClientId => null;
 }
 
-/// Generated extension methods for loading
+
+/// Generated extension methods for loading 
 /// related objects for Post
 extension PostRelationExtensions on Post {
   /// Logger for the Post relation extensions.
@@ -70,7 +76,8 @@ extension PostRelationExtensions on Post {
       final foreignKey = userId;
       if (foreignKey == null) return null;
       final database = DatabaseProvider.instance;
-      final repository = SynquillRepositoryProvider.getFrom<User>(database);
+      final repository = SynquillRepositoryProvider
+          .getFrom<User>(database);
       return await repository.findOne(
         foreignKey.toString(),
         loadPolicy: loadPolicy ?? DataLoadPolicy.localOnly,
@@ -91,7 +98,7 @@ extension PostRelationExtensions on Post {
   /// Uses foreign key field 'userId'
   /// Automatically switches to new target when foreign key changes
   ///
-  /// WARNING: Enabling [watchRemote] on relationships can lead to a high volume
+  /// WARNING: Enabling [watchRemote] on relationships can lead to a high volume 
   /// of concurrent WebSocket subscriptions if used inside list item views (N+1 subscriptions).
   Stream<User?> watchUser({
     DataLoadPolicy? loadPolicy,
@@ -102,33 +109,41 @@ extension PostRelationExtensions on Post {
   }) {
     try {
       final database = DatabaseProvider.instance;
-      final sourceRepository =
-          SynquillRepositoryProvider.getFrom<Post>(database);
-      final targetRepository =
-          SynquillRepositoryProvider.getFrom<User>(database);
+      final sourceRepository = SynquillRepositoryProvider
+          .getFrom<Post>(database);
+      final targetRepository = SynquillRepositoryProvider
+          .getFrom<User>(database);
 
       // Watch the source object for changes in foreign key
-      return sourceRepository
-          .watchOne(
+      return sourceRepository.watchOne(
         id,
+        loadPolicy: DataLoadPolicy.localOnly,
         watchRemote: watchRemote,
         retryOnFail: retryOnFail,
         headers: headers,
         extra: extra,
       )
-          .switchMap((sourceObject) {
+          .map((sourceObject) {
         if (sourceObject == null) {
-          return Stream.value(null);
+          return null;
         }
 
         final foreignKey = sourceObject.userId;
+        if (foreignKey == null) {
+          return null;
+        }
+
+        return sourceObject.userId.toString();
+      })
+          .distinct()
+          .switchMap((foreignKey) {
         if (foreignKey == null) {
           return Stream.value(null);
         }
 
         // Switch to watching the target object
         return targetRepository.watchOne(
-          foreignKey.toString(),
+          foreignKey,
           loadPolicy: loadPolicy ?? DataLoadPolicy.localOnly,
           watchRemote: watchRemote,
           retryOnFail: retryOnFail,
@@ -145,12 +160,15 @@ extension PostRelationExtensions on Post {
       rethrow;
     }
   }
+
 }
+
 
 /// Generated ID management extension for LocalNote
 extension LocalNoteIdManagement on LocalNote {
   /// Whether this model uses server-generated IDs
-  bool get $usesServerGeneratedId => false;
+  bool get $usesServerGeneratedId => 
+      false;
 
   /// Create a new model instance with a different ID
   /// This is used during ID negotiation when server assigns a different ID
@@ -160,16 +178,17 @@ extension LocalNoteIdManagement on LocalNote {
     return fromJson(json);
   }
 
-  /// Whether this model currently has a temporary ID
+  /// Whether this model currently has a temporary ID 
   /// (always false for client-generated IDs)
   bool get $hasTemporaryId => false;
 
-  /// Get temporary client ID for this model
+  /// Get temporary client ID for this model 
   /// (always null for client-generated IDs)
   String? get $temporaryClientId => null;
 }
 
-/// Generated extension methods for loading
+
+/// Generated extension methods for loading 
 /// related objects for LocalNote
 extension LocalNoteRelationExtensions on LocalNote {
   /// Logger for the LocalNote relation extensions.
@@ -192,7 +211,8 @@ extension LocalNoteRelationExtensions on LocalNote {
       final foreignKey = ownerId;
       if (foreignKey == null) return null;
       final database = DatabaseProvider.instance;
-      final repository = SynquillRepositoryProvider.getFrom<User>(database);
+      final repository = SynquillRepositoryProvider
+          .getFrom<User>(database);
       return await repository.findOne(
         foreignKey.toString(),
         loadPolicy: loadPolicy ?? DataLoadPolicy.localOnly,
@@ -213,7 +233,7 @@ extension LocalNoteRelationExtensions on LocalNote {
   /// Uses foreign key field 'ownerId'
   /// Automatically switches to new target when foreign key changes
   ///
-  /// WARNING: Enabling [watchRemote] on relationships can lead to a high volume
+  /// WARNING: Enabling [watchRemote] on relationships can lead to a high volume 
   /// of concurrent WebSocket subscriptions if used inside list item views (N+1 subscriptions).
   Stream<User?> watchUser({
     DataLoadPolicy? loadPolicy,
@@ -224,33 +244,41 @@ extension LocalNoteRelationExtensions on LocalNote {
   }) {
     try {
       final database = DatabaseProvider.instance;
-      final sourceRepository =
-          SynquillRepositoryProvider.getFrom<LocalNote>(database);
-      final targetRepository =
-          SynquillRepositoryProvider.getFrom<User>(database);
+      final sourceRepository = SynquillRepositoryProvider
+          .getFrom<LocalNote>(database);
+      final targetRepository = SynquillRepositoryProvider
+          .getFrom<User>(database);
 
       // Watch the source object for changes in foreign key
-      return sourceRepository
-          .watchOne(
+      return sourceRepository.watchOne(
         id,
+        loadPolicy: DataLoadPolicy.localOnly,
         watchRemote: watchRemote,
         retryOnFail: retryOnFail,
         headers: headers,
         extra: extra,
       )
-          .switchMap((sourceObject) {
+          .map((sourceObject) {
         if (sourceObject == null) {
-          return Stream.value(null);
+          return null;
         }
 
         final foreignKey = sourceObject.ownerId;
+        if (foreignKey == null) {
+          return null;
+        }
+
+        return sourceObject.ownerId.toString();
+      })
+          .distinct()
+          .switchMap((foreignKey) {
         if (foreignKey == null) {
           return Stream.value(null);
         }
 
         // Switch to watching the target object
         return targetRepository.watchOne(
-          foreignKey.toString(),
+          foreignKey,
           loadPolicy: loadPolicy ?? DataLoadPolicy.localOnly,
           watchRemote: watchRemote,
           retryOnFail: retryOnFail,
@@ -267,12 +295,15 @@ extension LocalNoteRelationExtensions on LocalNote {
       rethrow;
     }
   }
+
 }
+
 
 /// Generated ID management extension for PlainModel
 extension PlainModelIdManagement on PlainModel {
   /// Whether this model uses server-generated IDs
-  bool get $usesServerGeneratedId => false;
+  bool get $usesServerGeneratedId => 
+      false;
 
   /// Create a new model instance with a different ID
   /// This is used during ID negotiation when server assigns a different ID
@@ -282,19 +313,23 @@ extension PlainModelIdManagement on PlainModel {
     return fromJson(json);
   }
 
-  /// Whether this model currently has a temporary ID
+  /// Whether this model currently has a temporary ID 
   /// (always false for client-generated IDs)
   bool get $hasTemporaryId => false;
 
-  /// Get temporary client ID for this model
+  /// Get temporary client ID for this model 
   /// (always null for client-generated IDs)
   String? get $temporaryClientId => null;
 }
 
+
+
+
 /// Generated ID management extension for User
 extension UserIdManagement on User {
   /// Whether this model uses server-generated IDs
-  bool get $usesServerGeneratedId => false;
+  bool get $usesServerGeneratedId => 
+      false;
 
   /// Create a new model instance with a different ID
   /// This is used during ID negotiation when server assigns a different ID
@@ -304,16 +339,17 @@ extension UserIdManagement on User {
     return fromJson(json);
   }
 
-  /// Whether this model currently has a temporary ID
+  /// Whether this model currently has a temporary ID 
   /// (always false for client-generated IDs)
   bool get $hasTemporaryId => false;
 
-  /// Get temporary client ID for this model
+  /// Get temporary client ID for this model 
   /// (always null for client-generated IDs)
   String? get $temporaryClientId => null;
 }
 
-/// Generated extension methods for loading
+
+/// Generated extension methods for loading 
 /// related objects for User
 extension UserRelationExtensions on User {
   /// Logger for the User relation extensions.
@@ -335,17 +371,18 @@ extension UserRelationExtensions on User {
   }) async {
     try {
       final database = DatabaseProvider.instance;
-      final repository = SynquillRepositoryProvider.getFrom<Todo>(database);
-
+      final repository = SynquillRepositoryProvider
+          .getFrom<Todo>(database);
+      
       // Create required filter for the relation
       final requiredFilter = TodoFields.userId.equals(id);
-
+      
       // Merge user queryParams with required filter
       final mergedQueryParams = QueryParams.withRequiredFilter(
         queryParams,
         requiredFilter,
       );
-
+      
       return await repository.findAll(
         loadPolicy: loadPolicy ?? DataLoadPolicy.localOnly,
         queryParams: mergedQueryParams,
@@ -353,7 +390,8 @@ extension UserRelationExtensions on User {
         extra: extra,
       );
     } catch (e, stackTrace) {
-      _log.severe('Failed to load Todos for $runtimeType[$id]', e, stackTrace);
+      _log.severe(
+        'Failed to load Todos for $runtimeType[$id]', e, stackTrace);
       rethrow;
     }
   }
@@ -361,7 +399,7 @@ extension UserRelationExtensions on User {
   /// Watch related Todos objects as a stream
   /// Uses mappedBy field 'userId' in Todo
   ///
-  /// WARNING: Enabling [watchRemote] on relationships can lead to a high volume
+  /// WARNING: Enabling [watchRemote] on relationships can lead to a high volume 
   /// of concurrent WebSocket subscriptions if used inside list item views (N+1 subscriptions).
   Stream<List<Todo>> watchTodos({
     QueryParams? queryParams,
@@ -372,17 +410,18 @@ extension UserRelationExtensions on User {
   }) {
     try {
       final database = DatabaseProvider.instance;
-      final repository = SynquillRepositoryProvider.getFrom<Todo>(database);
-
+      final repository = SynquillRepositoryProvider
+          .getFrom<Todo>(database);
+      
       // Create required filter for the relation
       final requiredFilter = TodoFields.userId.equals(id);
-
+      
       // Merge user queryParams with required filter
       final mergedQueryParams = QueryParams.withRequiredFilter(
         queryParams,
         requiredFilter,
       );
-
+      
       return repository.watchAll(
         queryParams: mergedQueryParams,
         watchRemote: watchRemote,
@@ -391,7 +430,8 @@ extension UserRelationExtensions on User {
         extra: extra,
       );
     } catch (e, stackTrace) {
-      _log.severe('Failed to watchTodos for $runtimeType[$id]', e, stackTrace);
+      _log.severe(
+        'Failed to watchTodos for $runtimeType[$id]', e, stackTrace);
       rethrow;
     }
   }
@@ -406,17 +446,18 @@ extension UserRelationExtensions on User {
   }) async {
     try {
       final database = DatabaseProvider.instance;
-      final repository = SynquillRepositoryProvider.getFrom<Post>(database);
-
+      final repository = SynquillRepositoryProvider
+          .getFrom<Post>(database);
+      
       // Create required filter for the relation
       final requiredFilter = PostFields.userId.equals(id);
-
+      
       // Merge user queryParams with required filter
       final mergedQueryParams = QueryParams.withRequiredFilter(
         queryParams,
         requiredFilter,
       );
-
+      
       return await repository.findAll(
         loadPolicy: loadPolicy ?? DataLoadPolicy.localOnly,
         queryParams: mergedQueryParams,
@@ -424,7 +465,8 @@ extension UserRelationExtensions on User {
         extra: extra,
       );
     } catch (e, stackTrace) {
-      _log.severe('Failed to load Posts for $runtimeType[$id]', e, stackTrace);
+      _log.severe(
+        'Failed to load Posts for $runtimeType[$id]', e, stackTrace);
       rethrow;
     }
   }
@@ -432,7 +474,7 @@ extension UserRelationExtensions on User {
   /// Watch related Posts objects as a stream
   /// Uses mappedBy field 'userId' in Post
   ///
-  /// WARNING: Enabling [watchRemote] on relationships can lead to a high volume
+  /// WARNING: Enabling [watchRemote] on relationships can lead to a high volume 
   /// of concurrent WebSocket subscriptions if used inside list item views (N+1 subscriptions).
   Stream<List<Post>> watchPosts({
     QueryParams? queryParams,
@@ -443,17 +485,18 @@ extension UserRelationExtensions on User {
   }) {
     try {
       final database = DatabaseProvider.instance;
-      final repository = SynquillRepositoryProvider.getFrom<Post>(database);
-
+      final repository = SynquillRepositoryProvider
+          .getFrom<Post>(database);
+      
       // Create required filter for the relation
       final requiredFilter = PostFields.userId.equals(id);
-
+      
       // Merge user queryParams with required filter
       final mergedQueryParams = QueryParams.withRequiredFilter(
         queryParams,
         requiredFilter,
       );
-
+      
       return repository.watchAll(
         queryParams: mergedQueryParams,
         watchRemote: watchRemote,
@@ -462,7 +505,8 @@ extension UserRelationExtensions on User {
         extra: extra,
       );
     } catch (e, stackTrace) {
-      _log.severe('Failed to watchPosts for $runtimeType[$id]', e, stackTrace);
+      _log.severe(
+        'Failed to watchPosts for $runtimeType[$id]', e, stackTrace);
       rethrow;
     }
   }
@@ -477,18 +521,18 @@ extension UserRelationExtensions on User {
   }) async {
     try {
       final database = DatabaseProvider.instance;
-      final repository =
-          SynquillRepositoryProvider.getFrom<LocalNote>(database);
-
+      final repository = SynquillRepositoryProvider
+          .getFrom<LocalNote>(database);
+      
       // Create required filter for the relation
       final requiredFilter = LocalNoteFields.ownerId.equals(id);
-
+      
       // Merge user queryParams with required filter
       final mergedQueryParams = QueryParams.withRequiredFilter(
         queryParams,
         requiredFilter,
       );
-
+      
       return await repository.findAll(
         loadPolicy: loadPolicy ?? DataLoadPolicy.localOnly,
         queryParams: mergedQueryParams,
@@ -497,7 +541,7 @@ extension UserRelationExtensions on User {
       );
     } catch (e, stackTrace) {
       _log.severe(
-          'Failed to load LocalNotes for $runtimeType[$id]', e, stackTrace);
+        'Failed to load LocalNotes for $runtimeType[$id]', e, stackTrace);
       rethrow;
     }
   }
@@ -505,7 +549,7 @@ extension UserRelationExtensions on User {
   /// Watch related LocalNotes objects as a stream
   /// Uses mappedBy field 'ownerId' in LocalNote
   ///
-  /// WARNING: Enabling [watchRemote] on relationships can lead to a high volume
+  /// WARNING: Enabling [watchRemote] on relationships can lead to a high volume 
   /// of concurrent WebSocket subscriptions if used inside list item views (N+1 subscriptions).
   Stream<List<LocalNote>> watchLocalNotes({
     QueryParams? queryParams,
@@ -516,18 +560,18 @@ extension UserRelationExtensions on User {
   }) {
     try {
       final database = DatabaseProvider.instance;
-      final repository =
-          SynquillRepositoryProvider.getFrom<LocalNote>(database);
-
+      final repository = SynquillRepositoryProvider
+          .getFrom<LocalNote>(database);
+      
       // Create required filter for the relation
       final requiredFilter = LocalNoteFields.ownerId.equals(id);
-
+      
       // Merge user queryParams with required filter
       final mergedQueryParams = QueryParams.withRequiredFilter(
         queryParams,
         requiredFilter,
       );
-
+      
       return repository.watchAll(
         queryParams: mergedQueryParams,
         watchRemote: watchRemote,
@@ -537,16 +581,19 @@ extension UserRelationExtensions on User {
       );
     } catch (e, stackTrace) {
       _log.severe(
-          'Failed to watchLocalNotes for $runtimeType[$id]', e, stackTrace);
+        'Failed to watchLocalNotes for $runtimeType[$id]', e, stackTrace);
       rethrow;
     }
   }
+
 }
+
 
 /// Generated ID management extension for Todo
 extension TodoIdManagement on Todo {
   /// Whether this model uses server-generated IDs
-  bool get $usesServerGeneratedId => false;
+  bool get $usesServerGeneratedId => 
+      false;
 
   /// Create a new model instance with a different ID
   /// This is used during ID negotiation when server assigns a different ID
@@ -556,16 +603,17 @@ extension TodoIdManagement on Todo {
     return fromJson(json);
   }
 
-  /// Whether this model currently has a temporary ID
+  /// Whether this model currently has a temporary ID 
   /// (always false for client-generated IDs)
   bool get $hasTemporaryId => false;
 
-  /// Get temporary client ID for this model
+  /// Get temporary client ID for this model 
   /// (always null for client-generated IDs)
   String? get $temporaryClientId => null;
 }
 
-/// Generated extension methods for loading
+
+/// Generated extension methods for loading 
 /// related objects for Todo
 extension TodoRelationExtensions on Todo {
   /// Logger for the Todo relation extensions.
@@ -588,7 +636,8 @@ extension TodoRelationExtensions on Todo {
       final foreignKey = userId;
       if (foreignKey == null) return null;
       final database = DatabaseProvider.instance;
-      final repository = SynquillRepositoryProvider.getFrom<User>(database);
+      final repository = SynquillRepositoryProvider
+          .getFrom<User>(database);
       return await repository.findOne(
         foreignKey.toString(),
         loadPolicy: loadPolicy ?? DataLoadPolicy.localOnly,
@@ -609,7 +658,7 @@ extension TodoRelationExtensions on Todo {
   /// Uses foreign key field 'userId'
   /// Automatically switches to new target when foreign key changes
   ///
-  /// WARNING: Enabling [watchRemote] on relationships can lead to a high volume
+  /// WARNING: Enabling [watchRemote] on relationships can lead to a high volume 
   /// of concurrent WebSocket subscriptions if used inside list item views (N+1 subscriptions).
   Stream<User?> watchUser({
     DataLoadPolicy? loadPolicy,
@@ -620,33 +669,41 @@ extension TodoRelationExtensions on Todo {
   }) {
     try {
       final database = DatabaseProvider.instance;
-      final sourceRepository =
-          SynquillRepositoryProvider.getFrom<Todo>(database);
-      final targetRepository =
-          SynquillRepositoryProvider.getFrom<User>(database);
+      final sourceRepository = SynquillRepositoryProvider
+          .getFrom<Todo>(database);
+      final targetRepository = SynquillRepositoryProvider
+          .getFrom<User>(database);
 
       // Watch the source object for changes in foreign key
-      return sourceRepository
-          .watchOne(
+      return sourceRepository.watchOne(
         id,
+        loadPolicy: DataLoadPolicy.localOnly,
         watchRemote: watchRemote,
         retryOnFail: retryOnFail,
         headers: headers,
         extra: extra,
       )
-          .switchMap((sourceObject) {
+          .map((sourceObject) {
         if (sourceObject == null) {
-          return Stream.value(null);
+          return null;
         }
 
         final foreignKey = sourceObject.userId;
+        if (foreignKey == null) {
+          return null;
+        }
+
+        return sourceObject.userId.toString();
+      })
+          .distinct()
+          .switchMap((foreignKey) {
         if (foreignKey == null) {
           return Stream.value(null);
         }
 
         // Switch to watching the target object
         return targetRepository.watchOne(
-          foreignKey.toString(),
+          foreignKey,
           loadPolicy: loadPolicy ?? DataLoadPolicy.localOnly,
           watchRemote: watchRemote,
           retryOnFail: retryOnFail,
@@ -663,4 +720,33 @@ extension TodoRelationExtensions on Todo {
       rethrow;
     }
   }
+
 }
+
+
+/// Generated ID management extension for FavoritePlace
+extension FavoritePlaceIdManagement on FavoritePlace {
+  /// Whether this model uses server-generated IDs
+  bool get $usesServerGeneratedId => 
+      false;
+
+  /// Create a new model instance with a different ID
+  /// This is used during ID negotiation when server assigns a different ID
+  FavoritePlace $replaceIdEverywhere(String newId) {
+    final json = toJson();
+    json['placeId'] = newId;
+    return fromJson(json);
+  }
+
+  /// Whether this model currently has a temporary ID 
+  /// (always false for client-generated IDs)
+  bool get $hasTemporaryId => false;
+
+  /// Get temporary client ID for this model 
+  /// (always null for client-generated IDs)
+  String? get $temporaryClientId => null;
+}
+
+
+
+

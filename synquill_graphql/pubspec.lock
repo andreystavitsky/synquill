@@ -583,14 +583,14 @@ packages:
       path: "../synquill"
       relative: true
     source: path
-    version: "0.8.3"
+    version: "0.9.0"
   synquill_utils:
     dependency: "direct overridden"
     description:
       path: "../synquill_utils"
       relative: true
     source: path
-    version: "0.8.0"
+    version: "0.9.0"
   term_glyph:
     dependency: transitive
     description:

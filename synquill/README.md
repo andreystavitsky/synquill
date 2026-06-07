@@ -105,6 +105,27 @@ class User extends SynquillDataModel<User> {
   Map<String, dynamic> toJson() => _$UserToJson(this);
 }
 
+// APIs can expose the same Synquill id under a different JSON key.
+// `id` remains the internal model identity used by local storage, sync,
+// retry reconstruction, and server-generated ID replacement.
+@JsonSerializable()
+@SynquillRepository(adapters: [JsonApiAdapter, FavoritePlaceApiAdapter])
+class FavoritePlace extends SynquillDataModel<FavoritePlace> {
+  @override
+  @JsonKey(name: 'placeId')
+  final String id;
+  final String title;
+
+  FavoritePlace({String? id, required this.title})
+      : id = id ?? generateCuid();
+
+  factory FavoritePlace.fromJson(Map<String, dynamic> json) =>
+      _$FavoritePlaceFromJson(json);
+
+  @override
+  Map<String, dynamic> toJson() => _$FavoritePlaceToJson(this);
+}
+
 @JsonSerializable()
 @SynquillRepository(
   adapters: [JsonApiAdapter, TodoApiAdapter],
@@ -283,4 +304,3 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ---
 
 Built with ❤️ for the Flutter community
-

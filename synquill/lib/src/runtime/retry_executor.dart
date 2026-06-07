@@ -7,6 +7,7 @@ import 'package:drift/drift.dart';
 import 'package:logging/logging.dart';
 import 'package:synquill/src/core/database_provider.dart';
 import 'package:synquill/src/core/exceptions.dart';
+import 'package:synquill/src/core/model_info_registry_provider.dart';
 import 'package:synquill/src/core/repository_mixins/repository_types.dart';
 import 'package:synquill/src/core/sync_status.dart';
 import 'package:synquill/src/core/synquill_data_model.dart';
@@ -17,6 +18,7 @@ import 'package:synquill/src/drift/sync_queue_dao.dart';
 import 'package:synquill/src/runtime/dependency_resolver.dart';
 import 'package:synquill/src/runtime/network_task.dart';
 import 'package:synquill/src/runtime/request_queue.dart';
+import 'package:synquill/src/runtime/retry_policy.dart';
 
 /// Manages retry logic for sync queue operations with exponential backoff.
 ///
@@ -291,6 +293,7 @@ class RetryExecutor {
     final operation = taskData['op'] as String;
     final attemptCount = taskData['attempt_count'] as int;
     final idempotencyKey = taskData['idempotency_key'] as String?;
+    final syncOperation = _tryParseSyncOperation(operation);
 
     _log.fine('Processing sync queue task $taskId: $operation $modelType');
 
@@ -332,43 +335,23 @@ class RetryExecutor {
         await _syncQueueDao.deleteTask(taskId);
         _log.info('Successfully synced task $taskId: $operation $modelType');
       } catch (networkError, networkStackTrace) {
-        // Check if model no longer exists locally
-        if (networkError is ModelNoLongerExistsException) {
-          // Model was deleted locally - remove task from sync queue
-          await _syncQueueDao.deleteTask(taskId);
-          _log.info(
-            'Deleted sync queue task $taskId: model no longer exists locally',
-          );
-        } else if (networkError is DoubleFallbackException) {
-          // Double 404 failure - task was already updated to remain due
-          // No additional retry scheduling needed
-          _log.info(
-            'Handling DoubleFallbackException for task $taskId, '
-            'task should remain available for manual retry',
-          );
-        } else {
-          // Network operation failed - schedule retry
-          await _scheduleRetry(taskId, attemptCount, networkError.toString());
-          _log.warning(
-            'Network operation failed for task $taskId, scheduled retry',
-            networkError,
-            networkStackTrace,
-          );
-        }
+        await _handleTaskFailure(
+          taskId: taskId,
+          attemptCount: attemptCount,
+          error: networkError,
+          stackTrace: networkStackTrace,
+          operation: syncOperation,
+        );
       }
     } catch (e, stackTrace) {
-      if (e is DoubleFallbackException) {
-        // Double 404 failure - task was already updated to remain due
-        // No additional retry scheduling needed
-        _log.info(
-          'Double fallback failure for task $taskId, '
-          'task remains available for manual retry',
-        );
-      } else {
-        _log.severe('Error processing sync queue task $taskId', e, stackTrace);
-        // Mark task as failed for retry
-        await _scheduleRetry(taskId, attemptCount, e.toString());
-      }
+      _log.severe('Error processing sync queue task $taskId', e, stackTrace);
+      await _handleTaskFailure(
+        taskId: taskId,
+        attemptCount: attemptCount,
+        error: e,
+        stackTrace: stackTrace,
+        operation: syncOperation,
+      );
     }
   }
 
@@ -381,6 +364,7 @@ class RetryExecutor {
     final payload = taskData['payload'] as String;
     final operation = taskData['op'] as String;
     final taskId = taskData['id'] as int;
+    final queueModelId = taskData['model_id'];
 
     // Parse optional JSON fields
     final headers = _parseJsonField<Map<String, String>>(
@@ -400,12 +384,13 @@ class RetryExecutor {
 
     // Parse model data from payload
     final modelData = _parseModelData(payload);
-    final modelId = _extractModelId(modelData);
+    final modelId = _extractModelId(modelData, modelType, queueModelId);
 
     return NetworkTask<void>(
       exec: () => _executeApiOperation(
         syncOp,
         modelType,
+        modelId,
         modelData,
         headers,
         extra,
@@ -441,7 +426,17 @@ class RetryExecutor {
     try {
       return SyncOperation.values.firstWhere((op) => op.name == operation);
     } catch (e) {
-      throw ArgumentError('Unknown sync operation: $operation');
+      throw InvalidSyncQueueTaskException(
+        'Unknown sync operation: $operation',
+      );
+    }
+  }
+
+  SyncOperation? _tryParseSyncOperation(String operation) {
+    try {
+      return _parseSyncOperation(operation);
+    } catch (_) {
+      return null;
     }
   }
 
@@ -450,23 +445,41 @@ class RetryExecutor {
     try {
       return convert.jsonDecode(payload) as Map<String, dynamic>;
     } catch (e) {
-      throw SynquillStorageException('Failed to parse task payload: $e');
+      throw InvalidSyncQueueTaskException('Failed to parse task payload: $e');
     }
   }
 
   /// Extracts model ID from model data.
-  String _extractModelId(Map<String, dynamic> modelData) {
-    final modelId = modelData['id'] as String?;
-    if (modelId == null) {
-      throw SynquillStorageException('Model data missing ID');
+  String _extractModelId(
+    Map<String, dynamic> modelData,
+    String modelType,
+    Object? queueModelId,
+  ) {
+    final idJsonKey = ModelInfoRegistryProvider.getIdJsonKey(modelType);
+    if (idJsonKey != 'id') {
+      final customModelId = modelData[idJsonKey];
+      if (customModelId is String && customModelId.isNotEmpty) {
+        return customModelId;
+      }
     }
-    return modelId;
+
+    final modelId = modelData['id'];
+    if (modelId is String && modelId.isNotEmpty) {
+      return modelId;
+    }
+
+    if (queueModelId is String && queueModelId.isNotEmpty) {
+      return queueModelId;
+    }
+
+    throw InvalidSyncQueueTaskException('Model data missing ID');
   }
 
   /// Executes the actual API operation for a sync task.
   Future<void> _executeApiOperation(
     SyncOperation operation,
     String modelType,
+    String modelId,
     Map<String, dynamic> modelData,
     Map<String, String>? headers,
     Map<String, dynamic>? extra,
@@ -479,6 +492,7 @@ class RetryExecutor {
       await _performSyncOperation(
         operation,
         repository,
+        modelId,
         modelData,
         headers,
         extra,
@@ -509,7 +523,7 @@ class RetryExecutor {
     );
 
     if (repository == null) {
-      throw SynquillStorageException(
+      throw SyncQueueConfigurationException(
         'No registered repository found for model type: $modelType',
       );
     }
@@ -522,6 +536,7 @@ class RetryExecutor {
   Future<void> _performSyncOperation(
     SyncOperation operation,
     SynquillRepositoryBase<SynquillDataModel<dynamic>> repository,
+    String modelId,
     Map<String, dynamic> modelData,
     Map<String, String>? headers,
     Map<String, dynamic>? extra,
@@ -529,12 +544,19 @@ class RetryExecutor {
   ) async {
     switch (operation) {
       case SyncOperation.create:
-        await _performCreateOperation(repository, modelData, headers, extra);
+        await _performCreateOperation(
+          repository,
+          modelId,
+          modelData,
+          headers,
+          extra,
+        );
         break;
 
       case SyncOperation.update:
         await _performUpdateOperation(
           repository,
+          modelId,
           modelData,
           headers,
           extra,
@@ -543,7 +565,7 @@ class RetryExecutor {
         break;
 
       case SyncOperation.delete:
-        await _performDeleteOperation(repository, modelData, headers, extra);
+        await _performDeleteOperation(repository, modelId, headers, extra);
         break;
 
       // Read operations are intentionally not supported in the retry executor.
@@ -561,6 +583,7 @@ class RetryExecutor {
   /// Performs create operation with local existence check.
   Future<void> _performCreateOperation(
     SynquillRepositoryBase<SynquillDataModel<dynamic>> repository,
+    String modelId,
     Map<String, dynamic> modelData,
     Map<String, String>? headers,
     Map<String, dynamic>? extra,
@@ -573,7 +596,6 @@ class RetryExecutor {
       return;
     }
     // For create operations, check if model still exists locally
-    final modelId = modelData['id'] as String;
     final existingModel = await repository.fetchFromLocal(modelId);
 
     if (existingModel == null) {
@@ -601,6 +623,7 @@ class RetryExecutor {
   /// Performs update operation with fallback to create on 404.
   Future<void> _performUpdateOperation(
     SynquillRepositoryBase<SynquillDataModel<dynamic>> repository,
+    String modelId,
     Map<String, dynamic> modelData,
     Map<String, String>? headers,
     Map<String, dynamic>? extra,
@@ -614,7 +637,6 @@ class RetryExecutor {
       return;
     }
     // For update operations, check if model still exists locally
-    final modelId = modelData['id'] as String;
     final existingModel = await repository.fetchFromLocal(modelId);
 
     if (existingModel == null) {
@@ -641,6 +663,7 @@ class RetryExecutor {
     } on ApiExceptionNotFound catch (originalError) {
       await _handleUpdateNotFoundFallback(
         repository,
+        modelId,
         modelData,
         headers,
         extra,
@@ -653,6 +676,7 @@ class RetryExecutor {
   /// Handles update operation fallback when model is not found (404).
   Future<void> _handleUpdateNotFoundFallback(
     SynquillRepositoryBase<SynquillDataModel<dynamic>> repository,
+    String modelId,
     Map<String, dynamic> modelData,
     Map<String, String>? headers,
     Map<String, dynamic>? extra,
@@ -666,7 +690,6 @@ class RetryExecutor {
       );
       return;
     }
-    final modelId = modelData['id'] as String;
 
     _log.info(
       'Update operation for ${repository.runtimeType} $modelId failed '
@@ -739,7 +762,7 @@ class RetryExecutor {
   /// Performs delete operation.
   Future<void> _performDeleteOperation(
     SynquillRepositoryBase<SynquillDataModel<dynamic>> repository,
-    Map<String, dynamic> modelData,
+    String id,
     Map<String, String>? headers,
     Map<String, dynamic>? extra,
   ) async {
@@ -752,7 +775,6 @@ class RetryExecutor {
       );
       return;
     }
-    final id = modelData['id'] as String;
     await repository.apiAdapter.deleteOne(id, headers: headers, extra: extra);
   }
 
@@ -800,6 +822,51 @@ class RetryExecutor {
       'Scheduled retry $nextAttempt/${config.maxRetryAttempts} for task $taskId '
       'at $nextRetryAt (delay: ${retryDelay.inSeconds}s)',
     );
+  }
+
+  Future<void> _handleTaskFailure({
+    required int taskId,
+    required int attemptCount,
+    required Object error,
+    required StackTrace stackTrace,
+    required SyncOperation? operation,
+  }) async {
+    final decision = RetryPolicy.evaluate(error, operation: operation);
+
+    switch (decision.action) {
+      case RetryDecisionAction.retry:
+        await _scheduleRetry(taskId, attemptCount, error.toString());
+        _log.warning(
+          'Retryable sync queue task failure for task $taskId '
+          '(${decision.reason}); scheduled retry',
+          error,
+          stackTrace,
+        );
+        break;
+      case RetryDecisionAction.markDead:
+        _log.severe(
+          'Non-retryable sync queue task failure for task $taskId '
+          '(${decision.reason}); marking dead',
+          error,
+          stackTrace,
+        );
+        await _markTaskAsDead(taskId, _formatTerminalError(error));
+        break;
+      case RetryDecisionAction.discard:
+        await _syncQueueDao.deleteTask(taskId);
+        _log.info(
+          'Discarded sync queue task $taskId after non-retryable '
+          'completion condition (${decision.reason})',
+        );
+        break;
+    }
+  }
+
+  String _formatTerminalError(Object error) {
+    if (error is DoubleFallbackException) {
+      return 'Fallback failed: ${error.toString()}';
+    }
+    return error.toString();
   }
 
   /// Marks a task as dead and removes it from the sync queue.

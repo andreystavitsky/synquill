@@ -101,7 +101,7 @@ class RequestQueueManager {
       final message =
           'Duplicate task with idempotency key: ${task.idempotencyKey}';
       _log.fine(message);
-      throw SynquillStorageException(message);
+      throw DuplicateSyncTaskException(message);
     }
 
     // Track idempotency key immediately to prevent race conditions
@@ -116,7 +116,7 @@ class RequestQueueManager {
           !await SynquillStorage.isConnected) {
         const message = 'Cannot perform remoteFirst operation while offline';
         _log.warning(message);
-        throw SynquillStorageException(message);
+        throw OfflineException(message);
       }
 
       _log.fine('Enqueueing $task to ${queueType.name} queue');
@@ -213,7 +213,7 @@ class RequestQueueManager {
     final message = 'Queue ${queueType.name} remained at capacity after '
         '${waitTime.inMilliseconds}ms timeout';
     _log.warning(message);
-    throw SynquillStorageException(message);
+    throw QueueCapacityExceededException(message);
   }
 
   /// Gets statistics for all queues.

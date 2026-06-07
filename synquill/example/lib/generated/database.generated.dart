@@ -8,8 +8,10 @@ import 'package:synquill_example/models/local_note.dart';
 import 'package:synquill_example/models/plain_model.dart';
 import 'package:synquill_example/models/user.dart';
 import 'package:synquill_example/models/todo.dart';
+import 'package:synquill_example/models/favorite_place.dart';
 
 part 'tables.g.dart';
 part 'dao.g.dart';
 part 'database.g.dart';
 part 'database.generated.g.dart';
+
