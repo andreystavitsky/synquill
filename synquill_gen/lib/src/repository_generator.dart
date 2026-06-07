@@ -21,22 +21,12 @@ class $adapterClassName extends BasicApiAdapter<$className> {
 
   @override
   $className fromJson(Map<String, dynamic> json) {
-    // Try to call fromJson if it exists, otherwise throw
-    try {
-      return $className.fromJson(json);
-    } on NoSuchMethodError {
-      throw UnimplementedError('fromJson not implemented for $className');
-    }
+    return $className.fromJson(json);
   }
 
   @override
   Map<String, dynamic> toJson($className model) {
-    // Try to call toJson if it exists, otherwise throw
-    try {
-      return model.toJson();
-    } on NoSuchMethodError {
-      throw UnimplementedError('toJson not implemented for $className');
-    }
+    return model.toJson();
   }
 }
 ''';
@@ -76,22 +66,12 @@ class $adapterClassName extends $baseClass<$className>
     $mixinClause {
   @override
   $className fromJson(Map<String, dynamic> json) {
-    // Try to call fromJson if it exists, otherwise throw
-    try {
-      return $className.fromJson(json);
-    } on NoSuchMethodError {
-      throw UnimplementedError('fromJson not implemented for $className');
-    }
+    return $className.fromJson(json);
   }
 
   @override
   Map<String, dynamic> toJson($className model) {
-    // Try to call toJson if it exists, otherwise throw
-    try {
-      return model.toJson();
-    } on NoSuchMethodError {
-      throw UnimplementedError('toJson not implemented for $className');
-    }
+    return model.toJson();
   }
 }
 ''';
