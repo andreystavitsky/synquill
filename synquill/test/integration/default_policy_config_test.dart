@@ -1,5 +1,6 @@
 // filepath: test/core/default_policy_config_test.dart
-import 'package:synquill/synquill_core.dart';
+import 'package:synquill/synquill.dart';
+import 'package:synquill/synquill_drift.dart';
 import 'package:test/test.dart';
 
 import '../common/test_models.dart';

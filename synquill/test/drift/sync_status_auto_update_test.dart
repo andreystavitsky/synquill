@@ -1,4 +1,4 @@
-import 'package:synquill/synquill_core.dart';
+import 'package:synquill/synquill_drift.dart';
 import 'package:test/test.dart';
 
 // Test database that manually creates the sync queue table

@@ -11,7 +11,8 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:test/test.dart';
-import 'package:synquill/synquill_core.dart';
+import 'package:synquill/synquill.dart';
+import 'package:synquill/synquill_drift.dart';
 
 import '../common/test_models.dart';
 import '../common/mock_test_user_api_adapter.dart';

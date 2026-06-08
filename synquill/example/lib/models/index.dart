@@ -1,4 +1,6 @@
-export 'package:synquill/synquill.dart';
+export 'package:logging/logging.dart';
+export 'package:synquill/synquill_contracts.dart';
+export 'package:synquill/synquill_rest.dart';
 export 'user.dart';
 export 'todo.dart';
 export 'post.dart';

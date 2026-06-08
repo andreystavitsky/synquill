@@ -3,7 +3,7 @@
 import 'dart:async';
 
 import '../support/synquill.generated.dart';
-import 'package:synquill/synquill_core.dart';
+import 'package:synquill/synquill_drift.dart';
 
 // Import generated models and repositories from example
 import '../support/test_models/index.dart';

@@ -1,4 +1,6 @@
-import 'package:synquill/synquill.dart';
+import 'package:logging/logging.dart';
+import 'package:synquill/synquill_contracts.dart';
+import 'package:synquill/synquill_rest.dart';
 import 'package:synquill_graphql/src/mixins/graphql_error_handling_mixin.dart';
 import 'package:synquill_graphql/src/mixins/graphql_execution_mixin.dart';
 import 'package:synquill_graphql/src/mixins/graphql_response_parsing_mixin.dart';

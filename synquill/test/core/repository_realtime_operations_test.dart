@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:synquill/synquill_core.dart';
+import 'package:synquill/synquill.dart';
 import 'package:test/test.dart';
 
 import '../common/test_models.dart';
