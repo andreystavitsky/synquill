@@ -6,6 +6,7 @@ import 'package:drift/drift.dart';
 import 'package:logging/logging.dart';
 import 'package:queue/queue.dart';
 import 'package:synquill/src/core/database_provider.dart';
+import 'package:synquill/src/core/model_info_registry_provider.dart';
 import 'package:synquill/src/core/synquill_data_model.dart';
 import 'package:synquill/src/core/synquill_repository.dart';
 import 'package:synquill/src/core/synquill_repository_provider.dart';
@@ -178,18 +179,23 @@ class SynquillStorage {
   /// Private constructor.
   SynquillStorage._();
 
+  static const String _notInitializedMessage =
+      'SynquillStorage has not been initialized. '
+      'Call SynquillStorage.init() first.';
+
+  static T _requireInitialized<T>(T? value, String componentName) {
+    assert(componentName.isNotEmpty);
+    if (value == null) {
+      throw StateError(_notInitializedMessage);
+    }
+    return value;
+  }
+
   /// Returns the singleton instance of [SynquillStorage].
   ///
   /// Throws [StateError] if [init] has not been called.
-  static SynquillStorage get instance {
-    if (_instance == null) {
-      throw StateError(
-        'SynquillStorage has not been initialized. '
-        'Call SynquillStorage.init() first.',
-      );
-    }
-    return _instance!;
-  }
+  static SynquillStorage get instance =>
+      _requireInitialized(_instance, 'instance');
 
   /// Returns the global configuration.
   ///
@@ -199,93 +205,43 @@ class SynquillStorage {
   /// Returns the global database instance.
   ///
   /// Throws [StateError] if [init] has not been called.
-  static GeneratedDatabase get database {
-    if (_database == null) {
-      throw StateError(
-        'SynquillStorage has not been initialized. '
-        'Call SynquillStorage.init() first.',
-      );
-    }
-    return _database!;
-  }
+  static GeneratedDatabase get database =>
+      _requireInitialized(_database, 'database');
 
   /// Returns the global logger instance.
   ///
   /// Throws [StateError] if [init] has not been called.
-  static Logger get logger {
-    if (_logger == null) {
-      throw StateError(
-        'SynquillStorage has not been initialized. '
-        'Call SynquillStorage.init() first.',
-      );
-    }
-    return _logger!;
-  }
+  static Logger get logger => _requireInitialized(_logger, 'logger');
 
   /// Returns the global queue manager instance.
   ///
   /// Throws [StateError] if [init] has not been called.
-  static RequestQueueManager get queueManager {
-    if (_queueManager == null) {
-      throw StateError(
-        'SynquillStorage has not been initialized. '
-        'Call SynquillStorage.init() first.',
-      );
-    }
-    return _queueManager!;
-  }
+  static RequestQueueManager get queueManager =>
+      _requireInitialized(_queueManager, 'queueManager');
 
   /// Returns the global retry executor instance.
   ///
   /// Throws [StateError] if [init] has not been called.
-  static RetryExecutor get retryExecutor {
-    if (_retryExecutor == null) {
-      throw StateError(
-        'SynquillStorage has not been initialized. '
-        'Call SynquillStorage.init() first.',
-      );
-    }
-    return _retryExecutor!;
-  }
+  static RetryExecutor get retryExecutor =>
+      _requireInitialized(_retryExecutor, 'retryExecutor');
 
   /// Returns the global dependency resolver instance.
   ///
   /// Throws [StateError] if [init] has not been called.
-  static DependencyResolver get dependencyResolver {
-    if (_dependencyResolver == null) {
-      throw StateError(
-        'SynquillStorage has not been initialized. '
-        'Call SynquillStorage.init() first.',
-      );
-    }
-    return _dependencyResolver!;
-  }
+  static DependencyResolver get dependencyResolver =>
+      _requireInitialized(_dependencyResolver, 'dependencyResolver');
 
   /// Returns the global background sync manager instance.
   ///
   /// Throws [StateError] if [init] has not been called.
-  static BackgroundSyncManager get backgroundSyncManager {
-    if (_backgroundSyncManager == null) {
-      throw StateError(
-        'SynquillStorage has not been initialized. '
-        'Call SynquillStorage.init() first.',
-      );
-    }
-    return _backgroundSyncManager!;
-  }
+  static BackgroundSyncManager get backgroundSyncManager =>
+      _requireInitialized(_backgroundSyncManager, 'backgroundSyncManager');
 
   /// Returns the global sync queue DAO instance.
   ///
   /// Throws [StateError] if [init] has not been called.
-  static SyncQueueDao get syncQueueDao {
-    if (_syncQueueDao == null) {
-      throw StateError(
-        'SynquillStorage has not been initialized. '
-        'Call SynquillStorage.init() first.',
-      );
-    }
-    return _syncQueueDao!;
-  }
+  static SyncQueueDao get syncQueueDao =>
+      _requireInitialized(_syncQueueDao, 'syncQueueDao');
 
   /// Checks if the device currently has an internet connection.
   ///
@@ -346,28 +302,45 @@ class SynquillStorage {
       return;
     }
 
-    // Create the instance and store config
-    _createInstance(database, config ?? const SynquillStorageConfig(), logger);
+    try {
+      // Create the instance and store config
+      _createInstance(
+          database, config ?? const SynquillStorageConfig(), logger);
 
-    // Set up database provider for repository system
-    _initializeDatabase(initializeFn);
+      // Set up database provider for repository system
+      _initializeDatabase(initializeFn);
 
-    // Initialize request queue system
-    _initializeCoreSystems();
+      // Initialize request queue system
+      _initializeCoreSystems();
 
-    // Initialize background sync manager
-    await _initializeBackgroundSync();
+      // Initialize background sync manager
+      await _initializeBackgroundSync();
 
-    // Setup connectivity monitoring
-    _initializeConnectivity(
-      connectivityStream,
-      connectivityChecker,
-      enableInternetMonitoring,
-    );
+      // Setup connectivity monitoring
+      _initializeConnectivity(
+        connectivityStream,
+        connectivityChecker,
+        enableInternetMonitoring,
+      );
 
-    enableForegroundMode();
+      enableForegroundMode();
 
-    _logger!.info('SynquillStorage initialization complete');
+      _logger!.info('SynquillStorage initialization complete');
+    } catch (error, stackTrace) {
+      try {
+        await _cleanupOwnedResources();
+      } catch (cleanupError, cleanupStackTrace) {
+        _logger?.warning(
+          'Failed to clean up resources after initialization failure',
+          cleanupError,
+          cleanupStackTrace,
+        );
+      } finally {
+        _resetStaticState();
+        _resetGlobalProviders();
+      }
+      Error.throwWithStackTrace(error, stackTrace);
+    }
   }
 
   /// Completely obliterates all local storage data.
@@ -397,12 +370,7 @@ class SynquillStorage {
   /// await SynquillStorage.instance.obliterateLocalStorage();
   /// ```
   Future<void> obliterateLocalStorage() async {
-    if (_instance == null) {
-      throw StateError(
-        'SynquillStorage has not been initialized. '
-        'Call SynquillStorage.init() first.',
-      );
-    }
+    _requireInitialized(_instance, 'instance');
 
     _logger!.warning('Starting obliteration of all local storage data');
 
@@ -518,6 +486,12 @@ class SynquillStorage {
   /// and cancels connectivity monitoring. After calling this method,
   /// [init] must be called again before using the storage system.
   static Future<void> close() async {
+    await _cleanupOwnedResources();
+    _resetStaticState();
+    _resetGlobalProviders();
+  }
+
+  static Future<void> _cleanupOwnedResources() async {
     await SynquillRepositoryProvider.disposeCachedRealtimeSubscriptions();
 
     // Stop retry executor first to prevent new tasks and wait for completion
@@ -540,7 +514,9 @@ class SynquillStorage {
       _logger?.info('Closing database connection');
       await _database!.close();
     }
+  }
 
+  static void _resetStaticState() {
     _instance = null;
     _config = null;
     _database = null;
@@ -553,8 +529,13 @@ class SynquillStorage {
     _dependencyResolver = null;
     _backgroundSyncManager = null;
     _syncQueueDao = null;
-    // Clear any cached repository instances
+  }
+
+  static void _resetGlobalProviders() {
+    DatabaseProvider.reset();
     SynquillRepositoryProvider.reset();
+    DependencyResolver.clearDependencies();
+    ModelInfoRegistryProvider.reset();
   }
 
   /// Sets the configuration for testing purposes without full initialization.
@@ -606,12 +587,7 @@ class SynquillStorage {
   SynquillRepositoryBase<SynquillDataModel<dynamic>>? getRepositoryByName(
     String modelTypeName,
   ) {
-    if (_instance == null) {
-      throw StateError(
-        'SynquillStorage has not been initialized. '
-        'Call SynquillStorage.init() first.',
-      );
-    }
+    _requireInitialized(_instance, 'instance');
 
     return SynquillRepositoryProvider.getByTypeName(modelTypeName);
   }
@@ -633,15 +609,7 @@ class SynquillStorage {
   /// final user = await userRepo.findOne("user_id");
   /// ```
   SynquillRepositoryBase<T> getRepository<T extends SynquillDataModel<T>>() {
-    // Check initialization through static getter
-    try {
-      SynquillStorage.instance;
-    } catch (e) {
-      throw StateError(
-        'SynquillStorage has not been initialized. '
-        'Call SynquillStorage.init() first.',
-      );
-    }
+    _requireInitialized(_instance, 'instance');
 
     // Get repository - may throw if not registered
     try {
@@ -672,12 +640,7 @@ class SynquillStorage {
   /// await SynquillStorage.instance.processBackgroundSyncTasks();
   /// ```
   Future<void> processBackgroundSyncTasks({bool forceSync = false}) async {
-    if (_instance == null) {
-      throw StateError(
-        'SynquillStorage has not been initialized. '
-        'Call SynquillStorage.init() first.',
-      );
-    }
+    _requireInitialized(_instance, 'instance');
 
     await _backgroundSyncManager!
         .processBackgroundSyncTasks(forceSync: forceSync);
@@ -698,14 +661,8 @@ class SynquillStorage {
   /// ```
   @pragma('vm:entry-point')
   static Future<void> processBackgroundSync() async {
-    if (_instance == null) {
-      throw StateError(
-        'SynquillStorage has not been initialized. '
-        'Call SynquillStorage.init() first.',
-      );
-    }
-
-    await _instance!.processBackgroundSyncTasks();
+    await _requireInitialized(_instance, 'instance')
+        .processBackgroundSyncTasks();
   }
 
   /// Initializes SynquillStorage in a background isolate.
@@ -764,14 +721,10 @@ class SynquillStorage {
   /// Throws [StateError] if [SynquillStorage] has not been initialized.
   @pragma('vm:entry-point')
   static void enableBackgroundMode() {
-    if (_instance == null) {
-      throw StateError(
-        'SynquillStorage has not been initialized. '
-        'Call SynquillStorage.init() first.',
-      );
-    }
-
-    _backgroundSyncManager!.enableBackgroundMode();
+    _requireInitialized(
+      _backgroundSyncManager,
+      'backgroundSyncManager',
+    ).enableBackgroundMode();
   }
 
   /// Switches the retry executor to foreground mode for active use.
@@ -782,13 +735,10 @@ class SynquillStorage {
   /// Throws [StateError] if [SynquillStorage] has not been initialized.
   @pragma('vm:entry-point')
   static void enableForegroundMode({bool forceSync = false}) {
-    if (_instance == null) {
-      throw StateError(
-        'SynquillStorage has not been initialized. '
-        'Call SynquillStorage.init() first.',
-      );
-    }
-    _backgroundSyncManager!.enableForegroundMode(forceSync: forceSync);
+    _requireInitialized(
+      _backgroundSyncManager,
+      'backgroundSyncManager',
+    ).enableForegroundMode(forceSync: forceSync);
   }
 
   /// Helper: create instance and set core properties.
