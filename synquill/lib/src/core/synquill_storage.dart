@@ -16,6 +16,8 @@ import 'package:synquill/src/runtime/dependency_resolver.dart';
 import 'package:synquill/src/runtime/request_queue.dart';
 import 'package:synquill/src/runtime/retry_executor.dart';
 
+part 'synquill_runtime.dart';
+
 /// Base class for synced data storage configuration.
 class SynquillStorageConfig {
   /// Optional Dio client for network requests.
@@ -149,18 +151,9 @@ class SynquillStorageConfig {
 ///
 /// This class must be initialized before use by calling [SynquillStorage.init].
 class SynquillStorage {
-  static SynquillStorage? _instance;
-  static SynquillStorageConfig? _config;
-  static GeneratedDatabase? _database;
-  static Logger? _logger;
-  static StreamSubscription<bool>? _connectivitySubscription;
-  static bool? _lastConnectivityStatus;
-  static Future<bool> Function()? _connectivityChecker;
-  static RequestQueueManager? _queueManager;
-  static RetryExecutor? _retryExecutor;
-  static DependencyResolver? _dependencyResolver;
-  static BackgroundSyncManager? _backgroundSyncManager;
-  static SyncQueueDao? _syncQueueDao;
+  static final SynquillStorage _facade = SynquillStorage._();
+  static _SynquillRuntime? _runtime;
+  static SynquillStorageConfig? _configForTesting;
 
   /// Default logger — initialized once as a static final to prevent
   /// listener accumulation on re-initialization cycles (e.g. in tests).
@@ -191,57 +184,65 @@ class SynquillStorage {
     return value;
   }
 
+  static _SynquillRuntime _requireRuntime() =>
+      _requireInitialized(_runtime, 'runtime');
+
   /// Returns the singleton instance of [SynquillStorage].
   ///
   /// Throws [StateError] if [init] has not been called.
-  static SynquillStorage get instance =>
-      _requireInitialized(_instance, 'instance');
+  static SynquillStorage get instance {
+    _requireRuntime();
+    return _facade;
+  }
 
   /// Returns the global configuration.
   ///
   /// Returns null if [init] has not been called or no config was provided.
-  static SynquillStorageConfig? get config => _config;
+  static SynquillStorageConfig? get config =>
+      _runtime?.config ?? _configForTesting;
 
   /// Returns the global database instance.
   ///
   /// Throws [StateError] if [init] has not been called.
   static GeneratedDatabase get database =>
-      _requireInitialized(_database, 'database');
+      _requireInitialized(_runtime?.database, 'database');
 
   /// Returns the global logger instance.
   ///
   /// Throws [StateError] if [init] has not been called.
-  static Logger get logger => _requireInitialized(_logger, 'logger');
+  static Logger get logger => _requireInitialized(_runtime?.logger, 'logger');
 
   /// Returns the global queue manager instance.
   ///
   /// Throws [StateError] if [init] has not been called.
   static RequestQueueManager get queueManager =>
-      _requireInitialized(_queueManager, 'queueManager');
+      _requireInitialized(_runtime?.queueManager, 'queueManager');
 
   /// Returns the global retry executor instance.
   ///
   /// Throws [StateError] if [init] has not been called.
   static RetryExecutor get retryExecutor =>
-      _requireInitialized(_retryExecutor, 'retryExecutor');
+      _requireInitialized(_runtime?.retryExecutor, 'retryExecutor');
 
   /// Returns the global dependency resolver instance.
   ///
   /// Throws [StateError] if [init] has not been called.
   static DependencyResolver get dependencyResolver =>
-      _requireInitialized(_dependencyResolver, 'dependencyResolver');
+      _requireInitialized(_runtime?.dependencyResolver, 'dependencyResolver');
 
   /// Returns the global background sync manager instance.
   ///
   /// Throws [StateError] if [init] has not been called.
-  static BackgroundSyncManager get backgroundSyncManager =>
-      _requireInitialized(_backgroundSyncManager, 'backgroundSyncManager');
+  static BackgroundSyncManager get backgroundSyncManager => _requireInitialized(
+        _runtime?.backgroundSyncManager,
+        'backgroundSyncManager',
+      );
 
   /// Returns the global sync queue DAO instance.
   ///
   /// Throws [StateError] if [init] has not been called.
   static SyncQueueDao get syncQueueDao =>
-      _requireInitialized(_syncQueueDao, 'syncQueueDao');
+      _requireInitialized(_runtime?.syncQueueDao, 'syncQueueDao');
 
   /// Checks if the device currently has an internet connection.
   ///
@@ -253,22 +254,12 @@ class SynquillStorage {
   ///
   /// If [init] has not been called, returns false.
   static Future<bool> get isConnected async {
-    if (_instance == null) {
+    final runtime = _runtime;
+    if (runtime == null) {
       return false;
     }
 
-    // Use connectivity checker function if provided
-    if (_connectivityChecker != null) {
-      try {
-        return await _connectivityChecker!();
-      } catch (e) {
-        _logger?.warning('Connectivity checker function failed: $e');
-        // Fall back to last known status
-      }
-    }
-
-    // Return last known status from stream, or true if no stream was provided
-    return _lastConnectivityStatus ?? true;
+    return runtime.isConnected;
   }
 
   /// Initializes the synced storage system.
@@ -297,47 +288,37 @@ class SynquillStorage {
     Future<bool> Function()? connectivityChecker,
     bool enableInternetMonitoring = true,
   }) async {
-    if (_instance != null) {
-      _logger?.info('SynquillStorage already initialized');
+    if (_runtime != null) {
+      _runtime?.logger.info('SynquillStorage already initialized');
       return;
     }
 
+    final runtime = _SynquillRuntime(
+      database: database,
+      config: config ?? const SynquillStorageConfig(),
+      logger: logger ?? _defaultLogger,
+    );
+    _runtime = runtime;
+
     try {
-      // Create the instance and store config
-      _createInstance(
-          database, config ?? const SynquillStorageConfig(), logger);
-
-      // Set up database provider for repository system
-      _initializeDatabase(initializeFn);
-
-      // Initialize request queue system
-      _initializeCoreSystems();
-
-      // Initialize background sync manager
-      await _initializeBackgroundSync();
-
-      // Setup connectivity monitoring
-      _initializeConnectivity(
-        connectivityStream,
-        connectivityChecker,
-        enableInternetMonitoring,
+      await runtime.initialize(
+        initializeFn: initializeFn,
+        connectivityStream: connectivityStream,
+        connectivityChecker: connectivityChecker,
+        enableInternetMonitoring: enableInternetMonitoring,
       );
-
-      enableForegroundMode();
-
-      _logger!.info('SynquillStorage initialization complete');
     } catch (error, stackTrace) {
       try {
-        await _cleanupOwnedResources();
+        await runtime.close();
       } catch (cleanupError, cleanupStackTrace) {
-        _logger?.warning(
+        runtime.logger.warning(
           'Failed to clean up resources after initialization failure',
           cleanupError,
           cleanupStackTrace,
         );
       } finally {
-        _resetStaticState();
-        _resetGlobalProviders();
+        _runtime = null;
+        _configForTesting = null;
       }
       Error.throwWithStackTrace(error, stackTrace);
     }
@@ -370,30 +351,30 @@ class SynquillStorage {
   /// await SynquillStorage.instance.obliterateLocalStorage();
   /// ```
   Future<void> obliterateLocalStorage() async {
-    _requireInitialized(_instance, 'instance');
+    final runtime = _requireRuntime();
 
-    _logger!.warning('Starting obliteration of all local storage data');
+    runtime.logger.warning('Starting obliteration of all local storage data');
 
     try {
       // 0. Stop realtime subscriptions before mutating local storage.
-      _logger!.info('Disposing realtime subscriptions');
-      await SynquillRepositoryProvider.disposeCachedRealtimeSubscriptions();
+      runtime.logger.info('Disposing realtime subscriptions');
+      await runtime.repositoryRegistry.disposeCachedRealtimeSubscriptions();
 
       // 1. Clear all request queues to prevent any pending operations
-      _logger!.info('Clearing all request queues');
+      runtime.logger.info('Clearing all request queues');
       try {
-        await _queueManager?.clearQueuesOnDisconnect();
+        await runtime.queueManager?.clearQueuesOnDisconnect();
       } catch (e) {
         if (e is! QueueCancelledException) {
-          _logger!.warning('Unexpected error while clearing queues: $e');
+          runtime.logger.warning('Unexpected error while clearing queues: $e');
           rethrow;
         }
         // QueueCancelledException is expected during queue disposal
-        _logger!.info('Request queues cleared (tasks cancelled)');
+        runtime.logger.info('Request queues cleared (tasks cancelled)');
       }
 
       // 2. Reset background sync manager to stop any running sync operations
-      _logger!.info('Resetting background sync manager');
+      runtime.logger.info('Resetting background sync manager');
       await BackgroundSyncManager.reset();
 
       // 3 + 4. Clear sync queue and all model data atomically in
@@ -404,24 +385,28 @@ class SynquillStorage {
       // Without this, a crash between step 3 and 4 would leave model rows with
       // no corresponding sync queue entries — unsynced data that would never
       // be retried.
-      _logger!.info('Clearing sync queue and model data (atomic transaction)');
-      await _database!.transaction(() async {
+      runtime.logger.info(
+        'Clearing sync queue and model data (atomic transaction)',
+      );
+      await runtime.database.transaction(() async {
         await _clearSyncQueueData();
         await _truncateAllRepositoryData();
       });
 
       // 5. Clear all cached repository instances (but preserve registrations)
-      _logger!.info('Clearing cached repository instances');
-      SynquillRepositoryProvider.clearInstances();
+      runtime.logger.info('Clearing cached repository instances');
+      runtime.repositoryRegistry.clearInstances();
 
       // 6. Re-initialize background sync manager to ensure clean state
-      _logger!.info('Re-initializing background sync manager');
-      await _initializeBackgroundSync();
-      _retryExecutor!.start();
+      runtime.logger.info('Re-initializing background sync manager');
+      await runtime.initializeBackgroundSync();
+      runtime.retryExecutor!.start();
 
-      _logger!.warning('Local storage obliteration completed successfully');
+      runtime.logger.warning(
+        'Local storage obliteration completed successfully',
+      );
     } catch (e, stackTrace) {
-      _logger!.severe(
+      runtime.logger.severe(
         'Error during local storage obliteration: $e',
         e,
         stackTrace,
@@ -432,50 +417,54 @@ class SynquillStorage {
 
   /// Clears all sync queue data from the database.
   static Future<void> _clearSyncQueueData() async {
+    final runtime = _requireRuntime();
     try {
       // Delete all tasks in a single atomic statement.
       // We intentionally use deleteAllTasks() here instead of the per-row
       // deleteTask(), which additionally updates each model's syncStatus.
       // That side-effect is unnecessary during obliteration because
       // _truncateAllRepositoryData() deletes all model data immediately after.
-      final count = await _syncQueueDao!.deleteAllTasks();
-      _logger!.info('Cleared $count sync queue tasks');
+      final count = await runtime.syncQueueDao!.deleteAllTasks();
+      runtime.logger.info('Cleared $count sync queue tasks');
     } catch (e) {
-      _logger!.warning('Error clearing sync queue data: $e');
+      runtime.logger.warning('Error clearing sync queue data: $e');
       // Continue execution - this is not critical enough to stop obliteration
     }
   }
 
   /// Truncates local storage data for all registered repositories.
   static Future<void> _truncateAllRepositoryData() async {
+    final runtime = _requireRuntime();
     try {
       // Get all registered repository type names using the public API
       final repositoryTypeNames =
-          SynquillRepositoryProvider.getAllRegisteredTypeNames();
+          runtime.repositoryRegistry.getAllRegisteredTypeNames();
 
-      _logger!.info(
+      runtime.logger.info(
         'Found ${repositoryTypeNames.length} registered repository types',
       );
 
       // Truncate local storage for each repository
       for (final typeName in repositoryTypeNames) {
         try {
-          final repository = SynquillRepositoryProvider.getByTypeName(typeName);
+          final repository = runtime.repositoryRegistry.getByTypeName(typeName);
           if (repository != null) {
             await repository.truncateLocalStorage();
-            _logger!.fine('Truncated local storage for repository: $typeName');
+            runtime.logger.fine(
+              'Truncated local storage for repository: $typeName',
+            );
           } else {
-            _logger!.warning('Repository not found for type: $typeName');
+            runtime.logger.warning('Repository not found for type: $typeName');
           }
         } catch (e) {
-          _logger!.warning('Error truncating storage for $typeName: $e');
+          runtime.logger.warning('Error truncating storage for $typeName: $e');
           // Continue with other repositories even if one fails
         }
       }
 
-      _logger!.info('Completed truncation for all repositories');
+      runtime.logger.info('Completed truncation for all repositories');
     } catch (e) {
-      _logger!.warning('Error during repository data truncation: $e');
+      runtime.logger.warning('Error during repository data truncation: $e');
       // Continue execution - this is not critical enough to stop obliteration
     }
   }
@@ -486,54 +475,24 @@ class SynquillStorage {
   /// and cancels connectivity monitoring. After calling this method,
   /// [init] must be called again before using the storage system.
   static Future<void> close() async {
-    await _cleanupOwnedResources();
-    _resetStaticState();
+    final runtime = _runtime;
+    if (runtime != null) {
+      try {
+        await runtime.close();
+      } finally {
+        _runtime = null;
+        _configForTesting = null;
+      }
+      return;
+    }
+
+    _configForTesting = null;
     _resetGlobalProviders();
-  }
-
-  static Future<void> _cleanupOwnedResources() async {
-    await SynquillRepositoryProvider.disposeCachedRealtimeSubscriptions();
-
-    // Stop retry executor first to prevent new tasks and wait for completion
-    if (_retryExecutor != null) {
-      await _retryExecutor!.stop();
-    }
-
-    // Reset background sync manager
-    await BackgroundSyncManager.reset();
-
-    // Cancel connectivity subscription before reset
-    await _connectivitySubscription?.cancel();
-
-    await _queueManager?.joinAll();
-
-    await _queueManager?.dispose();
-
-    // Close database after all operations are complete
-    if (_database != null) {
-      _logger?.info('Closing database connection');
-      await _database!.close();
-    }
-  }
-
-  static void _resetStaticState() {
-    _instance = null;
-    _config = null;
-    _database = null;
-    _logger = null;
-    _connectivitySubscription = null;
-    _lastConnectivityStatus = null;
-    _connectivityChecker = null;
-    _queueManager = null;
-    _retryExecutor = null;
-    _dependencyResolver = null;
-    _backgroundSyncManager = null;
-    _syncQueueDao = null;
   }
 
   static void _resetGlobalProviders() {
     DatabaseProvider.reset();
-    SynquillRepositoryProvider.reset();
+    SynquillRepositoryProvider.resetAll();
     DependencyResolver.clearDependencies();
     ModelInfoRegistryProvider.reset();
   }
@@ -542,24 +501,11 @@ class SynquillStorage {
   ///
   /// This method is primarily intended for testing purposes.
   static void setConfigForTesting(SynquillStorageConfig config) {
-    _config = config;
-  }
-
-  /// Handles connectivity changes to manage queue state.
-  static void _handleConnectivityChange(
-    bool? previousStatus,
-    bool currentStatus,
-  ) {
-    // Handle transition to disconnected
-    if (currentStatus == false && previousStatus == true) {
-      _logger!.info('Connection lost - clearing request queues');
-      _queueManager?.clearQueuesOnDisconnect();
-    }
-
-    // Handle transition to connected
-    if (currentStatus == true && previousStatus == false) {
-      _logger!.info('Connection restored - restoring queue processing');
-      _queueManager?.restoreQueuesOnConnect();
+    final runtime = _runtime;
+    if (runtime != null) {
+      runtime.config = config;
+    } else {
+      _configForTesting = config;
     }
   }
 
@@ -587,9 +533,7 @@ class SynquillStorage {
   SynquillRepositoryBase<SynquillDataModel<dynamic>>? getRepositoryByName(
     String modelTypeName,
   ) {
-    _requireInitialized(_instance, 'instance');
-
-    return SynquillRepositoryProvider.getByTypeName(modelTypeName);
+    return _requireRuntime().getRepositoryByName(modelTypeName);
   }
 
   /// Gets a strongly-typed repository for the specified model type.
@@ -609,18 +553,7 @@ class SynquillStorage {
   /// final user = await userRepo.findOne("user_id");
   /// ```
   SynquillRepositoryBase<T> getRepository<T extends SynquillDataModel<T>>() {
-    _requireInitialized(_instance, 'instance');
-
-    // Get repository - may throw if not registered
-    try {
-      return SynquillRepositoryProvider.get<T>();
-    } catch (e) {
-      throw StateError(
-        'No repository registered for type '
-        '${T.toString()}. Make sure '
-        'initializeSynquillStorage() was called.',
-      );
-    }
+    return _requireRuntime().getRepository<T>();
   }
 
   /// Triggers background sync tasks to be processed immediately.
@@ -640,10 +573,7 @@ class SynquillStorage {
   /// await SynquillStorage.instance.processBackgroundSyncTasks();
   /// ```
   Future<void> processBackgroundSyncTasks({bool forceSync = false}) async {
-    _requireInitialized(_instance, 'instance');
-
-    await _backgroundSyncManager!
-        .processBackgroundSyncTasks(forceSync: forceSync);
+    await _requireRuntime().processBackgroundSyncTasks(forceSync: forceSync);
   }
 
   /// Static method to trigger queued sync processing without an instance.
@@ -661,8 +591,7 @@ class SynquillStorage {
   /// ```
   @pragma('vm:entry-point')
   static Future<void> processBackgroundSync() async {
-    await _requireInitialized(_instance, 'instance')
-        .processBackgroundSyncTasks();
+    await instance.processBackgroundSyncTasks();
   }
 
   /// Initializes SynquillStorage in a background isolate.
@@ -722,9 +651,10 @@ class SynquillStorage {
   @pragma('vm:entry-point')
   static void enableBackgroundMode() {
     _requireInitialized(
-      _backgroundSyncManager,
+      _runtime?.backgroundSyncManager,
       'backgroundSyncManager',
-    ).enableBackgroundMode();
+    );
+    _runtime!.enableBackgroundMode();
   }
 
   /// Switches the retry executor to foreground mode for active use.
@@ -736,83 +666,9 @@ class SynquillStorage {
   @pragma('vm:entry-point')
   static void enableForegroundMode({bool forceSync = false}) {
     _requireInitialized(
-      _backgroundSyncManager,
+      _runtime?.backgroundSyncManager,
       'backgroundSyncManager',
-    ).enableForegroundMode(forceSync: forceSync);
-  }
-
-  /// Helper: create instance and set core properties.
-  static void _createInstance(
-    GeneratedDatabase database,
-    SynquillStorageConfig config,
-    Logger? logger,
-  ) {
-    _instance = SynquillStorage._();
-    _config = config;
-    _database = database;
-    _logger = logger ?? _defaultLogger;
-    _logger!.info('Database instance set');
-  }
-
-  /// Helper: initialize database and repository system.
-  static void _initializeDatabase(
-    void Function(GeneratedDatabase)? initializeFn,
-  ) {
-    DatabaseProvider.setInstance(_database!);
-    if (initializeFn != null) {
-      initializeFn(_database!);
-      _logger!.info('Repository system initialized');
-    }
-  }
-
-  /// Helper: initialize request queue, dependency resolver, and retry executor.
-  static void _initializeCoreSystems() {
-    _queueManager ??= RequestQueueManager(config: _config);
-    _logger!.info('Request queue manager initialized');
-
-    _dependencyResolver ??= DependencyResolver();
-    _logger!.info('Dependency resolver initialized');
-
-    _syncQueueDao ??= SyncQueueDao(_database!);
-    _logger!.info('Sync queue DAO initialized');
-
-    _retryExecutor ??= RetryExecutor(_database!, _queueManager!);
-    _retryExecutor!.start();
-    _logger!.info('Retry executor started');
-  }
-
-  /// Helper: initialize background sync manager.
-  static Future<void> _initializeBackgroundSync() async {
-    _backgroundSyncManager = BackgroundSyncManager.instance;
-    await BackgroundSyncManager.initialize();
-    _logger!.info('Background sync manager initialized');
-  }
-
-  /// Helper: setup connectivity monitoring based on provided parameters.
-  static void _initializeConnectivity(
-    Stream<bool>? connectivityStream,
-    Future<bool> Function()? connectivityChecker,
-    bool enableInternetMonitoring,
-  ) {
-    _connectivityChecker = connectivityChecker;
-    if (enableInternetMonitoring && connectivityStream != null) {
-      _connectivitySubscription = connectivityStream.listen(
-        (isConnected) {
-          final previousStatus = _lastConnectivityStatus;
-          _lastConnectivityStatus = isConnected;
-          _handleConnectivityChange(previousStatus, isConnected);
-        },
-        onError: (error) {
-          _logger!.warning('Connectivity stream error: $error');
-        },
-      );
-      _logger!.info('Connectivity monitoring enabled with stream');
-    } else if (enableInternetMonitoring && connectivityChecker != null) {
-      _logger!.info(
-        'Connectivity monitoring enabled with checker function only',
-      );
-    } else {
-      _logger!.info('Connectivity monitoring disabled');
-    }
+    );
+    _runtime!.enableForegroundMode(forceSync: forceSync);
   }
 }

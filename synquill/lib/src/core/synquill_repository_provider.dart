@@ -34,37 +34,43 @@ enum DataLoadPolicy {
 typedef RepositoryFactory<M extends SynquillDataModel<M>>
     = SynquillRepositoryBase<M> Function(GeneratedDatabase db);
 
-/// Provides a centralized mechanism for registering and retrieving repository
-/// instances.
-/// This allows for dependency injection of repositories, primarily for testing
-/// and decoupling model logic from concrete repository implementations.
-class SynquillRepositoryProvider {
-  SynquillRepositoryProvider._();
-
-  static final Map<Type, RepositoryFactory<SynquillDataModel<dynamic>>>
-      _factories = {};
+/// Instance-backed repository factory and cache registry.
+///
+/// Each initialized Synquill runtime owns one registry so generated repository
+/// registrations and cached repository instances are scoped to that runtime.
+/// The static [SynquillRepositoryProvider] keeps a fallback registry for direct
+/// provider use when storage is not initialized.
+class SynquillRepositoryRegistry {
+  final Map<Type, RepositoryFactory<SynquillDataModel<dynamic>>> _factories =
+      {};
   // Cache: Type -> SynquillDatabase instance -> Repository instance
-  static final Map<
+  final Map<
       Type,
       Map<GeneratedDatabase,
           SynquillRepositoryBase<SynquillDataModel<dynamic>>>> _instances = {};
   // Mapping from model type string names to Type objects for runtime lookup
-  static final Map<String, Type> _typeNameMapping = {};
+  final Map<String, Type> _typeNameMapping = {};
 
-  static final _log = Logger('SynquillRepositoryProvider');
+  final Logger _log;
+
+  /// Creates an empty repository registry.
+  SynquillRepositoryRegistry({
+    Logger? logger,
+  }) : _log = logger ?? Logger('SynquillRepositoryRegistry');
+
+  /// Copies registered factories from [source] into this registry.
+  ///
+  /// Cached repository instances are intentionally not copied, so a new runtime
+  /// always creates repository instances for its own database.
+  void copyFactoriesFrom(SynquillRepositoryRegistry source) {
+    _factories.addAll(source._factories);
+    _typeNameMapping.addAll(source._typeNameMapping);
+    _instances.clear();
+  }
 
   /// Registers a factory function for creating instances of a repository for a
   /// specific model type [M].
-  ///
-  /// - [M]: The type of the [SynquillDataModel] the repository handles.
-  /// - [factory]: A function that takes a [SynquillDatabase] and returns an
-  /// instance of `SynquillRepositoryBase<M>`.
-  ///
-  /// Example:
-  /// ```dart
-  /// SynquillRepositoryProvider.register<MyModel>((db) => MyRepository(db));
-  /// ```
-  static void register<M extends SynquillDataModel<M>>(
+  void register<M extends SynquillDataModel<M>>(
     RepositoryFactory<M> factory,
   ) {
     _log.fine('Registering repository factory for type $M');
@@ -82,23 +88,7 @@ class SynquillRepositoryProvider {
 
   /// Retrieves a repository instance for the given model type [M] and database
   /// [db].
-  ///
-  /// If a repository instance for the specific [db] and type [M] has been
-  /// created before,
-  /// it's returned from a cache. Otherwise, the registered factory is used to
-  /// create,
-  /// cache, and return a new instance.
-  ///
-  /// - [M]: The type of the [SynquillDataModel] for which to get the repository
-  /// - [db]: The [SynquillDatabase] instance the repository will operate on.
-  ///
-  /// Throws an [Exception] if no factory is registered for type [M].
-  ///
-  /// Example:
-  /// ```dart
-  /// final myRepo = SynquillRepositoryProvider.get<MyModel>(database);
-  /// ```
-  static SynquillRepositoryBase<M> getFrom<M extends SynquillDataModel<M>>(
+  SynquillRepositoryBase<M> getFrom<M extends SynquillDataModel<M>>(
     GeneratedDatabase db,
   ) {
     _log.fine('Getting repository for type $M for db#${db.hashCode}');
@@ -132,49 +122,14 @@ class SynquillRepositoryProvider {
 
   /// Retrieves a repository instance for the given model type [M] using the
   /// default database from [DatabaseProvider].
-  ///
-  /// This is a convenience method that uses the global database instance
-  /// set via [DatabaseProvider.setInstance] or [initializeSynquillStorage].
-  ///
-  /// - [M]: The type of the [SynquillDataModel] for which to get the repository
-  ///
-  /// Throws a [StateError] if no default database has been configured.
-  /// Throws an [Exception] if no factory is registered for type [M].
-  ///
-  /// Example:
-  /// ```dart
-  /// // After initialization
-  /// await initializeSynquillStorage(database);
-  ///
-  /// // Get repository anywhere without database injection
-  /// final myRepo = SynquillRepositoryProvider.getDefault<MyModel>();
-  /// ```
-  static SynquillRepositoryBase<M> get<M extends SynquillDataModel<M>>() {
+  SynquillRepositoryBase<M> get<M extends SynquillDataModel<M>>() {
     final db = DatabaseProvider.instance; // Will throw if not initialized
     return getFrom<M>(db);
   }
 
   /// Retrieves a repository instance for the given model type [M] using the
   /// default database, or returns null if no default database is configured.
-  ///
-  /// This is a null-safe version of [getDefault] that won't throw if the
-  /// database hasn't been initialized.
-  ///
-  /// - [M]: The type of the [SynquillDataModel] for which to get the repository
-  ///
-  /// Returns null if no default database has been configured.
-  /// Throws an [Exception] if no factory is registered for type [M].
-  ///
-  /// Example:
-  /// ```dart
-  /// final myRepo = SyncquillRepositoryProvider.tryGetDefault<MyModel>();
-  /// if (myRepo != null) {
-  ///   // Use repository
-  /// } else {
-  ///   // Handle case where database isn't initialized
-  /// }
-  /// ```
-  static SynquillRepositoryBase<M>? tryGet<M extends SynquillDataModel<M>>() {
+  SynquillRepositoryBase<M>? tryGet<M extends SynquillDataModel<M>>() {
     try {
       final db = DatabaseProvider.instance;
       return getFrom<M>(db);
@@ -185,26 +140,7 @@ class SynquillRepositoryProvider {
   }
 
   /// Retrieves a repository instance by model type string name.
-  ///
-  /// This method allows lookup of repositories when only the string model type
-  /// name is known (e.g., from sync queue operations), using the default
-  /// database.
-  ///
-  /// - [modelTypeName]: The string name of the model type
-  ///   (e.g., 'User', 'Todo')
-  ///
-  /// Returns the repository instance for the given model type, or null if no
-  /// repository is registered for that type or if no default database is
-  /// configured.
-  ///
-  /// Example:
-  /// ```dart
-  /// final userRepo = SynquillRepositoryProvider.getByTypeName('User');
-  /// if (userRepo != null) {
-  ///   // Use the repository
-  /// }
-  /// ```
-  static SynquillRepositoryBase<SynquillDataModel<dynamic>>? getByTypeName(
+  SynquillRepositoryBase<SynquillDataModel<dynamic>>? getByTypeName(
     String modelTypeName,
   ) {
     try {
@@ -218,28 +154,7 @@ class SynquillRepositoryProvider {
 
   /// Retrieves a repository instance by model type string name for a specific
   /// database.
-  ///
-  /// This method allows lookup of repositories when only the string model type
-  /// name is known (e.g., from sync queue operations).
-  ///
-  /// - [modelTypeName]: The string name of the model type
-  ///   (e.g., 'User', 'Todo')
-  /// - [db]: The database instance to use
-  ///
-  /// Returns the repository instance for the given model type, or null if no
-  /// repository is registered for that type.
-  ///
-  /// Example:
-  /// ```dart
-  /// final userRepo = SynquillRepositoryProvider.getByTypeNameFrom(
-  ///   'User',
-  ///   database,
-  /// );
-  /// if (userRepo != null) {
-  ///   // Use the repository
-  /// }
-  /// ```
-  static SynquillRepositoryBase<SynquillDataModel<dynamic>>? getByTypeNameFrom(
+  SynquillRepositoryBase<SynquillDataModel<dynamic>>? getByTypeNameFrom(
     String modelTypeName,
     GeneratedDatabase db,
   ) {
@@ -280,29 +195,13 @@ class SynquillRepositoryProvider {
   }
 
   /// Gets all registered model type names.
-  ///
-  /// Returns a list of all model type names that have been registered
-  /// with the repository provider. Useful for operations that need to
-  /// iterate over all registered repositories.
-  ///
-  /// Example:
-  /// ```dart
-  /// final typeNames = SynquillRepositoryProvider.getAllRegisteredTypeNames();
-  /// for (final typeName in typeNames) {
-  ///   final repo = SynquillRepositoryProvider.getByTypeName(typeName);
-  ///   // Use the repository
-  /// }
-  /// ```
-  static List<String> getAllRegisteredTypeNames() {
+  List<String> getAllRegisteredTypeNames() {
     return _typeNameMapping.keys.toList();
   }
 
-  /// Clears all cached repository instances but preserves
-  /// factory registrations.
-  ///
-  /// Used when obliterating local storage but wanting to keep repository
-  /// registrations intact.
-  static void clearInstances() {
+  /// Clears all cached repository instances but preserves factory
+  /// registrations.
+  void clearInstances() {
     _log.info(
       'Clearing all cached repository instances while preserving factory '
       'registrations.',
@@ -311,7 +210,7 @@ class SynquillRepositoryProvider {
   }
 
   /// Disposes realtime subscriptions for all cached repository instances.
-  static Future<void> disposeCachedRealtimeSubscriptions() async {
+  Future<void> disposeCachedRealtimeSubscriptions() async {
     final repositories = _instances.values
         .expand((instancesByDb) => instancesByDb.values)
         .toSet()
@@ -331,15 +230,235 @@ class SynquillRepositoryProvider {
   }
 
   /// Clears all registered factories and cached repository instances.
-  ///
-  /// Primarily used for cleaning up state in tests.
-  static void reset() {
+  void reset() {
     _log.info(
-      'Resetting SynquillRepositoryProvider: clearing all factories and '
-      'instances.',
+      'Resetting repository registry: clearing all factories and instances.',
     );
     _factories.clear();
     _instances.clear();
     _typeNameMapping.clear();
+  }
+}
+
+/// Provides a centralized mechanism for registering and retrieving repository
+/// instances.
+/// This allows for dependency injection of repositories, primarily for testing
+/// and decoupling model logic from concrete repository implementations.
+class SynquillRepositoryProvider {
+  SynquillRepositoryProvider._();
+
+  static final SynquillRepositoryRegistry _fallbackRegistry =
+      SynquillRepositoryRegistry(
+    logger: Logger('SynquillRepositoryProvider.fallback'),
+  );
+  static SynquillRepositoryRegistry? _activeRegistry;
+
+  static SynquillRepositoryRegistry get _registry =>
+      _activeRegistry ?? _fallbackRegistry;
+
+  /// Attaches the repository registry for the active Synquill runtime.
+  static void attachRuntimeRegistry(SynquillRepositoryRegistry registry) {
+    registry.copyFactoriesFrom(_fallbackRegistry);
+    _activeRegistry = registry;
+  }
+
+  /// Detaches [registry] if it is the active Synquill runtime registry.
+  static void detachRuntimeRegistry(SynquillRepositoryRegistry registry) {
+    if (identical(_activeRegistry, registry)) {
+      _activeRegistry = null;
+    }
+  }
+
+  /// Resets fallback and active registries.
+  ///
+  /// This preserves the historical static cleanup behavior used by
+  /// [SynquillStorage.close].
+  static void resetAll() {
+    _activeRegistry?.reset();
+    _activeRegistry = null;
+    _fallbackRegistry.reset();
+  }
+
+  /// Registers a factory function for creating instances of a repository for a
+  /// specific model type [M].
+  ///
+  /// - [M]: The type of the [SynquillDataModel] the repository handles.
+  /// - [factory]: A function that takes a [SynquillDatabase] and returns an
+  /// instance of `SynquillRepositoryBase<M>`.
+  ///
+  /// Example:
+  /// ```dart
+  /// SynquillRepositoryProvider.register<MyModel>((db) => MyRepository(db));
+  /// ```
+  static void register<M extends SynquillDataModel<M>>(
+    RepositoryFactory<M> factory,
+  ) {
+    _registry.register<M>(factory);
+  }
+
+  /// Retrieves a repository instance for the given model type [M] and database
+  /// [db].
+  ///
+  /// If a repository instance for the specific [db] and type [M] has been
+  /// created before,
+  /// it's returned from a cache. Otherwise, the registered factory is used to
+  /// create,
+  /// cache, and return a new instance.
+  ///
+  /// - [M]: The type of the [SynquillDataModel] for which to get the repository
+  /// - [db]: The [SynquillDatabase] instance the repository will operate on.
+  ///
+  /// Throws an [Exception] if no factory is registered for type [M].
+  ///
+  /// Example:
+  /// ```dart
+  /// final myRepo = SynquillRepositoryProvider.get<MyModel>(database);
+  /// ```
+  static SynquillRepositoryBase<M> getFrom<M extends SynquillDataModel<M>>(
+    GeneratedDatabase db,
+  ) {
+    return _registry.getFrom<M>(db);
+  }
+
+  /// Retrieves a repository instance for the given model type [M] using the
+  /// default database from [DatabaseProvider].
+  ///
+  /// This is a convenience method that uses the global database instance
+  /// set via [DatabaseProvider.setInstance] or [initializeSynquillStorage].
+  ///
+  /// - [M]: The type of the [SynquillDataModel] for which to get the repository
+  ///
+  /// Throws a [StateError] if no default database has been configured.
+  /// Throws an [Exception] if no factory is registered for type [M].
+  ///
+  /// Example:
+  /// ```dart
+  /// // After initialization
+  /// await initializeSynquillStorage(database);
+  ///
+  /// // Get repository anywhere without database injection
+  /// final myRepo = SynquillRepositoryProvider.getDefault<MyModel>();
+  /// ```
+  static SynquillRepositoryBase<M> get<M extends SynquillDataModel<M>>() {
+    return _registry.get<M>();
+  }
+
+  /// Retrieves a repository instance for the given model type [M] using the
+  /// default database, or returns null if no default database is configured.
+  ///
+  /// This is a null-safe version of [getDefault] that won't throw if the
+  /// database hasn't been initialized.
+  ///
+  /// - [M]: The type of the [SynquillDataModel] for which to get the repository
+  ///
+  /// Returns null if no default database has been configured.
+  /// Throws an [Exception] if no factory is registered for type [M].
+  ///
+  /// Example:
+  /// ```dart
+  /// final myRepo = SyncquillRepositoryProvider.tryGetDefault<MyModel>();
+  /// if (myRepo != null) {
+  ///   // Use repository
+  /// } else {
+  ///   // Handle case where database isn't initialized
+  /// }
+  /// ```
+  static SynquillRepositoryBase<M>? tryGet<M extends SynquillDataModel<M>>() {
+    return _registry.tryGet<M>();
+  }
+
+  /// Retrieves a repository instance by model type string name.
+  ///
+  /// This method allows lookup of repositories when only the string model type
+  /// name is known (e.g., from sync queue operations), using the default
+  /// database.
+  ///
+  /// - [modelTypeName]: The string name of the model type
+  ///   (e.g., 'User', 'Todo')
+  ///
+  /// Returns the repository instance for the given model type, or null if no
+  /// repository is registered for that type or if no default database is
+  /// configured.
+  ///
+  /// Example:
+  /// ```dart
+  /// final userRepo = SynquillRepositoryProvider.getByTypeName('User');
+  /// if (userRepo != null) {
+  ///   // Use the repository
+  /// }
+  /// ```
+  static SynquillRepositoryBase<SynquillDataModel<dynamic>>? getByTypeName(
+    String modelTypeName,
+  ) {
+    return _registry.getByTypeName(modelTypeName);
+  }
+
+  /// Retrieves a repository instance by model type string name for a specific
+  /// database.
+  ///
+  /// This method allows lookup of repositories when only the string model type
+  /// name is known (e.g., from sync queue operations).
+  ///
+  /// - [modelTypeName]: The string name of the model type
+  ///   (e.g., 'User', 'Todo')
+  /// - [db]: The database instance to use
+  ///
+  /// Returns the repository instance for the given model type, or null if no
+  /// repository is registered for that type.
+  ///
+  /// Example:
+  /// ```dart
+  /// final userRepo = SynquillRepositoryProvider.getByTypeNameFrom(
+  ///   'User',
+  ///   database,
+  /// );
+  /// if (userRepo != null) {
+  ///   // Use the repository
+  /// }
+  /// ```
+  static SynquillRepositoryBase<SynquillDataModel<dynamic>>? getByTypeNameFrom(
+    String modelTypeName,
+    GeneratedDatabase db,
+  ) {
+    return _registry.getByTypeNameFrom(modelTypeName, db);
+  }
+
+  /// Gets all registered model type names.
+  ///
+  /// Returns a list of all model type names that have been registered
+  /// with the repository provider. Useful for operations that need to
+  /// iterate over all registered repositories.
+  ///
+  /// Example:
+  /// ```dart
+  /// final typeNames = SynquillRepositoryProvider.getAllRegisteredTypeNames();
+  /// for (final typeName in typeNames) {
+  ///   final repo = SynquillRepositoryProvider.getByTypeName(typeName);
+  ///   // Use the repository
+  /// }
+  /// ```
+  static List<String> getAllRegisteredTypeNames() {
+    return _registry.getAllRegisteredTypeNames();
+  }
+
+  /// Clears all cached repository instances but preserves
+  /// factory registrations.
+  ///
+  /// Used when obliterating local storage but wanting to keep repository
+  /// registrations intact.
+  static void clearInstances() {
+    _registry.clearInstances();
+  }
+
+  /// Disposes realtime subscriptions for all cached repository instances.
+  static Future<void> disposeCachedRealtimeSubscriptions() async {
+    await _registry.disposeCachedRealtimeSubscriptions();
+  }
+
+  /// Clears all registered factories and cached repository instances.
+  ///
+  /// Primarily used for cleaning up state in tests.
+  static void reset() {
+    _registry.reset();
   }
 }
