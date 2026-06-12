@@ -1,5 +1,7 @@
 import 'package:meta/meta.dart';
-import 'package:synquill/synquill.dart';
+import 'package:dio/dio.dart';
+import 'package:logging/logging.dart';
+import 'package:synquill/synquill_contracts.dart';
 
 /// Mixin for handling GraphQL errors and mapping them to
 /// [SynquillStorageException].

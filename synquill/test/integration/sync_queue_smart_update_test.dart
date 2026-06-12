@@ -1,7 +1,7 @@
 // ignore_for_file: avoid_relative_lib_imports
 
 import 'package:test/test.dart';
-import 'package:synquill/synquill_core.dart';
+import 'package:synquill/synquill_drift.dart';
 import 'dart:convert';
 
 import '../support/test_models/index.dart';

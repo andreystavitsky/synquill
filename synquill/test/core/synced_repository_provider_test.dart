@@ -1,4 +1,5 @@
-import 'package:synquill/synquill_core.dart';
+import 'package:synquill/synquill.dart';
+import 'package:synquill/synquill_drift.dart';
 import 'package:test/test.dart';
 
 // Simple test database that extends GeneratedDatabase
@@ -40,7 +41,9 @@ class TestModel extends SynquillDataModel<TestModel> {
 
 // Mock repository for testing
 class TestRepository extends SynquillRepositoryBase<TestModel> {
-  TestRepository(super.db);
+  final String source;
+
+  TestRepository(super.db, {this.source = 'default'});
 
   // Implementation of findOne and findAll which delegate to overridden methods
   @override
@@ -337,6 +340,68 @@ void main() {
 
       // Should be the same instance (cached)
       expect(identical(repo1, repo2), isTrue);
+    });
+  });
+
+  group('SyncedRepositoryProvider Runtime Registry Isolation', () {
+    late _TestDatabase testDb;
+
+    setUp(() async {
+      await SynquillStorage.close();
+      SynquillRepositoryProvider.reset();
+      DatabaseProvider.reset();
+      testDb = _TestDatabase(NativeDatabase.memory());
+    });
+
+    tearDown(() async {
+      await SynquillStorage.close();
+      SynquillRepositoryProvider.reset();
+      DatabaseProvider.reset();
+    });
+
+    test('active runtime registry seeds fallback factories without cache',
+        () async {
+      SynquillRepositoryProvider.register<TestModel>(
+        (db) => TestRepository(db, source: 'fallback'),
+      );
+
+      final fallbackRepository =
+          SynquillRepositoryProvider.getFrom<TestModel>(testDb);
+
+      await SynquillStorage.init(
+        database: testDb,
+        logger: Logger('RuntimeRegistryIsolationTest'),
+        enableInternetMonitoring: false,
+      );
+
+      final runtimeRepository =
+          SynquillStorage.instance.getRepository<TestModel>() as TestRepository;
+
+      expect(runtimeRepository.source, equals('fallback'));
+      expect(identical(runtimeRepository, fallbackRepository), isFalse);
+    });
+
+    test('active runtime registry takes precedence over fallback registry',
+        () async {
+      SynquillRepositoryProvider.register<TestModel>(
+        (db) => TestRepository(db, source: 'fallback'),
+      );
+
+      await SynquillStorage.init(
+        database: testDb,
+        logger: Logger('RuntimeRegistryIsolationTest'),
+        initializeFn: (_) {
+          SynquillRepositoryProvider.register<TestModel>(
+            (db) => TestRepository(db, source: 'runtime'),
+          );
+        },
+        enableInternetMonitoring: false,
+      );
+
+      final repository =
+          SynquillStorage.instance.getRepository<TestModel>() as TestRepository;
+
+      expect(repository.source, equals('runtime'));
     });
   });
 }

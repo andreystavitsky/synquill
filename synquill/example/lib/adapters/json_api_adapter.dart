@@ -1,6 +1,8 @@
 import 'dart:async';
 
-import 'package:synquill/synquill.dart';
+import 'package:logging/logging.dart';
+import 'package:synquill/synquill_contracts.dart';
+import 'package:synquill/synquill_rest.dart';
 
 /// A base adapter for JSON APIs that can be extended by model-specific adapters.
 /// It overrides the baseHeaders to include a custom 'X-App-Version' header.

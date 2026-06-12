@@ -5,7 +5,8 @@ import 'dart:convert';
 
 import 'package:queue/queue.dart';
 import 'package:test/test.dart';
-import 'package:synquill/synquill_core.dart';
+import 'package:synquill/synquill.dart';
+import 'package:synquill/synquill_drift.dart';
 
 import '../common/test_models.dart';
 import '../common/test_user_repository.dart';

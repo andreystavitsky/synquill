@@ -40,6 +40,51 @@ void main() {
 
       expect(content, isNot(contains('package:synquill_graphql')));
     });
+
+    test('imports narrow Synquill barrels for generated aggregate files', () {
+      final content = FileAggregator.generateAggregateFile(
+        [
+          _modelWithAdapters([
+            _adapter('JsonApiAdapter'),
+          ]),
+        ],
+        'synquill_example',
+      );
+
+      expect(
+        content,
+        contains("import 'package:synquill/synquill_contracts.dart';"),
+      );
+      expect(
+        content,
+        contains("import 'package:synquill/synquill_rest.dart';"),
+      );
+      expect(
+        content,
+        contains("import 'package:synquill/synquill_drift.dart' show "),
+      );
+      expect(
+        content,
+        isNot(contains("import 'package:synquill/synquill.dart';")),
+      );
+    });
+
+    test('imports drift barrel for generated database files', () {
+      final content = FileAggregator.generateDatabaseFile([
+        _modelWithAdapters([
+          _adapter('JsonApiAdapter'),
+        ]),
+      ]);
+
+      expect(
+        content,
+        contains("import 'package:synquill/synquill_drift.dart';"),
+      );
+      expect(
+        content,
+        isNot(contains("import 'package:synquill/synquill_core.dart';")),
+      );
+    });
   });
 }
 

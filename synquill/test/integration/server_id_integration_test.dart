@@ -1,454 +1,86 @@
 import 'dart:async';
 import 'package:test/test.dart';
-import 'package:synquill/synquill_core.dart';
+import 'package:synquill/synquill.dart';
+import 'package:synquill/synquill_drift.dart';
+import '../common/in_memory_api_adapter.dart';
 import '../support/synquill.generated.dart';
 import '../support/test_models/test_server_id_model.dart';
 
 /// Mock API adapter that simulates server-generated IDs
-class MockServerIdAdapter extends ApiAdapterBase<ServerTestModel> {
-  final Map<String, ServerTestModel> _remoteData = {};
-  final List<String> _operationLog = [];
-  int _nextServerId = 1000; // Start server IDs from 1000
+class MockServerIdAdapter extends InMemoryApiAdapter<ServerTestModel> {
+  MockServerIdAdapter()
+      : super(
+          type: 'server-test-model',
+          pluralType: 'server-test-models',
+          fromJsonFactory: ServerTestModel.fromJson,
+          toJsonFactory: (model) => model.toJson(),
+        );
+
+  int nextServerId = 1000; // Start server IDs from 1000
 
   @override
-  Uri get baseUrl => Uri.parse('https://test.example.com/api/v1/');
-
-  @override
-  String get type => 'server-test-model';
-
-  @override
-  String get pluralType => 'server-test-models';
-
-  /// Get operation log for testing
-  List<String> get operationLog => List.unmodifiable(_operationLog);
-
-  /// Get all remote data for verification
-  Map<String, ServerTestModel> get remoteData => Map.unmodifiable(_remoteData);
-
-  /// Clear remote data and operation log
-  void clearAll() {
-    _remoteData.clear();
-    _operationLog.clear();
-  }
-
-  @override
-  ServerTestModel fromJson(Map<String, dynamic> json) {
-    return ServerTestModel.fromJson(json);
-  }
-
-  @override
-  Map<String, dynamic> toJson(ServerTestModel model) {
-    return model.toJson();
-  }
-
-  @override
-  Future<ServerTestModel?> findOne(
-    String id, {
-    Map<String, String>? headers,
-    QueryParams? queryParams,
-    Map<String, dynamic>? extra,
-  }) async {
-    _operationLog.add('findOne($id)');
-    await Future.delayed(const Duration(milliseconds: 10));
-    return _remoteData[id];
-  }
-
-  @override
-  Future<List<ServerTestModel>> findAll({
-    Map<String, String>? headers,
-    QueryParams? queryParams,
-    Map<String, dynamic>? extra,
-  }) async {
-    _operationLog.add('findAll()');
-    await Future.delayed(const Duration(milliseconds: 10));
-    return _remoteData.values.toList();
-  }
-
-  @override
-  Future<ServerTestModel?> createOne(
-    ServerTestModel model, {
-    Map<String, String>? headers,
-    Map<String, dynamic>? extra,
-  }) async {
-    _operationLog.add('createOne(${model.id})');
-
-    await Future.delayed(const Duration(milliseconds: 10));
-
-    // Simulate server generating a new ID
-    final serverId = 'server_${_nextServerId++}';
-
-    final modelWithServerId = ServerTestModel(
-      id: serverId,
+  ServerTestModel createRemoteModel(ServerTestModel model) {
+    return ServerTestModel(
+      id: 'server_${nextServerId++}',
       name: model.name,
       description: model.description,
     );
-
-    _remoteData[serverId] = modelWithServerId;
-    return modelWithServerId;
-  }
-
-  @override
-  Future<ServerTestModel?> updateOne(
-    ServerTestModel model, {
-    Map<String, String>? headers,
-    Map<String, dynamic>? extra,
-  }) async {
-    _operationLog.add('updateOne(${model.id})');
-    await Future.delayed(const Duration(milliseconds: 10));
-    _remoteData[model.id] = model;
-    return model;
-  }
-
-  @override
-  Future<ServerTestModel?> replaceOne(
-    ServerTestModel model, {
-    Map<String, String>? headers,
-    Map<String, dynamic>? extra,
-  }) async {
-    _operationLog.add('replaceOne(${model.id})');
-    await Future.delayed(const Duration(milliseconds: 10));
-    _remoteData[model.id] = model;
-    return model;
-  }
-
-  @override
-  Future<void> deleteOne(
-    String id, {
-    Map<String, String>? headers,
-    Map<String, dynamic>? extra,
-  }) async {
-    _operationLog.add('deleteOne($id)');
-    await Future.delayed(const Duration(milliseconds: 10));
-    _remoteData.remove(id);
   }
 }
 
 /// Mock API adapter for client ID models (for comparison)
-class MockClientIdAdapter extends ApiAdapterBase<ClientTestModel> {
-  final Map<String, ClientTestModel> _remoteData = {};
-  final List<String> _operationLog = [];
-
-  @override
-  Uri get baseUrl => Uri.parse('https://test.example.com/api/v1/');
-
-  @override
-  String get type => 'client-test-model';
-
-  @override
-  String get pluralType => 'client-test-models';
-
-  List<String> get operationLog => List.unmodifiable(_operationLog);
-
-  void clearAll() {
-    _remoteData.clear();
-    _operationLog.clear();
-  }
-
-  @override
-  ClientTestModel fromJson(Map<String, dynamic> json) {
-    return ClientTestModel.fromJson(json);
-  }
-
-  @override
-  Map<String, dynamic> toJson(ClientTestModel model) {
-    return model.toJson();
-  }
-
-  @override
-  Future<ClientTestModel?> findOne(
-    String id, {
-    Map<String, String>? headers,
-    QueryParams? queryParams,
-    Map<String, dynamic>? extra,
-  }) async {
-    _operationLog.add('findOne($id)');
-    await Future.delayed(const Duration(milliseconds: 10));
-    return _remoteData[id];
-  }
-
-  @override
-  Future<List<ClientTestModel>> findAll({
-    Map<String, String>? headers,
-    QueryParams? queryParams,
-    Map<String, dynamic>? extra,
-  }) async {
-    _operationLog.add('findAll()');
-    await Future.delayed(const Duration(milliseconds: 10));
-    return _remoteData.values.toList();
-  }
-
-  @override
-  Future<ClientTestModel?> createOne(
-    ClientTestModel model, {
-    Map<String, String>? headers,
-    Map<String, dynamic>? extra,
-  }) async {
-    _operationLog.add('createOne(${model.id})');
-    await Future.delayed(const Duration(milliseconds: 10));
-    _remoteData[model.id] = model;
-    return model;
-  }
-
-  @override
-  Future<ClientTestModel?> updateOne(
-    ClientTestModel model, {
-    Map<String, String>? headers,
-    Map<String, dynamic>? extra,
-  }) async {
-    _operationLog.add('updateOne(${model.id})');
-    await Future.delayed(const Duration(milliseconds: 10));
-    _remoteData[model.id] = model;
-    return model;
-  }
-
-  @override
-  Future<ClientTestModel?> replaceOne(
-    ClientTestModel model, {
-    Map<String, String>? headers,
-    Map<String, dynamic>? extra,
-  }) async {
-    _operationLog.add('replaceOne(${model.id})');
-    await Future.delayed(const Duration(milliseconds: 10));
-    _remoteData[model.id] = model;
-    return model;
-  }
-
-  @override
-  Future<void> deleteOne(
-    String id, {
-    Map<String, String>? headers,
-    Map<String, dynamic>? extra,
-  }) async {
-    _operationLog.add('deleteOne($id)');
-    await Future.delayed(const Duration(milliseconds: 10));
-    _remoteData.remove(id);
-  }
+class MockClientIdAdapter extends InMemoryApiAdapter<ClientTestModel> {
+  MockClientIdAdapter()
+      : super(
+          type: 'client-test-model',
+          pluralType: 'client-test-models',
+          fromJsonFactory: ClientTestModel.fromJson,
+          toJsonFactory: (model) => model.toJson(),
+        );
 }
 
 /// Mock API adapter for ServerParentModel with server-generated IDs
-class MockServerParentAdapter extends ApiAdapterBase<ServerParentModel> {
-  final Map<String, ServerParentModel> _remoteData = {};
-  final List<String> _operationLog = [];
-  int _nextServerId = 2000; // Start server IDs from 2000
+class MockServerParentAdapter extends InMemoryApiAdapter<ServerParentModel> {
+  MockServerParentAdapter()
+      : super(
+          type: 'server-parent-model',
+          pluralType: 'server-parent-models',
+          fromJsonFactory: ServerParentModel.fromJson,
+          toJsonFactory: (model) => model.toJson(),
+        );
+
+  int nextServerId = 2000; // Start server IDs from 2000
 
   @override
-  Uri get baseUrl => Uri.parse('https://test.example.com/api/v1/');
-
-  @override
-  String get type => 'server-parent-model';
-
-  @override
-  String get pluralType => 'server-parent-models';
-
-  List<String> get operationLog => List.unmodifiable(_operationLog);
-
-  void clearAll() {
-    _remoteData.clear();
-    _operationLog.clear();
-  }
-
-  @override
-  ServerParentModel fromJson(Map<String, dynamic> json) {
-    return ServerParentModel.fromJson(json);
-  }
-
-  @override
-  Map<String, dynamic> toJson(ServerParentModel model) {
-    return model.toJson();
-  }
-
-  @override
-  Future<ServerParentModel?> createOne(
-    ServerParentModel model, {
-    Map<String, String>? headers,
-    Map<String, dynamic>? extra,
-  }) async {
-    _operationLog.add('createOne(${model.id})');
-
-    await Future.delayed(const Duration(milliseconds: 10));
-
-    // Simulate server generating a new ID
-    final serverId = 'server_parent_${_nextServerId++}';
-    final modelWithServerId = ServerParentModel(
-      id: serverId,
+  ServerParentModel createRemoteModel(ServerParentModel model) {
+    return ServerParentModel(
+      id: 'server_parent_${nextServerId++}',
       name: model.name,
       category: model.category,
     );
-
-    _remoteData[serverId] = modelWithServerId;
-    return modelWithServerId;
-  }
-
-  @override
-  Future<ServerParentModel?> findOne(
-    String id, {
-    Map<String, String>? headers,
-    QueryParams? queryParams,
-    Map<String, dynamic>? extra,
-  }) async {
-    _operationLog.add('findOne($id)');
-    await Future.delayed(const Duration(milliseconds: 10));
-    return _remoteData[id];
-  }
-
-  @override
-  Future<List<ServerParentModel>> findAll({
-    Map<String, String>? headers,
-    QueryParams? queryParams,
-    Map<String, dynamic>? extra,
-  }) async {
-    _operationLog.add('findAll()');
-    await Future.delayed(const Duration(milliseconds: 10));
-    return _remoteData.values.toList();
-  }
-
-  @override
-  Future<ServerParentModel?> updateOne(
-    ServerParentModel model, {
-    Map<String, String>? headers,
-    Map<String, dynamic>? extra,
-  }) async {
-    _operationLog.add('updateOne(${model.id})');
-    await Future.delayed(const Duration(milliseconds: 10));
-    _remoteData[model.id] = model;
-    return model;
-  }
-
-  @override
-  Future<ServerParentModel?> replaceOne(
-    ServerParentModel model, {
-    Map<String, String>? headers,
-    Map<String, dynamic>? extra,
-  }) async {
-    _operationLog.add('replaceOne(${model.id})');
-    await Future.delayed(const Duration(milliseconds: 10));
-    _remoteData[model.id] = model;
-    return model;
-  }
-
-  @override
-  Future<void> deleteOne(
-    String id, {
-    Map<String, String>? headers,
-    Map<String, dynamic>? extra,
-  }) async {
-    _operationLog.add('deleteOne($id)');
-    await Future.delayed(const Duration(milliseconds: 10));
-    _remoteData.remove(id);
   }
 }
 
 /// Mock API adapter for ServerChildModel with server-generated IDs
-class MockServerChildAdapter extends ApiAdapterBase<ServerChildModel> {
-  final Map<String, ServerChildModel> _remoteData = {};
-  final List<String> _operationLog = [];
-  int _nextServerId = 3000; // Start server IDs from 3000
+class MockServerChildAdapter extends InMemoryApiAdapter<ServerChildModel> {
+  MockServerChildAdapter()
+      : super(
+          type: 'server-child-model',
+          pluralType: 'server-child-models',
+          fromJsonFactory: ServerChildModel.fromJson,
+          toJsonFactory: (model) => model.toJson(),
+        );
+
+  int nextServerId = 3000; // Start server IDs from 3000
 
   @override
-  Uri get baseUrl => Uri.parse('https://test.example.com/api/v1/');
-
-  @override
-  String get type => 'server-child-model';
-
-  @override
-  String get pluralType => 'server-child-models';
-
-  List<String> get operationLog => List.unmodifiable(_operationLog);
-
-  void clearAll() {
-    _remoteData.clear();
-    _operationLog.clear();
-  }
-
-  @override
-  ServerChildModel fromJson(Map<String, dynamic> json) {
-    return ServerChildModel.fromJson(json);
-  }
-
-  @override
-  Map<String, dynamic> toJson(ServerChildModel model) {
-    return model.toJson();
-  }
-
-  @override
-  Future<ServerChildModel?> createOne(
-    ServerChildModel model, {
-    Map<String, String>? headers,
-    Map<String, dynamic>? extra,
-  }) async {
-    _operationLog.add('createOne(${model.id})');
-
-    await Future.delayed(const Duration(milliseconds: 10));
-
-    // Simulate server generating a new ID
-    final serverId = 'server_child_${_nextServerId++}';
-    final modelWithServerId = ServerChildModel(
-      id: serverId,
+  ServerChildModel createRemoteModel(ServerChildModel model) {
+    return ServerChildModel(
+      id: 'server_child_${nextServerId++}',
       name: model.name,
       parentId: model.parentId,
       data: model.data,
     );
-
-    _remoteData[serverId] = modelWithServerId;
-    return modelWithServerId;
-  }
-
-  @override
-  Future<ServerChildModel?> findOne(
-    String id, {
-    Map<String, String>? headers,
-    QueryParams? queryParams,
-    Map<String, dynamic>? extra,
-  }) async {
-    _operationLog.add('findOne($id)');
-    await Future.delayed(const Duration(milliseconds: 10));
-    return _remoteData[id];
-  }
-
-  @override
-  Future<List<ServerChildModel>> findAll({
-    Map<String, String>? headers,
-    QueryParams? queryParams,
-    Map<String, dynamic>? extra,
-  }) async {
-    _operationLog.add('findAll()');
-    await Future.delayed(const Duration(milliseconds: 10));
-    return _remoteData.values.toList();
-  }
-
-  @override
-  Future<ServerChildModel?> updateOne(
-    ServerChildModel model, {
-    Map<String, String>? headers,
-    Map<String, dynamic>? extra,
-  }) async {
-    _operationLog.add('updateOne(${model.id})');
-    await Future.delayed(const Duration(milliseconds: 10));
-    _remoteData[model.id] = model;
-    return model;
-  }
-
-  @override
-  Future<ServerChildModel?> replaceOne(
-    ServerChildModel model, {
-    Map<String, String>? headers,
-    Map<String, dynamic>? extra,
-  }) async {
-    _operationLog.add('replaceOne(${model.id})');
-    await Future.delayed(const Duration(milliseconds: 10));
-    _remoteData[model.id] = model;
-    return model;
-  }
-
-  @override
-  Future<void> deleteOne(
-    String id, {
-    Map<String, String>? headers,
-    Map<String, dynamic>? extra,
-  }) async {
-    _operationLog.add('deleteOne($id)');
-    await Future.delayed(const Duration(milliseconds: 10));
-    _remoteData.remove(id);
   }
 }
 
@@ -460,7 +92,7 @@ class MockIdCollisionAdapter extends MockServerIdAdapter {
 
   /// Add a model to remote data to simulate existing record
   void addExistingModel(ServerTestModel model) {
-    _remoteData[model.id] = model;
+    remoteDataStore[model.id] = model;
     _existingServerIds.add(model.id);
   }
 
@@ -484,7 +116,7 @@ class MockIdCollisionAdapter extends MockServerIdAdapter {
     Map<String, String>? headers,
     Map<String, dynamic>? extra,
   }) async {
-    _operationLog.add('createOne(${model.id})');
+    operationLogStore.add('createOne(${model.id})');
     await Future.delayed(const Duration(milliseconds: 10));
 
     String serverId;
@@ -493,11 +125,11 @@ class MockIdCollisionAdapter extends MockServerIdAdapter {
       serverId = _collisionId!;
       _shouldSimulateCollision = false; // Only collide once
     } else {
-      serverId = 'server_${_nextServerId++}';
+      serverId = 'server_${nextServerId++}';
     }
 
     // Check if ID already exists in remote data (collision scenario)
-    if (_remoteData.containsKey(serverId)) {
+    if (remoteDataStore.containsKey(serverId)) {
       throw Exception('ID collision: Server ID $serverId already exists');
     }
 
@@ -507,7 +139,7 @@ class MockIdCollisionAdapter extends MockServerIdAdapter {
       description: model.description,
     );
 
-    _remoteData[serverId] = modelWithServerId;
+    remoteDataStore[serverId] = modelWithServerId;
     _existingServerIds.add(serverId);
     return modelWithServerId;
   }
@@ -556,7 +188,7 @@ class MockPartialFailureAdapter extends MockServerIdAdapter {
     Map<String, String>? headers,
     Map<String, dynamic>? extra,
   }) async {
-    _operationLog.add('createOne(${model.id})');
+    operationLogStore.add('createOne(${model.id})');
     await Future.delayed(const Duration(milliseconds: 10));
 
     if (_shouldFailOnCreate && _failureCount < _maxFailures) {
@@ -573,7 +205,7 @@ class MockPartialFailureAdapter extends MockServerIdAdapter {
     Map<String, String>? headers,
     Map<String, dynamic>? extra,
   }) async {
-    _operationLog.add('updateOne(${model.id})');
+    operationLogStore.add('updateOne(${model.id})');
     await Future.delayed(const Duration(milliseconds: 10));
 
     if (_shouldFailOnUpdate && _failureCount < _maxFailures) {
@@ -590,7 +222,7 @@ class MockPartialFailureAdapter extends MockServerIdAdapter {
     Map<String, String>? headers,
     Map<String, dynamic>? extra,
   }) async {
-    _operationLog.add('deleteOne($id)');
+    operationLogStore.add('deleteOne($id)');
     await Future.delayed(const Duration(milliseconds: 10));
 
     if (_shouldFailOnDelete && _failureCount < _maxFailures) {
@@ -629,7 +261,7 @@ class MockTimeoutAdapter extends MockServerIdAdapter {
     Map<String, String>? headers,
     Map<String, dynamic>? extra,
   }) async {
-    _operationLog.add('createOne(${model.id})');
+    operationLogStore.add('createOne(${model.id})');
 
     if (_shouldTimeout && _timeoutOperation == 'create') {
       await Future.delayed(_timeout);
@@ -645,7 +277,7 @@ class MockTimeoutAdapter extends MockServerIdAdapter {
     Map<String, String>? headers,
     Map<String, dynamic>? extra,
   }) async {
-    _operationLog.add('updateOne(${model.id})');
+    operationLogStore.add('updateOne(${model.id})');
 
     if (_shouldTimeout && _timeoutOperation == 'update') {
       await Future.delayed(_timeout);
@@ -661,7 +293,7 @@ class MockTimeoutAdapter extends MockServerIdAdapter {
     Map<String, String>? headers,
     Map<String, dynamic>? extra,
   }) async {
-    _operationLog.add('deleteOne($id)');
+    operationLogStore.add('deleteOne($id)');
 
     if (_shouldTimeout && _timeoutOperation == 'delete') {
       await Future.delayed(_timeout);
@@ -696,7 +328,7 @@ class MockConcurrentAdapter extends MockServerIdAdapter {
     Map<String, String>? headers,
     Map<String, dynamic>? extra,
   }) async {
-    _operationLog.add('createOne(${model.id})');
+    operationLogStore.add('createOne(${model.id})');
 
     if (_shouldSimulateConcurrentOperations) {
       // Check if there's already a pending operation for this model
@@ -2871,7 +2503,7 @@ class MockLocalIdConflictAdapter extends MockServerIdAdapter {
 
   /// Add a model to remote data (helper method for testing)
   void addToRemoteData(String id, ServerTestModel model) {
-    _remoteData[id] = model;
+    remoteDataStore[id] = model;
   }
 
   @override
@@ -2880,7 +2512,7 @@ class MockLocalIdConflictAdapter extends MockServerIdAdapter {
     Map<String, String>? headers,
     Map<String, dynamic>? extra,
   }) async {
-    _operationLog.add('createOne(${model.id})');
+    operationLogStore.add('createOne(${model.id})');
     await Future.delayed(const Duration(milliseconds: 10));
 
     String serverId;
@@ -2894,7 +2526,7 @@ class MockLocalIdConflictAdapter extends MockServerIdAdapter {
         _forceReturnId = null;
       }
     } else {
-      serverId = 'server_${_nextServerId++}';
+      serverId = 'server_${nextServerId++}';
     }
 
     final modelWithServerId = ServerTestModel(
@@ -2904,17 +2536,17 @@ class MockLocalIdConflictAdapter extends MockServerIdAdapter {
     );
 
     // Check if this would create a conflict by overwriting existing data
-    if (_remoteData.containsKey(serverId)) {
+    if (remoteDataStore.containsKey(serverId)) {
       // Simulate server conflict - throw an exception or return error
       // This simulates what would happen if server detects the conflict
-      _operationLog.add('CONFLICT: ID $serverId already exists');
+      operationLogStore.add('CONFLICT: ID $serverId already exists');
       throw ApiException(
         'Server ID conflict: ID $serverId already exists',
         statusCode: 409, // Conflict
       );
     }
 
-    _remoteData[serverId] = modelWithServerId;
+    remoteDataStore[serverId] = modelWithServerId;
     return modelWithServerId;
   }
 }

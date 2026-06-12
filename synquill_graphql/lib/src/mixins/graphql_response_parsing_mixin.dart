@@ -1,5 +1,6 @@
 import 'package:meta/meta.dart';
-import 'package:synquill/synquill.dart';
+import 'package:logging/logging.dart';
+import 'package:synquill/synquill_contracts.dart';
 
 /// Mixin for parsing GraphQL responses into [SynquillDataModel] objects.
 mixin GraphQLResponseParsingMixin<TModel extends SynquillDataModel<TModel>>

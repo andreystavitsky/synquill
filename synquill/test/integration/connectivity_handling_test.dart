@@ -1,7 +1,8 @@
 import 'dart:async';
 
 import 'package:test/test.dart';
-import 'package:synquill/synquill_core.dart';
+import 'package:synquill/synquill.dart';
+import 'package:synquill/synquill_drift.dart';
 
 import '../common/test_models.dart';
 import '../common/test_user_repository.dart';

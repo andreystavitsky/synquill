@@ -1,8 +1,10 @@
 import 'package:drift_flutter/drift_flutter.dart';
-import 'package:internet_connection_checker_plus/internet_connection_checker_plus.dart';
 import 'package:flutter/material.dart';
+import 'package:internet_connection_checker_plus/internet_connection_checker_plus.dart';
+import 'package:logging/logging.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:synquill/synquill_core.dart';
+import 'package:synquill/synquill_contracts.dart';
+import 'package:synquill/synquill_drift.dart';
 import 'package:synquill_example/synquill.generated.dart';
 import 'package:workmanager/workmanager.dart';
 import 'screens/home_screen.dart';

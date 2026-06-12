@@ -11,12 +11,6 @@ void main() {
       // Create an in-memory database for testing
       database = TestDatabase(NativeDatabase.memory());
 
-      // Register test repository factory
-
-      SynquillRepositoryProvider.register<TestUser>(
-        (db) => TestUserRepository(db as TestDatabase),
-      );
-
       // Initialize SynquillStorage with test configuration
 
       try {
@@ -27,6 +21,11 @@ void main() {
             defaultLoadPolicy: DataLoadPolicy.localOnly,
           ),
           logger: Logger('RepositoryAccessTest'),
+          initializeFn: (_) {
+            SynquillRepositoryProvider.register<TestUser>(
+              (db) => TestUserRepository(db as TestDatabase),
+            );
+          },
           enableInternetMonitoring: false, // Disable for testing
         );
       } catch (e) {
