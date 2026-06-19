@@ -1,3 +1,7 @@
+## 0.10.0
+
+- Updated dependencies and version alignment.
+
 ## 0.9.0
 
 - Updated the `synquill` dependency constraint for the 0.9.x runtime.

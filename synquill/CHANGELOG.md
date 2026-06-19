@@ -1,3 +1,8 @@
+## 0.10.0
+
+- Added Supabase adapter and realtime sync support.
+- Bumped dependencies and version alignment.
+
 ## 0.9.1
 
 ### Changed

@@ -41,6 +41,41 @@ void main() {
       expect(content, isNot(contains('package:synquill_graphql')));
     });
 
+    test('imports synquill_supabase when adapter requires SupabaseApiAdapter',
+        () {
+      final content = FileAggregator.generateAggregateFile(
+        [
+          _modelWithAdapters([
+            _adapter(
+              'SupabasePostApiAdapter',
+              superclassConstraints: const ['SupabaseApiAdapter'],
+            ),
+          ]),
+        ],
+        'synquill_example',
+      );
+
+      expect(
+        content,
+        contains(
+          "import 'package:synquill_supabase/synquill_supabase.dart';",
+        ),
+      );
+    });
+
+    test('does not import synquill_supabase for REST-only adapters', () {
+      final content = FileAggregator.generateAggregateFile(
+        [
+          _modelWithAdapters([
+            _adapter('JsonApiAdapter'),
+          ]),
+        ],
+        'synquill_example',
+      );
+
+      expect(content, isNot(contains('package:synquill_supabase')));
+    });
+
     test('imports narrow Synquill barrels for generated aggregate files', () {
       final content = FileAggregator.generateAggregateFile(
         [

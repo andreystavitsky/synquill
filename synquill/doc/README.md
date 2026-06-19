@@ -1,6 +1,6 @@
 # Synquill Documentation
 
-Welcome to the comprehensive documentation for Synquill - a powerful Flutter package for offline-first data management with automatic REST and GraphQL API synchronization.
+Welcome to the comprehensive documentation for Synquill - a powerful Flutter package for offline-first data management with automatic REST, GraphQL, and Supabase API synchronization.
 
 ## 📚 Documentation Overview
 
@@ -25,6 +25,12 @@ This documentation is organized into several sections to help you get started qu
   - String-based query definition
   - Variable mapping and HTTP batching
   - WebSocket-based realtime subscriptions
+
+- **[Supabase API Adapter](supabase-adapter.md)** - Integrating Supabase
+  - Setting up Supabase-backed models and adapters
+  - Query parameter mapping
+  - Supabase Realtime subscriptions
+  - Error handling and table configuration notes
 
 - **[Configuration](configuration.md)** - Storage and sync configuration
   - Database setup and options
@@ -78,6 +84,7 @@ Before diving into the documentation, familiarize yourself with these core conce
 | Getting started with Synquill | [Quick Start Guide](guide.md) |
 | Setting up REST API communication | [API Adapters](api-adapters.md) |
 | Setting up GraphQL API communication | [GraphQL API Adapter](graphql-adapter.md) |
+| Setting up Supabase API communication | [Supabase API Adapter](supabase-adapter.md) |
 | Configuring background sync | [Configuration](configuration.md) |
 | Optimizing database performance | [Advanced Features](advanced-features.md) |
 | Managing complex sync scenarios | [Queue Management](queues.md) |

@@ -1,5 +1,6 @@
 import 'package:synquill_gen/src/model_info.dart';
 import 'package:synquill_gen/src/builder_utils.dart';
+import 'package:synquill_gen/src/adapter_info.dart';
 
 /// Generates concrete repository implementations that extend
 /// SynquillRepositoryBase
@@ -54,11 +55,7 @@ class $adapterClassName extends BasicApiAdapter<$className> {
 
     final mixinClause =
         mixinParts.isNotEmpty ? ' with ${mixinParts.join(', ')}' : '';
-    final baseClass = adapters.any(
-      (adapter) => adapter.superclassConstraints.contains('GraphQLApiAdapter'),
-    )
-        ? 'GraphQLApiAdapter'
-        : 'BasicApiAdapter';
+    final baseClass = _resolveAdapterBaseClass(adapters);
 
     return '''
 /// Generated adapter for $className
@@ -75,6 +72,26 @@ class $adapterClassName extends $baseClass<$className>
   }
 }
 ''';
+  }
+
+  static String _resolveAdapterBaseClass(List<AdapterInfo> adapters) {
+    final requiresGraphQL = adapters.any(
+      (adapter) => adapter.superclassConstraints.contains('GraphQLApiAdapter'),
+    );
+    final requiresSupabase = adapters.any(
+      (adapter) => adapter.superclassConstraints.contains('SupabaseApiAdapter'),
+    );
+
+    if (requiresGraphQL && requiresSupabase) {
+      throw StateError(
+        'Model has conflicting API adapter base classes: GraphQLApiAdapter '
+        'and SupabaseApiAdapter. Use adapters that share one transport base.',
+      );
+    }
+
+    if (requiresGraphQL) return 'GraphQLApiAdapter';
+    if (requiresSupabase) return 'SupabaseApiAdapter';
+    return 'BasicApiAdapter';
   }
 
   /// Generates a concrete repository class for a model

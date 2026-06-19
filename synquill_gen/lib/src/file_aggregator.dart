@@ -36,6 +36,19 @@ class FileAggregator {
     if (usesGraphQLAdapter) {
       aggregatedImports.add('package:synquill_graphql/synquill_graphql.dart');
     }
+    final usesSupabaseAdapter = models.any(
+      (model) =>
+          model.adapters?.any(
+            (adapter) =>
+                adapter.superclassConstraints.contains('SupabaseApiAdapter'),
+          ) ??
+          false,
+    );
+    if (usesSupabaseAdapter) {
+      aggregatedImports.add(
+        'package:synquill_supabase/synquill_supabase.dart',
+      );
+    }
     for (final model in models) {
       aggregatedImports.add(model.importPath);
     }

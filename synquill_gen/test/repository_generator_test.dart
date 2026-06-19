@@ -37,6 +37,20 @@ void main() {
       expect(code, contains('with TodoGraphQLAdapter'));
     });
 
+    test('uses SupabaseApiAdapter when adapter has Supabase constraint', () {
+      final code = RepositoryGenerator.generateAdapterClass(
+        _modelWithAdapters([
+          _adapter(
+            'TodoSupabaseAdapter',
+            superclassConstraints: const ['SupabaseApiAdapter'],
+          ),
+        ]),
+      );
+
+      expect(code, contains('extends SupabaseApiAdapter<Todo>'));
+      expect(code, contains('with TodoSupabaseAdapter'));
+    });
+
     test('uses GraphQLApiAdapter when one of several adapters requires it', () {
       final code = RepositoryGenerator.generateAdapterClass(
         _modelWithAdapters([
@@ -50,6 +64,30 @@ void main() {
 
       expect(code, contains('extends GraphQLApiAdapter<Todo>'));
       expect(code, contains('with AuditingAdapter, TodoGraphQLAdapter'));
+    });
+
+    test('rejects conflicting GraphQL and Supabase adapter constraints', () {
+      expect(
+        () => RepositoryGenerator.generateAdapterClass(
+          _modelWithAdapters([
+            _adapter(
+              'TodoGraphQLAdapter',
+              superclassConstraints: const ['GraphQLApiAdapter'],
+            ),
+            _adapter(
+              'TodoSupabaseAdapter',
+              superclassConstraints: const ['SupabaseApiAdapter'],
+            ),
+          ]),
+        ),
+        throwsA(
+          isA<StateError>().having(
+            (error) => error.message,
+            'message',
+            contains('conflicting API adapter base classes'),
+          ),
+        ),
+      );
     });
 
     test('preserves generic adapter type arguments', () {

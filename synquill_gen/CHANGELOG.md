@@ -1,3 +1,8 @@
+## 0.10.0
+
+- Added support for generating Supabase repositories and code generation.
+- Bumped dependencies and version alignment.
+
 ## 0.9.0
 
 ### Added

@@ -1,0 +1,5 @@
+dependency_overrides:
+  synquill:
+    path: ../synquill
+  synquill_utils:
+    path: ../synquill_utils
