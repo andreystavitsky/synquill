@@ -687,8 +687,15 @@ class SupabaseSdkTransport implements SupabaseTransport {
   /// Creates an SDK transport.
   const SupabaseSdkTransport(this.client);
 
+  static int _realtimeTopicSequence = 0;
+
   /// Supabase client to call.
   final SupabaseClient client;
+
+  static int _nextRealtimeTopicSequence() {
+    _realtimeTopicSequence += 1;
+    return _realtimeTopicSequence;
+  }
 
   dynamic _table(SupabaseSelectRequest request) {
     final dynamic dynamicClient = client;
@@ -795,9 +802,19 @@ class SupabaseSdkTransport implements SupabaseTransport {
   ) {
     final controller = StreamController<SupabaseRealtimePayload>();
     final dynamic dynamicClient = client;
+    var cancelled = false;
     final dynamic channel = dynamicClient.channel(
-      'synquill:${request.schema}:${request.table}:${request.id ?? '*'}',
+      'synquill:${request.schema}:${request.table}:${request.id ?? '*'}:'
+      '${_nextRealtimeTopicSequence()}',
     );
+
+    void addErrorAndClose(SupabaseTransportException error) {
+      scheduleMicrotask(() {
+        if (cancelled || controller.isClosed) return;
+        controller.addError(error);
+        unawaited(controller.close());
+      });
+    }
 
     try {
       final filter = _postgresChangeFilter(request);
@@ -810,7 +827,37 @@ class SupabaseSdkTransport implements SupabaseTransport {
           controller.add(SupabaseRealtimePayload.fromSdk(payload));
         },
       );
-      configured.subscribe();
+      configured.subscribe(
+        (RealtimeSubscribeStatus status, [Object? error]) {
+          switch (status) {
+            case RealtimeSubscribeStatus.subscribed:
+              return;
+            case RealtimeSubscribeStatus.timedOut:
+              addErrorAndClose(
+                const SupabaseTransportException(
+                  'Supabase realtime subscription timed out.',
+                  isNetworkError: true,
+                  isTimeout: true,
+                ),
+              );
+            case RealtimeSubscribeStatus.closed:
+              if (cancelled) return;
+              addErrorAndClose(
+                const SupabaseTransportException(
+                  'Supabase realtime subscription closed.',
+                  isNetworkError: true,
+                ),
+              );
+            case RealtimeSubscribeStatus.channelError:
+              addErrorAndClose(
+                SupabaseTransportException(
+                  'Supabase realtime subscription failed: '
+                  '${error ?? 'channel error'}',
+                ),
+              );
+          }
+        },
+      );
     } on SupabaseTransportException catch (e, st) {
       scheduleMicrotask(() {
         controller.addError(e, st);
@@ -827,6 +874,7 @@ class SupabaseSdkTransport implements SupabaseTransport {
     }
 
     controller.onCancel = () async {
+      cancelled = true;
       await dynamicClient.removeChannel(channel);
     };
     return controller.stream;

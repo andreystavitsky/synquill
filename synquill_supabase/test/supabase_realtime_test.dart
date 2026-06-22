@@ -1,9 +1,11 @@
 import 'dart:async';
 
+import 'package:stream_channel/stream_channel.dart';
 import 'package:supabase/supabase.dart';
 import 'package:synquill/synquill_contracts.dart';
 import 'package:synquill_supabase/synquill_supabase.dart';
 import 'package:test/test.dart';
+import 'package:web_socket_channel/web_socket_channel.dart';
 
 import 'helpers/test_model.dart';
 
@@ -256,4 +258,187 @@ void main() {
       await second.cancel();
     });
   });
+
+  group('SupabaseSdkTransport realtime', () {
+    test('keeps identical subscriptions as separate channels', () async {
+      final socketFactory = _RecordingWebSocketFactory();
+      final client = _clientWithRealtimeTransport(socketFactory);
+      final transport = SupabaseSdkTransport(client);
+
+      try {
+        final first = transport
+            .subscribeEvents(_testRealtimeRequest(id: '1'))
+            .listen((_) {});
+        final second = transport
+            .subscribeEvents(_testRealtimeRequest(id: '1'))
+            .listen((_) {});
+        await pumpEventQueue();
+
+        expect(client.getChannels(), hasLength(2));
+
+        await first.cancel();
+        await second.cancel();
+      } finally {
+        await client.dispose();
+      }
+    });
+
+    test('emits a retryable timeout error when subscribe times out', () async {
+      final socketFactory = _RecordingWebSocketFactory();
+      final client = _clientWithRealtimeTransport(
+        socketFactory,
+        timeout: const Duration(milliseconds: 1),
+      );
+      final transport = SupabaseSdkTransport(client);
+      final errors = <Object>[];
+
+      try {
+        final subscription = transport
+            .subscribeEvents(_testRealtimeRequest(id: '1'))
+            .listen((_) {}, onError: errors.add);
+
+        await Future<void>.delayed(const Duration(milliseconds: 30));
+
+        expect(
+          errors,
+          contains(
+            isA<SupabaseTransportException>()
+                .having((error) => error.isTimeout, 'isTimeout', isTrue)
+                .having(
+                  (error) => error.isNetworkError,
+                  'isNetworkError',
+                  isTrue,
+                ),
+          ),
+        );
+
+        await subscription.cancel();
+      } finally {
+        await client.dispose();
+      }
+    });
+
+    test('does not emit a closed error for normal cancellation', () async {
+      final socketFactory = _RecordingWebSocketFactory();
+      final client = _clientWithRealtimeTransport(socketFactory);
+      final transport = SupabaseSdkTransport(client);
+      final errors = <Object>[];
+
+      try {
+        final subscription = transport
+            .subscribeEvents(_testRealtimeRequest(id: '1'))
+            .listen((_) {}, onError: errors.add);
+        await pumpEventQueue();
+
+        await subscription.cancel();
+        await pumpEventQueue();
+
+        expect(errors, isEmpty);
+      } finally {
+        await client.dispose();
+      }
+    });
+  });
+}
+
+SupabaseRealtimeRequest _testRealtimeRequest({String? id}) {
+  return SupabaseRealtimeRequest(
+    schema: 'public',
+    table: 'test_models',
+    idColumn: 'id',
+    id: id,
+  );
+}
+
+SupabaseClient _clientWithRealtimeTransport(
+  _RecordingWebSocketFactory socketFactory, {
+  Duration timeout = const Duration(seconds: 30),
+}) {
+  return SupabaseClient(
+    'https://example.supabase.co',
+    'test-key',
+    accessToken: () async => 'test-key',
+    realtimeClientOptions: RealtimeClientOptions(
+      timeout: timeout,
+      transport: socketFactory.call,
+    ),
+  );
+}
+
+class _RecordingWebSocketFactory {
+  final channels = <_FakeWebSocketChannel>[];
+
+  WebSocketChannel call(String url, Map<String, String> headers) {
+    final channel = _FakeWebSocketChannel();
+    channels.add(channel);
+    return channel;
+  }
+}
+
+class _FakeWebSocketChannel extends StreamChannelMixin<dynamic>
+    implements WebSocketChannel {
+  final _incoming = StreamController<dynamic>();
+  late final _RecordingWebSocketSink _sink = _RecordingWebSocketSink(
+    onClose: _incoming.close,
+  );
+
+  @override
+  int? get closeCode => _sink.closeCode;
+
+  @override
+  String? get closeReason => _sink.closeReason;
+
+  @override
+  String? get protocol => null;
+
+  @override
+  Future<void> get ready => Future<void>.value();
+
+  @override
+  WebSocketSink get sink => _sink;
+
+  @override
+  Stream<dynamic> get stream => _incoming.stream;
+}
+
+class _RecordingWebSocketSink implements WebSocketSink {
+  _RecordingWebSocketSink({required this.onClose});
+
+  final Future<void> Function() onClose;
+  final sentMessages = <Object?>[];
+  final _done = Completer<void>();
+  int? closeCode;
+  String? closeReason;
+
+  @override
+  Future<void> get done => _done.future;
+
+  @override
+  void add(Object? data) {
+    sentMessages.add(data);
+  }
+
+  @override
+  void addError(Object error, [StackTrace? stackTrace]) {
+    if (!_done.isCompleted) {
+      _done.completeError(error, stackTrace);
+    }
+  }
+
+  @override
+  Future<void> addStream(Stream<dynamic> stream) async {
+    await for (final message in stream) {
+      add(message);
+    }
+  }
+
+  @override
+  Future<void> close([int? closeCode, String? closeReason]) async {
+    this.closeCode = closeCode;
+    this.closeReason = closeReason;
+    if (!_done.isCompleted) {
+      _done.complete();
+    }
+    await onClose();
+  }
 }
